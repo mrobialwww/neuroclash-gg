@@ -13,11 +13,13 @@ import { RegisterSchema } from "@/schemas";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 
 export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  const router = useRouter();
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
@@ -36,6 +38,7 @@ export default function SignUpPage() {
         toast.success("Registrasi Berhasil!", {
           description: data.message,
         });
+        router.push("/signin");
         form.reset();
       } else {
         toast.error("Registrasi Gagal", {

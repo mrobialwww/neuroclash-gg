@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       options: {
+        data: { username: name },
         emailRedirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/callback/credentials`,
       },
     });
