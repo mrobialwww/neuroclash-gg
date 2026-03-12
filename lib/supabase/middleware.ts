@@ -40,7 +40,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Jika belum login dan bukan halaman publik, redirect ke signin
-  if (!user && !isAuthPage && !request.nextUrl.pathname.startsWith("/auth") && !request.nextUrl.pathname.startsWith("/api/auth")) {
+  if (
+    !user &&
+    !isAuthPage &&
+    request.nextUrl.pathname !== "/" &&
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/api/auth")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     return NextResponse.redirect(url);
