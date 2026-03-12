@@ -1,6 +1,6 @@
 import { MainButton } from "@/components/common/MainButton";
-import { AvatarItem } from "@/components/ui/AvatarCircles";
 import { CourseCard } from "./CourseCard";
+import { AvatarItem } from "./AvatarCircles";
 
 interface CategoryProps {
   title: string;
@@ -20,12 +20,12 @@ export function CategorySection({ title, courses }: CategoryProps) {
     <div className="w-full">
       {/* Header section */}
       <div className="flex items-center justify-between mb-4 md:mb-6 px-1">
-        <h2 className="text-[1.75rem] md:text-3xl font-semibold text-[#555555] tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#555555] ">
           {title}
         </h2>
         <MainButton
           variant="blue"
-          className="px-6 py-2 h-auto text-sm md:text-base border-none shadow-none"
+          className="bg-[#658BFF] hover:bg-[#3D79F3] px-6 py-2 h-auto text-sm md:text-base border-none shadow-none"
         >
           Lihat Lebih
         </MainButton>

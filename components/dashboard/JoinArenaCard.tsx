@@ -20,7 +20,7 @@ export function JoinArenaCard({
   return (
     <div className="relative w-full h-full bg-[#FDE4B0] border-[3px] border-[#FDA928] rounded-3xl p-5 md:p-8 flex flex-col items-center justify-between text-center overflow-hidden min-h-[220px] md:min-h-[240px] shadow-[0_4px_20px_rgba(253,169,40,0.1)]">
       <div className="flex flex-col items-center z-10 w-full mb-2">
-        <h2 className="text-[#555555] text-2xl md:text-3xl font-extrabold mb-2 tracking-tight">
+        <h2 className="text-[#555555] text-2xl md:text-3xl font-extrabold mb-2 ">
           Gabung ke Arena
         </h2>
 
@@ -58,7 +58,8 @@ export function JoinArenaCard({
             </span>
             <span className="leading-none text-[15px] drop-shadow-sm font-extrabold tracking-wide mb-0.5">
               {rankScore}
-            </span>1
+            </span>
+            1
           </div>
         </div>
       </div>

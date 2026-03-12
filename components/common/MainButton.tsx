@@ -8,8 +8,8 @@ const mainButtonVariants = cva(
   {
     variants: {
       variant: {
-        blue: "bg-[#256AF4] text-white hover:bg-[#3269d6]",
-        white: "bg-white text-[#256AF4] hover:bg-gray-50",
+        blue: "bg-[#3D79F3] text-white hover:bg-[#3269d6]",
+        white: "bg-white text-[#3D79F3] hover:bg-gray-50",
       },
       size: {
         default: "h-12 px-8 py-3 text-lg",
