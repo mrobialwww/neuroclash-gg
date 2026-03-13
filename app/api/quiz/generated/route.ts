@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-const pdfParse = require("pdf-parse").default ?? require("pdf-parse");
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI("AIzaSyCT6cL3_EJEtKf7V0BtLieQ5p8KCNBxa5Y");
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export async function POST(req: Request) {
   try {
@@ -47,17 +46,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Format Content-Type tidak didukung. Gunakan form-data atau application/json." }, { status: 415 });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+    const generationConfig = {
+      temperature: 0.7,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192,
+      responseMimeType: "application/json",
+    };
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data: buffer.toString("base64"),
-        },
-      },
-      {
-        text: `Buatkan 20 soal pilihan ganda dari dokumen PDF ini.
+    const result = await ai.models.generateContent({
+      model: "gemini-3.1-flash-lite-preview",
+      contents: [
+        `Buatkan 20 soal pilihan ganda dari dokumen PDF ini.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
@@ -78,14 +78,21 @@ Format JSON yang harus dikembalikan:
   ]
 }
 Pastikan:
-- "id" dimulai dari 1 hingga 20
-- "correct_answer" hanya diisi dengan huruf key (A/B/C/D), bukan teks jawaban
-- "explanation" berisi penjelasan singkat 1-2 kalimat mengapa jawaban tersebut benar
-- Semua soal relevan dengan isi dokumen`,
-      },
-    ]);
+* "id" dimulai dari 1 hingga 20
+* "correct_answer" hanya diisi dengan huruf key (A/B/C/D), bukan teks jawaban
+* "explanation" berisi penjelasan singkat 1-2 kalimat mengapa jawaban tersebut benar
+* Semua soal relevan dengan isi dokumen`,
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: buffer.toString("base64"),
+          },
+        },
+      ],
+      config: generationConfig,
+    });
 
-    const rawText = result.response.text();
+    const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleaned);
 
