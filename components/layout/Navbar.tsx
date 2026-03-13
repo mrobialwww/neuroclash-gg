@@ -1,89 +1,95 @@
+"use client";
+
 import React from "react";
-import {
-  Search,
-  Home,
-  History,
-  Store,
-  BarChart2,
-  Coins,
-  Menu,
-} from "lucide-react";
-import Image from "next/image";
+import { Home, Search, History, Store, Menu } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export function Navbar() {
-  return (
-    <nav className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-      {/* Left section: Logo & Search */}
-      <div className="flex items-center gap-6 flex-1">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-            {/* Placeholder logo */}
-            <span className="font-bold text-xl">N</span>
-          </div>
-        </div>
+  const pathname = usePathname();
 
-        <div className="relative hidden md:flex items-center w-full max-w-sm">
-          <div className="absolute left-3 text-gray-400">
-            <Search size={18} />
-          </div>
+  const navLinks = [
+    { name: "Beranda", href: "/", icon: Home },
+    { name: "Riwayat", href: "/history", icon: History },
+    { name: "Toko", href: "/shop", icon: Store },
+  ];
+
+  return (
+    <header className="flex items-center justify-between px-6 md:px-12 lg:px-16 py-3 bg-white shadow-sm font-medium z-10 relative">
+      <div className="flex items-center gap-6 w-[400px]">
+        {/* Logo */}
+        <Link href="/" className="flex items-center justify-center bg-blue-600 text-white rounded-lg w-10 h-10 font-bold shrink-0">
+          NC
+        </Link>
+        {/* SearchBar */}
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
             placeholder="Temukan Arena"
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+            className="w-full pl-9 pr-4 py-2 rounded-full border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
           />
         </div>
       </div>
 
-      {/* Middle section: Nav Links */}
-      <div className="hidden lg:flex items-center justify-center gap-8 flex-1 h-full">
+      {/* Center Nav */}
+      <nav className="hidden md:flex items-center gap-2">
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "flex items-center gap-2 px-6 py-4 transition-all duration-200",
+                isActive 
+                  ? "text-blue-600 border-b-[3px] border-blue-600 font-bold" 
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Icon className="w-5 h-5" /> {link.name}
+            </Link>
+          );
+        })}
+        
         <Link
-          href="#"
-          className="flex items-center gap-2 text-blue-600 font-semibold py-4 border-b-2 border-blue-600"
+          href="/leaderboard"
+          className={cn(
+            "flex items-center gap-2 px-6 py-4 transition-all duration-200",
+            pathname === "/leaderboard"
+              ? "text-blue-600 border-b-[3px] border-blue-600 font-bold"
+              : "text-gray-400 hover:text-gray-600"
+          )}
         >
-          <Home size={20} />
-          <span>Beranda</span>
-        </Link>
-        <Link
-          href="#"
-          className="flex items-center gap-2 text-gray-400 font-medium py-4 border-b-2 border-transparent hover:text-gray-600"
-        >
-          <History size={20} />
-          <span>Riwayat</span>
-        </Link>
-        <Link
-          href="#"
-          className="flex items-center gap-2 text-gray-400 font-medium py-4 border-b-2 border-transparent hover:text-gray-600"
-        >
-          <Store size={20} />
-          <span>Toko</span>
-        </Link>
-        <Link
-          href="#"
-          className="flex items-center gap-2 text-gray-400 font-medium py-4 border-b-2 border-transparent hover:text-gray-600"
-        >
-          <BarChart2 size={20} />
-          <span>Papan Peringkat</span>
-        </Link>
-      </div>
-
-      {/* Right section: Profile & Menu */}
-      <div className="flex items-center justify-end gap-4 flex-1">
-        <div className="hidden md:block w-10 h-10 bg-green-500 rounded-full overflow-hidden border-2 border-white shadow-sm flex items-center justify-center text-white font-bold">
-          {/* Avatar Placeholder */}G
-        </div>
-
-        <div className="flex items-center gap-2 bg-yellow-100 px-3 py-1.5 rounded-full border border-yellow-200">
-          <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-100">
-            <Coins size={14} className="text-white" />
+          <div className="flex items-end gap-[2px] w-5 h-5">
+            <div className={cn("w-1.5 h-3 rounded-sm", pathname === "/leaderboard" ? "bg-blue-600" : "bg-gray-400")}></div>
+            <div className={cn("w-1.5 h-5 rounded-sm", pathname === "/leaderboard" ? "bg-blue-600" : "bg-gray-400")}></div>
+            <div className={cn("w-1.5 h-4 rounded-sm", pathname === "/leaderboard" ? "bg-blue-600" : "bg-gray-400")}></div>
           </div>
-          <span className="font-bold text-yellow-700">1928</span>
-        </div>
+          Papan Peringkat
+        </Link>
+      </nav>
 
-        <button className="p-2 text-gray-500 hover:text-gray-700">
-          <Menu size={28} />
+      {/* Right Nav */}
+      <div className="flex items-center justify-end gap-4 w-[400px]">
+        {/* Avatar Placeholder */}
+        <div className="w-10 h-10 bg-green-500 rounded-full border-2 border-green-600 overflow-hidden shrink-0 flex items-center justify-center text-white text-xs">
+          A
+        </div>
+        {/* Coins */}
+        <div className="flex items-center bg-[#FCECB9] text-[#A67E2A] px-4 py-1.5 rounded-full font-bold shadow-sm border border-[#EAC973]">
+          <div className="bg-linear-to-r from-yellow-400 to-yellow-600 w-5 h-5 rounded-full mr-2 shadow-inner text-white text-[10px] flex items-center justify-center">
+            ★
+          </div>
+          1928
+        </div>
+        {/* Hamburger Menu */}
+        <button className="text-gray-600">
+          <Menu className="w-8 h-8" />
         </button>
       </div>
-    </nav>
+    </header>
   );
 }

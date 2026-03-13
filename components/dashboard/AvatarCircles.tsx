@@ -15,16 +15,21 @@ import { cn } from "@/lib/utils";
 export interface AvatarItem {
   id: string | number;
   name: string;
-  character: string;
+  character: string; // Used for background color
   image: string;
 }
 
 interface AvatarCirclesProps {
   items: AvatarItem[];
   className?: string;
+  avatarSize?: number;
 }
 
-export const AvatarCircles = ({ items, className }: AvatarCirclesProps) => {
+export const AvatarCircles = ({
+  items,
+  className,
+  avatarSize = 40,
+}: AvatarCirclesProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<string | number | null>(
     null,
   );
@@ -58,7 +63,7 @@ export const AvatarCircles = ({ items, className }: AvatarCirclesProps) => {
     <div className={cn("flex flex-row items-center", className)}>
       {items.slice(0, 4).map((item) => (
         <div
-          className="group relative -mr-3 last:mr-0 transition-transform duration-300 hover:z-30 hover:-translate-y-1"
+          className="group relative -mr-2 last:mr-0 transition-all duration-300 hover:z-30"
           key={item.id}
           onMouseEnter={() => setHoveredIndex(item.id)}
           onMouseLeave={() => setHoveredIndex(null)}
@@ -83,9 +88,9 @@ export const AvatarCircles = ({ items, className }: AvatarCirclesProps) => {
                   rotate: rotate,
                   whiteSpace: "nowrap",
                 }}
-                className="absolute -top-12 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-lg bg-black/90 backdrop-blur-sm px-3 py-1.5 text-xs shadow-xl"
+                className="absolute -top-12 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-lg bg-black/90 backdrop-blur-sm px-3 py-1.5 text-[10px] md:text-xs shadow-xl pointer-events-none"
               >
-                <div className="relative z-30 text-sm font-bold text-white">
+                <div className="relative z-30 font-bold text-white">
                   {item.name}
                 </div>
                 <div className="text-[10px] text-gray-300">
@@ -96,16 +101,19 @@ export const AvatarCircles = ({ items, className }: AvatarCirclesProps) => {
           </AnimatePresence>
 
           <div
-            className="relative h-10 w-10 md:h-12 md:w-12 rounded-full border-[3px] border-white shadow-sm overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-            style={{ backgroundColor: getCharacterBgColor(item.character) }}
+            className="relative rounded-full border-[2.5px] border-white shadow-sm overflow-hidden flex items-center justify-center"
+            style={{
+              backgroundColor: getCharacterBgColor(item.character),
+              width: avatarSize,
+              height: avatarSize,
+            }}
             onMouseMove={handleMouseMove}
           >
-            <div className="relative w-full h-full flex items-center justify-center top-1">
+            <div className="relative w-[85%] h-[85%] flex items-center justify-center mt-0.5">
               <Image
                 src={item.image}
                 alt={item.name}
-                width={48}
-                height={48}
+                fill
                 className="object-contain"
               />
             </div>

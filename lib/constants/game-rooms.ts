@@ -1,4 +1,4 @@
-import { AvatarItem } from "@/components/ui/AvatarCircles";
+import { AvatarItem } from "@/components/dashboard/AvatarCircles";
 
 export interface GameRoom {
   game_room_id: string;
@@ -32,10 +32,25 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p1", name: "Slimey", character: "Slime", image: "/default/Slime.webp" },
-      { id: "p2", name: "Griffin", character: "Griffin", image: "/default/Griffin.webp" },
+      {
+        id: "p1",
+        name: "Slimey",
+        character: "Slime",
+        image: "/default/Slime.webp",
+      },
+      {
+        id: "p2",
+        name: "Griffin",
+        character: "Griffin",
+        image: "/default/Griffin.webp",
+      },
       { id: "p3", name: "Blaze", character: "Api", image: "/default/Api.webp" },
-      { id: "p4", name: "Phoenix", character: "Phoenix", image: "/default/Phoenix.webp" },
+      {
+        id: "p4",
+        name: "Phoenix",
+        character: "Phoenix",
+        image: "/default/Phoenix.webp",
+      },
     ],
   },
   {
@@ -53,9 +68,24 @@ export const GAME_ROOMS: GameRoom[] = [
     room_visibility: "public",
     players: [
       { id: "p5", name: "Aqua", character: "Air", image: "/default/Air.webp" },
-      { id: "p6", name: "Robo", character: "Robot", image: "/default/Robot.webp" },
-      { id: "p7", name: "Ghost", character: "Hantu", image: "/default/Hantu.webp" },
-      { id: "p8", name: "Yeti", character: "Yeti", image: "/default/Yeti.webp" },
+      {
+        id: "p6",
+        name: "Robo",
+        character: "Robot",
+        image: "/default/Robot.webp",
+      },
+      {
+        id: "p7",
+        name: "Ghost",
+        character: "Hantu",
+        image: "/default/Hantu.webp",
+      },
+      {
+        id: "p8",
+        name: "Yeti",
+        character: "Yeti",
+        image: "/default/Yeti.webp",
+      },
     ],
   },
   {
@@ -72,10 +102,30 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p9", name: "Vamp", character: "Vampir", image: "/default/Vampir.webp" },
-      { id: "p10", name: "Alien", character: "Alien", image: "/default/Alien.webp" },
-      { id: "p11", name: "Dragon", character: "Naga", image: "/default/Naga.webp" },
-      { id: "p12", name: "Shroom", character: "Jamur", image: "/default/Jamur.webp" },
+      {
+        id: "p9",
+        name: "Vamp",
+        character: "Vampir",
+        image: "/default/Vampir.webp",
+      },
+      {
+        id: "p10",
+        name: "Alien",
+        character: "Alien",
+        image: "/default/Alien.webp",
+      },
+      {
+        id: "p11",
+        name: "Dragon",
+        character: "Naga",
+        image: "/default/Naga.webp",
+      },
+      {
+        id: "p12",
+        name: "Shroom",
+        character: "Jamur",
+        image: "/default/Jamur.webp",
+      },
     ],
   },
   {
@@ -92,9 +142,24 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p13", name: "Slime Elite", character: "Juragan Slime", image: "/epic/Juragan%20Slime.webp" },
-      { id: "p14", name: "Batik AI", character: "Cyber Batik", image: "/epic/Cyber%20Batik.webp" },
-      { id: "p15", name: "Fire Soul", character: "Api Baskara", image: "/epic/Api%20Baskara.webp" },
+      {
+        id: "p13",
+        name: "Slime Elite",
+        character: "Juragan Slime",
+        image: "/epic/Juragan%20Slime.webp",
+      },
+      {
+        id: "p14",
+        name: "Batik AI",
+        character: "Cyber Batik",
+        image: "/epic/Cyber%20Batik.webp",
+      },
+      {
+        id: "p15",
+        name: "Fire Soul",
+        character: "Api Baskara",
+        image: "/epic/Api%20Baskara.webp",
+      },
     ],
   },
   // Biologi Category
@@ -112,10 +177,30 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p16", name: "Sky Rider", character: "Mega Mendung", image: "/epic/Mega%20Mendung.webp" },
-      { id: "p17", name: "Stone", character: "Batu Pendekar", image: "/epic/Batu%20Pendekar.webp" },
-      { id: "p18", name: "Ghost King", character: "Jurig Peci", image: "/epic/Jurig%20Peci.webp" },
-      { id: "p19", name: "Wolf", character: "Roger Malam", image: "/epic/Roger%20Malam.webp" },
+      {
+        id: "p16",
+        name: "Sky Rider",
+        character: "Mega Mendung",
+        image: "/epic/Mega%20Mendung.webp",
+      },
+      {
+        id: "p17",
+        name: "Stone",
+        character: "Batu Pendekar",
+        image: "/epic/Batu%20Pendekar.webp",
+      },
+      {
+        id: "p18",
+        name: "Ghost King",
+        character: "Jurig Peci",
+        image: "/epic/Jurig%20Peci.webp",
+      },
+      {
+        id: "p19",
+        name: "Wolf",
+        character: "Roger Malam",
+        image: "/epic/Roger%20Malam.webp",
+      },
     ],
   },
   {
@@ -132,10 +217,30 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p20", name: "Mecha Blaze", character: "Mecha Blaze", image: "/legend/Mecha%20Blaze.webp" },
-      { id: "p21", name: "Akuatron", character: "Akuatron", image: "/legend/Akuatron.webp" },
-      { id: "p22", name: "Srikandi", character: "Srikandi", image: "/epic/Srikandi.webp" },
-      { id: "p23", name: "Peri", character: "Peri Jelita", image: "/epic/Peri%20Jelita.webp" },
+      {
+        id: "p20",
+        name: "Mecha Blaze",
+        character: "Mecha Blaze",
+        image: "/legend/Mecha%20Blaze.webp",
+      },
+      {
+        id: "p21",
+        name: "Akuatron",
+        character: "Akuatron",
+        image: "/legend/Akuatron.webp",
+      },
+      {
+        id: "p22",
+        name: "Srikandi",
+        character: "Srikandi",
+        image: "/epic/Srikandi.webp",
+      },
+      {
+        id: "p23",
+        name: "Peri",
+        character: "Peri Jelita",
+        image: "/epic/Peri%20Jelita.webp",
+      },
     ],
   },
   {
@@ -152,10 +257,30 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p24", name: "Unicorn", character: "Kuda Kencana", image: "/epic/Kuda%20Kencana.webp" },
-      { id: "p25", name: "Vampir", character: "Raden Drakula", image: "/epic/Raden%20Drakula.webp" },
-      { id: "p26", name: "Yeti Sage", character: "Yeti Petapa", image: "/epic/Yeti%20Petapa.webp" },
-      { id: "p27", name: "Gold Phoenix", character: "Phoenix", image: "/default/Phoenix.webp" },
+      {
+        id: "p24",
+        name: "Unicorn",
+        character: "Kuda Kencana",
+        image: "/epic/Kuda%20Kencana.webp",
+      },
+      {
+        id: "p25",
+        name: "Vampir",
+        character: "Raden Drakula",
+        image: "/epic/Raden%20Drakula.webp",
+      },
+      {
+        id: "p26",
+        name: "Yeti Sage",
+        character: "Yeti Petapa",
+        image: "/epic/Yeti%20Petapa.webp",
+      },
+      {
+        id: "p27",
+        name: "Gold Phoenix",
+        character: "Phoenix",
+        image: "/default/Phoenix.webp",
+      },
     ],
   },
   {
@@ -172,9 +297,24 @@ export const GAME_ROOMS: GameRoom[] = [
     room_status: "open",
     room_visibility: "public",
     players: [
-      { id: "p28", name: "Slimey", character: "Slime", image: "/default/Slime.webp" },
-      { id: "p29", name: "Griffin", character: "Griffin", image: "/default/Griffin.webp" },
-      { id: "p30", name: "Blaze", character: "Api", image: "/default/Api.webp" },
+      {
+        id: "p28",
+        name: "Slimey",
+        character: "Slime",
+        image: "/default/Slime.webp",
+      },
+      {
+        id: "p29",
+        name: "Griffin",
+        character: "Griffin",
+        image: "/default/Griffin.webp",
+      },
+      {
+        id: "p30",
+        name: "Blaze",
+        character: "Api",
+        image: "/default/Api.webp",
+      },
     ],
   },
 ];
