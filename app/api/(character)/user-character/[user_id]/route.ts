@@ -11,9 +11,10 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ user_id: string }> }) {
-  const { user_id } = await params;
   try {
     const supabase = await createClient();
+
+    const { user_id } = await params;
     const { searchParams } = new URL(request.url);
 
     const is_used = searchParams.get("is_used");

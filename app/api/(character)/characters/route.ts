@@ -10,12 +10,11 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+
     const { searchParams } = new URL(request.url);
 
     const user_id = searchParams.get("user_id");
     const skin_level = searchParams.get("skin_level");
-
-    console.log(skin_level);
 
     const { data, error } = await supabase
       .from("characters")

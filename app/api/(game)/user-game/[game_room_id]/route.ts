@@ -8,30 +8,58 @@
 //   (bisa diatur lewat trigger)
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(request: Request, { params }: { params: { game_room_id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ game_room_id: string }> }) {
   try {
+    const supabase = await createClient();
+
     const body = await request.json();
 
-    // Inisialisasi Supabase client (jika menggunakan SSR/Server Actions)
+    const { game_room_id } = await params;
+
+    const payloadData = {
+      game_room_id: game_room_id,
+      user_id: body.user_id,
+    };
+    const { data, error } = await supabase.from("user_games").insert(payloadData).select();
+
+    if (error) {
+      console.error("Supabase Error:", error);
+      throw error;
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ game_room_id: string }> }) {
+  try {
     const supabase = await createClient();
+
+    const body = await request.json();
+
+    const { game_room_id } = await params;
 
     // Memanggil fungsi transaksi (RPC) di Supabase
     const { error } = await supabase.rpc("submit_game_result", {
-      p_user_id: body.user_id, // dari payload (body)
-      p_game_room_id: params.game_room_id, // dari URL (params)
-      p_trophy_won: body.trophy_won, // dari payload (body)
-      p_coins_earned: body.coins_earned, // dari payload (body)
+      p_user_id: body.user_id,
+      p_game_room_id: game_room_id,
+      p_trophy_won: body.trophy_won,
+      p_coins_earned: body.coins_earned,
+      p_placement: body.placement, // Peringkat akhir pemain (misal: 5)
     });
 
     if (error) {
       console.error("Supabase RPC Error:", error);
-      throw error;
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({
-      message: "Berhasil mengupdate status game dan statistik pemain",
+      message: "Berhasil mengupdate statistik pemain",
     });
   } catch (error) {
     console.error("API Error:", error);

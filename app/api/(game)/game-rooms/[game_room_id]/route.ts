@@ -13,7 +13,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const supabase = await createClient();
 
     const { game_room_id } = await params;
-    const { searchParams } = new URL(request.url);
 
     const { data, error } = await supabase.from("game_rooms").select("*").eq("game_room_id", game_room_id);
 
@@ -36,7 +35,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
 
     const { game_room_id } = await params;
-    const { searchParams } = new URL(request.url);
 
     const updatePayload: Record<string, any> = {};
 

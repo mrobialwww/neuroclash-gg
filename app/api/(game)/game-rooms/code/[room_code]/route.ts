@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ room_code: string }> }) {
-  const { room_code } = await params;
   try {
     const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
+
+    const { room_code } = await params;
 
     const { data, error } = await supabase.from("game_rooms").select("*").eq("room_code", room_code);
 
