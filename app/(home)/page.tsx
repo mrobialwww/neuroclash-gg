@@ -1,13 +1,36 @@
 import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
+import { MatchProgressBar } from "@/components/match/MatchProgressBar";
 import { GAME_ROOMS } from "@/lib/constants/game-rooms";
+import { PlayerList } from "@/components/match/PlayerList";
+import { PlayerCard } from "@/components/match/PlayerCard";
 
-export default function HomePage() {
-  // Group game rooms by category
-  const categories = Array.from(
-    new Set(GAME_ROOMS.map((room) => room.category)),
-  );
+export default async function HomePage() {
+  const groupedRooms = GAME_ROOMS.reduce((acc, room) => {
+    if (!acc[room.category]) acc[room.category] = [];
+    acc[room.category].push(room);
+    return acc;
+  }, {} as Record<string, typeof GAME_ROOMS>);
+
+  const MOCK_PLAYERS = [
+    {
+      id: "p1",
+      name: "Yanto_Gamer",
+      character: "Slime",
+      image: "/default/Slime.webp",
+      health: 80,
+      maxHealth: 100,
+    },
+    {
+      id: "p2",
+      name: "Griffin_Master",
+      character: "Griffin",
+      image: "/default/Griffin.webp",
+      health: 100,
+      maxHealth: 100,
+    }
+  ]
 
   return (
     <main className="mx-auto max-w-[1400px] space-y-8 px-6 py-10 pb-20 md:px-12 lg:px-16">
@@ -19,15 +42,13 @@ export default function HomePage() {
 
       {/* Categories Section */}
       <div className="space-y-8">
-        {categories.map((category) => (
+        {Object.entries(groupedRooms).map(([category, rooms]) => (
           <CategorySection
             key={category}
             title={category}
-            courses={GAME_ROOMS.filter(
-              (room) => room.category === category,
-            ).map((room) => ({
+            courses={rooms.map((room) => ({
+              id: room.game_room_id,
               title: room.topic_material,
-              progress: (room.usersRegistered / room.max_player) * 100,
               usersRegistered: room.usersRegistered,
               usersTotal: room.max_player,
               questionsCount: room.total_question,
@@ -37,6 +58,22 @@ export default function HomePage() {
           />
         ))}
       </div>
+
+      <MatchProgressBar />
+
+      <PlayerList players={MOCK_PLAYERS} />
+
+      <PlayerCard
+        player={{
+          id: "p1",
+          name: "Budi_Gamer",
+          character: "Slime",
+          image: "/default/Slime.webp",
+          health: 80,
+          maxHealth: 100
+        }}
+        isMe={true}
+      />
     </main>
   );
 }
