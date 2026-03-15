@@ -23,7 +23,7 @@ export const PlayerCard = ({ player, isMe = false, className }: PlayerCardProps)
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center p-3 md:p-4 rounded-xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 w-full max-w-[160px] md:max-w-[200px] shadow-2xl",
+        "relative flex flex-col items-center p-3 md:p-4 rounded-xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 w-full max-w-[200] md:max-w-[240px] shadow-2xl",
         className
       )}
     >

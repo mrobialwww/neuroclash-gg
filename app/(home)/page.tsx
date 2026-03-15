@@ -1,10 +1,7 @@
 import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
-import { MatchProgressBar } from "@/components/match/MatchProgressBar";
 import { GAME_ROOMS } from "@/lib/constants/game-rooms";
-import { PlayerList } from "@/components/match/PlayerList";
-import { PlayerCard } from "@/components/match/PlayerCard";
 
 export default async function HomePage() {
   const groupedRooms = GAME_ROOMS.reduce((acc, room) => {
@@ -13,24 +10,12 @@ export default async function HomePage() {
     return acc;
   }, {} as Record<string, typeof GAME_ROOMS>);
 
-  const MOCK_PLAYERS = [
-    {
-      id: "p1",
-      name: "Yanto_Gamer",
-      character: "Slime",
-      image: "/default/Slime.webp",
-      health: 80,
-      maxHealth: 100,
-    },
-    {
-      id: "p2",
-      name: "Griffin_Master",
-      character: "Griffin",
-      image: "/default/Griffin.webp",
-      health: 100,
-      maxHealth: 100,
-    }
-  ]
+  const options = [
+    { id: "1", label: "A", text: "Jalin Digital Transformation" },
+    { id: "2", label: "B", text: "Jalin AI Service Platform" },
+    { id: "3", label: "C", text: "Centralized AI Gateway" },
+    { id: "4", label: "D", text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
+  ];
 
   return (
     <main className="mx-auto max-w-[1400px] space-y-8 px-6 py-10 pb-20 md:px-12 lg:px-16">
@@ -58,22 +43,6 @@ export default async function HomePage() {
           />
         ))}
       </div>
-
-      <MatchProgressBar />
-
-      <PlayerList players={MOCK_PLAYERS} />
-
-      <PlayerCard
-        player={{
-          id: "p1",
-          name: "Budi_Gamer",
-          character: "Slime",
-          image: "/default/Slime.webp",
-          health: 80,
-          maxHealth: 100
-        }}
-        isMe={true}
-      />
     </main>
   );
 }
