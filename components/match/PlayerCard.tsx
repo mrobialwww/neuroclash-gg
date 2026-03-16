@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { cn } from "@/lib/utils";
-import { User } from "@/app/types/User";
+import { User } from "@/types/MockUser";
 
 interface Player extends User {
   health: number;

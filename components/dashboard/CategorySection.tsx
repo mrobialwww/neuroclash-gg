@@ -1,6 +1,6 @@
 import { MainButton } from "@/components/common/MainButton";
 import { CourseCard } from "./CourseCard";
-import { User } from "@/app/types/User";
+import { User } from "@/types/MockUser";
 
 interface CategoryProps {
   title: string;

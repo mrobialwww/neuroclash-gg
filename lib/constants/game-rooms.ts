@@ -1,4 +1,4 @@
-import { GameRoom } from "@/app/types/GameRoom";
+import { GameRoom } from "@/types/GameRoom";
 
 export const GAME_ROOMS: GameRoom[] = [
   // Pemrograman Category

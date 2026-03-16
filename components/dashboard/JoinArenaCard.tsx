@@ -5,19 +5,18 @@ import Image from "next/image";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
 
 export interface JoinArenaCardProps {
-  rankName?: string;
-  rankScore?: number;
-  rankImageUrl?: string;
+  rankName: string;
+  rankScore: number;
+  rankImageUrl: string;
   onJoin?: (code: string) => void;
 }
 
 export function JoinArenaCard({
-  rankName = "Stellar",
-  rankScore = 13759,
-  rankImageUrl = "/rank/stellar.webp",
+  rankName,
+  rankScore,
+  rankImageUrl,
   onJoin,
 }: JoinArenaCardProps) {
-
   const handleJoin = (value: string) => {
     if (onJoin) onJoin(value);
   };

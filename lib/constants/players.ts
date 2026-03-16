@@ -1,6 +1,6 @@
-import { User } from "@/app/types/User";
+import { MockUser } from "@/types/MockUser";
 
-export interface Player extends User {
+export interface Player extends MockUser {
   health: number;
   maxHealth: number;
   isMe?: boolean;

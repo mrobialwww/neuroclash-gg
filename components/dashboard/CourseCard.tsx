@@ -5,7 +5,7 @@ import { Users, Flag } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { AvatarCircles } from "./AvatarCircles";
-import { User } from "@/app/types/User";
+import { User } from "@/types/MockUser";
 
 interface CourseCardProps {
   title: string;
