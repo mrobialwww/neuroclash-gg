@@ -11,49 +11,31 @@ import {
 import Image from "next/image";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { cn } from "@/lib/utils";
-
-export interface AvatarItem {
-  id: string | number;
-  name: string;
-  character: string; // Used for background color
-  image: string;
-}
+import { User } from "@/app/types/User";
 
 interface AvatarCirclesProps {
-  items: AvatarItem[];
+  items: User[];
   className?: string;
   avatarSize?: number;
+  maxItems?: number;
 }
 
-export const AvatarCircles = ({
-  items,
-  className,
-  avatarSize = 40,
-}: AvatarCirclesProps) => {
-  const [hoveredIndex, setHoveredIndex] = useState<string | number | null>(
-    null,
-  );
+export const AvatarCircles = ({ items, className, avatarSize = 40, maxItems = 4 }: AvatarCirclesProps) => {
+  const [hoveredIndex, setHoveredIndex] = useState<string | number | null>(null);
   const springConfig = { stiffness: 100, damping: 15 };
   const x = useMotionValue(0);
   const animationFrameRef = useRef<number | null>(null);
 
-  const rotate = useSpring(
-    useTransform(x, [-100, 100], [-45, 45]),
-    springConfig,
-  );
-  const translateX = useSpring(
-    useTransform(x, [-100, 100], [-50, 50]),
-    springConfig,
-  );
+  const rotate = useSpring(useTransform(x, [-100, 100], [-45, 45]), springConfig);
+  const translateX = useSpring(useTransform(x, [-100, 100], [-50, 50]), springConfig);
 
-  const handleMouseMove = (event: any) => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    const target = event.currentTarget;
+    const offsetX = event.nativeEvent.offsetX;
     animationFrameRef.current = requestAnimationFrame(() => {
-      const halfWidth = event.target.offsetWidth / 2;
-      x.set(event.nativeEvent.offsetX - halfWidth);
+      const halfWidth = target.offsetWidth / 2;
+      x.set(offsetX - halfWidth);
     });
   };
 
@@ -61,7 +43,7 @@ export const AvatarCircles = ({
 
   return (
     <div className={cn("flex flex-row items-center", className)}>
-      {items.slice(0, 4).map((item) => (
+      {items.slice(0, maxItems).map((item, idx) => (
         <div
           className="group relative -mr-2 last:mr-0 transition-all duration-300 hover:z-30"
           key={item.id}
@@ -72,30 +54,13 @@ export const AvatarCircles = ({
             {hoveredIndex === item.id && (
               <motion.div
                 initial={{ opacity: 0, y: 15, scale: 0.8 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                  transition: {
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 10,
-                  },
-                }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 15, scale: 0.8 }}
-                style={{
-                  translateX: translateX,
-                  rotate: rotate,
-                  whiteSpace: "nowrap",
-                }}
+                style={{ translateX: translateX, rotate: rotate, whiteSpace: "nowrap" }}
                 className="absolute -top-12 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-lg bg-black/90 backdrop-blur-sm px-3 py-1.5 text-[10px] md:text-xs shadow-xl pointer-events-none"
               >
-                <div className="relative z-30 font-bold text-white">
-                  {item.name}
-                </div>
-                <div className="text-[10px] text-gray-300">
-                  {item.character}
-                </div>
+                <div className="relative z-30 font-bold text-white">{item.name}</div>
+                <div className="text-[10px] text-gray-300">{item.character}</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -114,7 +79,9 @@ export const AvatarCircles = ({
                 src={item.image}
                 alt={item.name}
                 fill
+                sizes={`${avatarSize}px`}
                 className="object-contain"
+                priority={idx < 2} // Optimasi LCP untuk 2 avatar pertama
               />
             </div>
           </div>

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
 
   // Destructure validated fields
   const { name, email, password } = validatedFields.data;
+  console.log(name, email, password);
 
   try {
     const supabase = await createClient();

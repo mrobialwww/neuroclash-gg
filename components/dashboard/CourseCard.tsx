@@ -4,16 +4,17 @@ import React from "react";
 import { Users, Flag } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { AvatarCircles, AvatarItem } from "./AvatarCircles";
+import { AvatarCircles } from "./AvatarCircles";
+import { User } from "@/app/types/User";
 
 interface CourseCardProps {
   title: string;
-  progress: number; // 0 to 100
+  progress: number;
   usersRegistered: number;
   usersTotal: number;
   questionsCount: number;
-  iconPath: string; // Asset path for the center icon
-  players: AvatarItem[]; // Use AvatarItem for dynamic player list
+  iconPath: string;
+  players: User[];
   onClick?: () => void;
   className?: string;
 }
@@ -28,7 +29,6 @@ export function CourseCard({
   onClick,
   className,
 }: Omit<CourseCardProps, "progress">) {
-  // Auto-calculate progress based on players
   const progress = Math.min((usersRegistered / usersTotal) * 100, 100);
 
   return (
@@ -39,23 +39,17 @@ export function CourseCard({
       )}
       onClick={onClick}
     >
-      {/* Center Icon Container - Single full circle with border */}
+      {/* Center Icon Container */}
       <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white shadow-lg transition-transform duration-300 group-hover:scale-105">
-        <Image
-          src={iconPath}
-          alt={title}
-          fill
-          className="object-contain"
-          priority
-        />
+        <Image src={iconPath} alt={title} fill sizes="128px" className="object-contain" priority />
       </div>
 
       {/* Title */}
-      <h3 className="min-h-10 mb-2 flex items-center justify-center px-1  text-center text-xl font-extrabold leading-tight text-[#555555]">
+      <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-[#555555]">
         {title}
       </h3>
 
-      {/* Progress Bar Container */}
+      {/* Progress Bar */}
       <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
         <div
           className="h-full rounded-full bg-[#256AF4] transition-all duration-500"
@@ -80,9 +74,7 @@ export function CourseCard({
           </div>
           <div className="flex flex-col items-center">
             <Flag size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
-            <span className="text-sm font-extrabold text-[#555555]">
-              {questionsCount}
-            </span>
+            <span className="text-sm font-extrabold text-[#555555]">{questionsCount}</span>
           </div>
         </div>
       </div>
