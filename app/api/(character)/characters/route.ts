@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
     const user_id = searchParams.get("user_id");
     const skin_level = searchParams.get("skin_level");
 
+    console.log(user_id);
+    console.log(skin_level);
+
     const { data, error } = await supabase
       .from("characters")
       .select("*, user_characters(user_id, is_used)")
