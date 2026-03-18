@@ -25,12 +25,12 @@ const TextFieldWithButton = React.forwardRef<HTMLInputElement, TextFieldWithButt
     };
 
     return (
-<div
-  className={cn(
-    "flex items-center bg-white rounded-xl p-1.5 border border-gray-300 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all shadow-sm",
-    wrapperClassName,
-  )}
->
+      <div
+        className={cn(
+          "flex items-center bg-white rounded-xl p-1.5 border border-gray-300 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all shadow-sm",
+          wrapperClassName,
+        )}
+      >
         <input
           ref={ref}
           className={cn(
@@ -47,7 +47,7 @@ const TextFieldWithButton = React.forwardRef<HTMLInputElement, TextFieldWithButt
         >
           {buttonContent}
         </MainButton>
-      </form>
+      </div>
     );
   },
 );

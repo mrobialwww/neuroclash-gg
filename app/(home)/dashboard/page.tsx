@@ -43,6 +43,7 @@ export default async function DashboardPage() {
             courses={GAME_ROOMS.filter(
               (room) => room.category === category,
             ).map((room) => ({
+              id: room.game_room_id,
               title: room.topic_material,
               progress: (room.usersRegistered / room.max_player) * 100,
               usersRegistered: room.usersRegistered,
@@ -50,6 +51,7 @@ export default async function DashboardPage() {
               questionsCount: room.total_question,
               iconPath: room.image_url,
               players: room.players,
+              difficulty: room.difficulty,
             }))}
           />
         ))}

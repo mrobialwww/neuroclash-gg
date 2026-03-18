@@ -1,18 +1,22 @@
 import { MainButton } from "@/components/common/MainButton";
 import { CourseCard } from "./CourseCard";
-import { User } from "@/types/MockUser";
+import { MockUser as User } from "@/types/MockUser";
+import { Difficulty } from "@/types";
+
+interface CourseData {
+  id: string | number;
+  title: string;
+  usersRegistered: number;
+  usersTotal: number;
+  questionsCount: number;
+  iconPath: string;
+  players: User[];
+  difficulty?: Difficulty;
+}
 
 interface CategoryProps {
   title: string;
-  courses: Array<{
-    id: string | number;
-    title: string;
-    usersRegistered: number;
-    usersTotal: number;
-    questionsCount: number;
-    iconPath: string;
-    players: User[];
-  }>;
+  courses: CourseData[];
 }
 
 export function CategorySection({ title, courses }: CategoryProps) {
@@ -35,7 +39,11 @@ export function CategorySection({ title, courses }: CategoryProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {courses.map((course) => (
           <div key={course.id} className="flex justify-center">
-            <CourseCard {...course} />
+            <CourseCard
+              {...course}
+              category={title}
+              difficulty={course.difficulty}
+            />
           </div>
         ))}
       </div>

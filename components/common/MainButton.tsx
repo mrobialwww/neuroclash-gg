@@ -10,6 +10,7 @@ const mainButtonVariants = cva(
       variant: {
         blue: "bg-[#3D79F3] text-white hover:bg-[#3269d6]",
         white: "bg-white text-[#3D79F3] hover:bg-gray-50",
+        green: "bg-[#67C48B] text-white hover:bg-[#59ad7a]",
       },
       size: {
         default: "h-12 px-8 py-3 text-lg",
@@ -34,6 +35,11 @@ const mainButtonVariants = cva(
         hasShadow: true,
         className:
           "shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_25px_rgba(0,0,0,0.12)] border border-gray-100 hover:-translate-y-0.5 cursor-pointer",
+      },
+      {
+        variant: "green",
+        hasShadow: true,
+        className: "shadow-[0_8px_20px_rgba(103,196,139,0.3)] hover:shadow-[0_10px_25px_rgba(103,196,139,0.4)] hover:-translate-y-0.5 cursor-pointer",
       },
     ],
     defaultVariants: {
