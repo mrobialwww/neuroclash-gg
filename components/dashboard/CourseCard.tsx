@@ -1,11 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Users, Flag } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { AvatarCircles } from "./AvatarCircles";
-import { User } from "@/types/MockUser";
+import { AvatarCircles, AvatarItem } from "./AvatarCircles";
+import { OverlayJoinCard } from "@/components/common/OverlayJoinCard";
 
 interface CourseCardProps {
   title: string;
@@ -29,15 +29,23 @@ export function CourseCard({
   onClick,
   className,
 }: Omit<CourseCardProps, "progress">) {
+  const [open, setOpen] = useState(false);
+  // Auto-calculate progress based on players
   const progress = Math.min((usersRegistered / usersTotal) * 100, 100);
 
+  const handleClick = () => {
+    setOpen(true);
+    if (onClick) onClick();
+  };
+
   return (
-    <div
+    <>
+      <div
       className={cn(
         "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-gray-50 bg-white p-5 pb-6 shadow-[0_4px_25px_rgba(0,0,0,0.05)] transition-all hover:shadow-[0_8px_35px_rgba(0,0,0,0.08)]",
         className,
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {/* Center Icon Container */}
       <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white shadow-lg transition-transform duration-300 group-hover:scale-105">
@@ -79,5 +87,16 @@ export function CourseCard({
         </div>
       </div>
     </div>
+      {open && (
+        <OverlayJoinCard
+          title={title}
+          usersRegistered={usersRegistered}
+          usersTotal={usersTotal}
+          questionsCount={questionsCount}
+          iconPath={iconPath}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }

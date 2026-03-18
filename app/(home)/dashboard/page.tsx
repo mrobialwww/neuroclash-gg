@@ -9,6 +9,11 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const dashboardData = user ? await userService.getDashboardData(user.id) : null;
+  
+  // Group game rooms by category
+  const categories = Array.from(
+    new Set(GAME_ROOMS.map((room) => room.category)),
+  );
 
   const groupedRooms = GAME_ROOMS.reduce((acc, room) => {
     if (!acc[room.category]) acc[room.category] = [];
@@ -31,13 +36,15 @@ export default async function DashboardPage() {
 
       {/* Categories Section */}
       <div className="space-y-8">
-        {Object.entries(groupedRooms).map(([category, rooms]) => (
+        {categories.map((category) => (
           <CategorySection
             key={category}
             title={category}
-            courses={rooms.map((room) => ({
-              id: room.game_room_id,
+            courses={GAME_ROOMS.filter(
+              (room) => room.category === category,
+            ).map((room) => ({
               title: room.topic_material,
+              progress: (room.usersRegistered / room.max_player) * 100,
               usersRegistered: room.usersRegistered,
               usersTotal: room.max_player,
               questionsCount: room.total_question,
