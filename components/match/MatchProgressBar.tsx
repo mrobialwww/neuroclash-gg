@@ -35,7 +35,7 @@ export function MatchProgressBar({
   ];
 
   return (
-    <div className={cn("w-full max-w-[95%] lg:max-w-[860px] mx-auto px-2", className)}>
+    <div className={cn("w-full max-w-[95%] lg:max-w-[860px] mx-auto", className)}>
       <div className="relative flex items-center">
         {/* Track Dasar */}
         <div className="absolute h-3 md:h-4 w-full rounded-full border border-white/40 bg-white/10 backdrop-blur-md" />

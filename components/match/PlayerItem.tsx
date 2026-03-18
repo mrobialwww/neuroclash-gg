@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { cn } from "@/lib/utils";
-import { User } from "@/app/types/User";
+import { MockUser as User } from "@/types/MockUser";
 
 interface Player extends User {
   health: number;

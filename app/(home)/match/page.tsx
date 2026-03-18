@@ -80,36 +80,50 @@ export default function MatchPage() {
   }
 
   return (
-    <main className="min-h-screen w-full px-4 sm:px-8 md:px-12 py-8 gap-4 flex flex-col items-center overflow-hidden">
+    <main className="min-h-screen w-full px-4 sm:px-8 md:px-12 py-6 gap-4 flex flex-col items-center overflow-x-hidden">
       {/* Header */}
-      <header className="w-full max-w-[1400px] flex items-center justify-between mb-4">
-        <div className="bg-[#A6A6A6]/40 backdrop-blur-xl px-4 md:px-6 py-1.5 rounded-lg font-semibold text-white text-sm md:text-base">
+      <header className="w-full max-w-[1400px] flex items-center justify-between mb-2">
+        <div className="bg-[#A6A6A6]/40 backdrop-blur-xl px-2 md:px-4 lg:px-6 py-1.5 rounded-lg font-semibold text-white text-sm md:text-base">
           {roomCode}
         </div>
 
-        <div className="flex-1 hidden md:block px-10">
+        <div className="flex-1 block px-2 md:px-4 lg:px-10">
           <MatchProgressBar duration={30} />
         </div>
 
-        <MainButton variant="white" className="px-6 h-9 text-sm md:text-base shrink-0">
+        <MainButton variant="white" className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0">
           Keluar
         </MainButton>
       </header>
 
       {/* Arena Wrapper */}
       <div className="flex-1 w-full flex justify-center items-start">
-        <div className="w-full max-w-[1400px] grid grid-cols-1 lg:grid-cols-[210px_minmax(600px,1fr)_210px] gap-6 items-stretch">
+        <div className="w-full max-w-[1400px] grid grid-cols-2 lg:grid-cols-[210px_minmax(600px,1fr)_210px] gap-x-4 gap-y-6 md:gap-6 items-stretch">
 
-          {/* Left Column */}
-          <div className="flex flex-col order-2 lg:order-1 self-stretch justify-between">
-            <div className="max-h-[320px] overflow-hidden">
+          {/* TOP ROW (Mobile: Pojok Kiri & Kanan) */}
+
+          {/* My Player Card (Pojok Kiri) */}
+          <div className="order-1 lg:order-1 flex flex-col justify-start lg:justify-between self-stretch">
+            <div className="hidden lg:block max-h-[320px] overflow-hidden">
               <BuffList className="h-full" />
             </div>
-            <PlayerCard player={me} isMe={true} className="shrink-0" />
+            <div className="w-full max-w-[320px] lg:max-w-none">
+              <PlayerCard player={me} isMe={true} className="w-full" />
+            </div>
           </div>
 
-          {/* Center Column */}
-          <div className="flex flex-col order-1 lg:order-2">
+          {/* Opponent Player Card (Pojok Kanan) */}
+          <div className="order-2 lg:order-3 flex flex-col justify-start lg:justify-between items-end lg:items-stretch self-stretch">
+            <div className="hidden lg:block max-h-[320px] overflow-hidden">
+              <PlayerList players={players} className="h-full" />
+            </div>
+            <div className="w-full max-w-[320px] lg:max-w-none">
+              <PlayerCard player={opponent} isMe={false} className="w-full" />
+            </div>
+          </div>
+
+          {/* CENTER ROW (Question) */}
+          <div className="col-span-2 lg:col-span-1 order-3 lg:order-2 flex flex-col mt-2 lg:mt-0 isolate">
             <QuestionCard
               question={currentQuestion.question}
               options={currentQuestion.options}
@@ -118,12 +132,16 @@ export default function MatchPage() {
             />
           </div>
 
-          {/* Right Column */}
-          <div className="flex flex-col order-3 lg:order-3 self-stretch justify-between">
-            <div className="max-h-[340px] overflow-hidden">
-              <PlayerList players={players} className="h-full" />
-            </div>
-            <PlayerCard player={opponent} isMe={false} className="shrink-0" />
+          {/* BOTTOM ROW (Mobile Only Lists) */}
+
+          {/* Buff List Mobile (Kiri) */}
+          <div className="order-4 lg:hidden col-span-1">
+            <BuffList className="w-full h-[200px] sm:h-[240px]" />
+          </div>
+
+          {/* Player List Mobile (Kanan) */}
+          <div className="order-5 lg:hidden col-span-1">
+            <PlayerList players={players} className="w-full h-[200px] sm:h-[240px]" />
           </div>
 
         </div>
