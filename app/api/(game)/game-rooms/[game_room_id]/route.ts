@@ -1,7 +1,7 @@
-// GET /api/game/game-rooms/[game_room_id]
+// GET /api/game-rooms/[game_room_id]
 // - Mendapatkan detail spesifik sebuah room (biasanya untuk room master)
 
-// PATCH /api/game/game-rooms/[game_room_id]
+// PATCH /api/game-rooms/[game_room_id]
 // - room_status akan diupdate mengikuti pembuat game menekan tombol mulai dan finish
 // - room_visibility akan diupdate ketika pembuat game merubah statusnya dari public ke privat atau sebaliknya
 

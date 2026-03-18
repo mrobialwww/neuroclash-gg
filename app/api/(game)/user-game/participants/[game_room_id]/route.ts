@@ -1,4 +1,4 @@
-// GET /api/game/user-game/participants/[game_room_id]
+// GET /api/user-game/participants/[game_room_id]
 // - pembuat game ingin melihat siapa saja partisipan dari game yang dibuatnya dengan menggunakan game_room_id
 
 import { createClient } from "@/lib/supabase/server";
