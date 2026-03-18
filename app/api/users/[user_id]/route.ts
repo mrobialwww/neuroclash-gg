@@ -1,4 +1,4 @@
-// GET /api/game/users/[user_id]
+// GET /api/users/[user_id]
 // - user dengan user_id membuka page dengan section statistik pertandingan
 // - pembuat game membuka detail partisipan dengan user_id
 

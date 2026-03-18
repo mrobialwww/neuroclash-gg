@@ -9,9 +9,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { url, game_room_id } = body;
-
     const supabase = await createClient();
 
     let buffer: Buffer;
@@ -39,6 +36,11 @@ export async function POST(req: Request) {
     }
     // 2. Cek apakah request berupa JSON (URL murni)
     else if (contentType.includes("application/json")) {
+      const { category } = await req.json();
+      const {
+        data: { publicUrl: url },
+      } = supabase.storage.from("materials").getPublicUrl(`${category}/materi.pdf`);
+
       if (url) {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Gagal mengunduh PDF dari URL.");
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
-  "theme_materials": "tema atau judul materi dari dokumen",
+  "theme_materials": "tema materi dari dokumen, hanya berisi 1/2 kata saja",
   "list_questions": [
     {
       "order": 1,
@@ -103,38 +105,6 @@ Pastikan:
     const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
     const cleanedParsed = JSON.parse(rawText);
-    const parsed = JSON.parse(rawText);
-
-    const questions = parsed.list_questions.map(async (question: any) => {
-      const questionData = {
-        game_room_id: game_room_id,
-        question_order: question.order,
-        question_text: question.question,
-      };
-      const { data: questionRes, error: questionErr } = await supabase.from("questions").insert(questionData).select();
-
-      if (questionErr) {
-        console.error("Gagal insert question:", questionErr);
-        return;
-      }
-
-      const newQuestionId = questionRes?.[0]?.question_id;
-
-      const answers = question.options.map(async (answer: any) => {
-        const answerData = {
-          question_id: newQuestionId,
-          key: answer.key,
-          answer_text: answer.text,
-          is_correct: answer.is_correct,
-        };
-        const { data: answerRes, error: answerErr } = await supabase.from("answers").insert(answerData).select();
-        if (answerErr) {
-          console.error("Gagal insert answer:", answerErr);
-        }
-      });
-      await Promise.all(answers);
-    });
-    await Promise.all(questions);
 
     return NextResponse.json(
       {
@@ -145,6 +115,7 @@ Pastikan:
     );
   } catch (error) {
     console.error("Error API:", error);
+    console.log("Error API:", error);
     return NextResponse.json({ message: "Terjadi kesalahan pada server saat memproses dokumen." }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-// GET /api/game/user-game/history/[user_id]
+// GET /api/user-game/history/[user_id]
 // - user ingin menggunakan user_id nya untuk mencari riwayat game nya
 
 import { createClient } from "@/lib/supabase/server";

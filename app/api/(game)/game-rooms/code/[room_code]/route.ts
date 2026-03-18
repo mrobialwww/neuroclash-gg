@@ -1,4 +1,4 @@
-// GET /api/game/game-rooms/code/[room_code]
+// GET /api/game-rooms/code/[room_code]
 // - user ingin mencari room spesifik dengan code tertentu
 
 import { createClient } from "@/lib/supabase/server";
