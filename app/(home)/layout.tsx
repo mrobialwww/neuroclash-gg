@@ -1,22 +1,27 @@
-"use client";
-
-import React from "react";
+import React, { Suspense } from "react"; // Tambahkan Suspense
 import { Navbar } from "@/components/layout/Navbar";
-import { usePathname } from "next/navigation";
+import { userService } from "@/services/userService";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomeLayout({
+export default async function HomeLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const hideNavbar = pathname.startsWith("/quiz-lobby");
+  const userData = user ? await userService.getNavbarData(user.id) : null;
 
   return (
-    <div className="min-h-screen bg-[#EEF2F9] font-(family-name:--font-baloo-2)">
-      {!hideNavbar && <Navbar />}
-      {children}
+    <div className="min-h-screen font-(family-name:--font-baloo-2)">
+      <Navbar initialData={userData} />
+
+      <main>
+        <Suspense fallback={<div className="p-10 text-center">Memuat Dashboard...</div>}>
+          {children}
+        </Suspense>
+      </main>
     </div>
   );
 }

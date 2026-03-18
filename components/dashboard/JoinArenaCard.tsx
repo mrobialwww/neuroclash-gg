@@ -5,18 +5,22 @@ import Image from "next/image";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
 
 export interface JoinArenaCardProps {
-  rankName?: string;
-  rankScore?: number;
-  rankImageUrl?: string;
+  rankName: string;
+  rankScore: number;
+  rankImageUrl: string;
   onJoin?: (code: string) => void;
 }
 
 export function JoinArenaCard({
-  rankName = "Stellar",
-  rankScore = 13759,
-  rankImageUrl = "/rank/stellar.webp",
+  rankName,
+  rankScore,
+  rankImageUrl,
   onJoin,
 }: JoinArenaCardProps) {
+  const handleJoin = (value: string) => {
+    if (onJoin) onJoin(value);
+  };
+
   return (
     <div className="relative w-full h-full bg-[#FDE4B0] border-[3px] border-[#FDA928] rounded-3xl p-5 md:p-8 flex flex-col items-center justify-between text-center overflow-hidden min-h-[220px] md:min-h-[240px] shadow-[0_4px_20px_rgba(253,169,40,0.1)]">
       <div className="flex flex-col items-center z-10 w-full mb-2">
@@ -32,9 +36,7 @@ export function JoinArenaCard({
             fill
             className="object-contain z-10 drop-shadow-lg"
             sizes="(max-width: 768px) 150px, 200px"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
+            priority
           />
         </div>
 
@@ -45,30 +47,36 @@ export function JoinArenaCard({
             alt="Rank Badge Background"
             fill
             className="object-fill absolute inset-0 -z-10 drop-shadow-sm scale-110"
-            sizes="(max-width: 768px) 250px, 300px"
+            sizes="(max-width: 768px) 300px, 350px"
             priority
           />
-          <span className="uppercase text-[13px] tracking-widest text-[#FFDFB3] drop-shadow-sm">
+          <span className="uppercase text-md tracking-wide text-[#FFDFB3] drop-shadow-sm font-semibold">
             {rankName}
           </span>
-          <span className="text-white/40 text-xs mb-0.5">|</span>
+          <span className="text-white/80 text-sm">|</span>
           <div className="flex items-center gap-1.5 text-[#FFD700]">
-            <span className="text-lg leading-none -mt-1 drop-shadow-sm">
-              🏆
-            </span>
-            <span className="leading-none text-[15px] drop-shadow-sm font-extrabold tracking-wide mb-0.5">
+            <div className="relative mb-0.5 h-4 w-4">
+              <Image
+                src="/icons/trophy-color.svg"
+                alt="Trophy"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <span className="leading-none text-md drop-shadow-sm font-bold tracking-wide mb-0.5">
               {rankScore}
             </span>
-            1
           </div>
         </div>
       </div>
 
       {/* Input & Button group */}
       <TextFieldWithButton
+        name="arenaCode"
         placeholder="Masukkan Kode Arena"
         buttonContent="Gabung"
         wrapperClassName="z-10 w-full"
+        onSubmit={handleJoin}
       />
     </div>
   );
