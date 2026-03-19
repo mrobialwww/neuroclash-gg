@@ -1,5 +1,11 @@
-// GET /api/game-rooms/code/[room_code]
-// - user ingin mencari room spesifik dengan code tertentu
+/**
+ * GET /api/game-rooms/code/[room_code]
+ * http://localhost:3000/api/game-rooms/code/1AGT2025
+ *
+ * Fungsi:
+ *   1. Mendapatkan suatu baris record dari tabel game_rooms berdasarkan rome_code
+ *   2. Tujuan utamanya ketika user gabung ke suatu room game dari room_code yang dimiliki
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";

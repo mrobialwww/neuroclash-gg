@@ -1,6 +1,11 @@
-// GET /api/users/[user_id]
-// - user dengan user_id membuka page dengan section statistik pertandingan
-// - pembuat game membuka detail partisipan dengan user_id
+/**
+ * GET /api/users/[user_id]
+ * http://localhost:3000/api/users/c307f9dc-482f-4442-b566-97dbc258c0e8
+ *
+ * Fungsi:
+ *   1. Mendapatkan suatu baris record dari tabel users berdasarkan user_id
+ *   2. Tujuan utamanya ketika user/creator game ingin mendapatkan detail users berdasarkan user_id
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";

@@ -1,5 +1,11 @@
-// GET /api/user-game/history/[user_id]
-// - user ingin menggunakan user_id nya untuk mencari riwayat game nya
+/**
+ * GET /api/user-game/history/[user_id]
+ * http://localhost:3000/api/user-game/history/c307f9dc-482f-4442-b566-97dbc258c0e8
+ *
+ * Fungsi:
+ *   1. Mendapatkan list dari tabel user_games berdasarkan user_id
+ *   2. Tujuan utamanya ketika user ingin mencari daftar game/quiz apa saja yg pernah diikuti
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";

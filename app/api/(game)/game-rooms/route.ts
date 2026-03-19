@@ -1,8 +1,43 @@
-// GET /api/game-rooms?visibility=public&status=open
-// - user ingin mencari semua daftar room dengan room_visibility "public" dan room_status "open" tersedia
+/**
+ * GET /api/game-rooms?room_visibility=public&room_status=open
+ * http://localhost:3000/api/game-rooms?room_visibility=public&room_status=open
+ *
+ * Fungsi:
+ *   1. Mendapatkan list game_rooms berdasarkan atribute room_visibility "public" dan room_status "open"
+ *   2. Tujuan utamanya ketika user mencari list room game/quiz yang bisa diikuti tanpa memasukkan room_code
+ */
 
-// POST /api/game-rooms
-// - pembuat game melakukan create game di awal
+/**
+ * POST /api/game-rooms
+ * http://localhost:3000/api/game-rooms
+ *
+ * Body:
+ *   {
+ *     "user_id": "c307f9dc-482f-4442-b566-97dbc258c0e8",
+ *     "room_code": "1AGT2025",
+ *     "topic_material": "sejarah",
+ *     "title": "miskin",
+ *     "max_player": "13",
+ *     "total_question": "13",
+ *     "total_round": "13",
+ *     "difficulty": "sedang",
+ *     "image_url": "https://...",
+ *     "room_status": "open",
+ *     "room_visibility": "private",
+ *     "questions": {
+ *       "theme_materials": "Posyandu Stunting",
+ *       "list_questions": [...]
+ *     }
+ *   }
+ *
+ * Fungsi:
+ *   1. Menambahkan data baris record baru ke tabel game_rooms
+ *   2. Tujuan utamanya ketika creator game ingin membuat room game di awal, dengan melemparkan
+ *      beberapa parameter
+ *   3. Parameter questions itu didapat dari pemanggilan POST http://localhost:3000/api/quiz
+ *      yang dilakukan ketika memilih materi default/upload materi manual, sesaat sebelum creator
+ *      game menekan button "create room game"
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";

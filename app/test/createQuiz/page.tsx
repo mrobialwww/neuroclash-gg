@@ -16,6 +16,7 @@ export default function CreateQuizDummy() {
   // State terpisah untuk masing-masing skenario
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<string>("");
+  const [difficulty, setDifficulty] = useState<string>("");
 
   /**
    * Skenario 1: Upload File Fisik (multipart/form-data)
@@ -54,6 +55,7 @@ export default function CreateQuizDummy() {
   const handleCategorySelect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!category) return alert("Harap pilih materi terlebih dahulu.");
+    if (!difficulty) return alert("Harap pilih tingkat kesulitan terlebih dahulu.");
 
     setLoading(true);
     setResult(null);
@@ -65,7 +67,7 @@ export default function CreateQuizDummy() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ category }),
+        body: JSON.stringify({ category, difficulty }),
       });
 
       const data = await response.json();
@@ -120,12 +122,33 @@ export default function CreateQuizDummy() {
                       {/* Pastikan value ini sesuai dengan struktur folder di bucket Supabase Anda */}
                       <SelectItem value="sejarah">Sejarah Indonesia</SelectItem>
                       <SelectItem value="biologi">Biologi Sel</SelectItem>
-                      <SelectItem value="fisika">Fisika Dasar</SelectItem>
+                      <SelectItem value="pancasila">Dasar Pancasila</SelectItem>
+                      <SelectItem value="bahasaindonesia">Bahasa Indonesia</SelectItem>
+                      <SelectItem value="bahasainggris">Bahasa Inggirs</SelectItem>
+                      <SelectItem value="pemrograman">Pemrograman</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-muted-foreground">Materi ini akan diambil otomatis di sistem: /materials/[kategori]/materi.pdf</p>
+                  <p className="text-sm text-muted-foreground">Materi ini akan diambil otomatis di sistem: /materials/[kategori]/[materi].pdf</p>
                 </div>
-                <Button type="submit" disabled={loading || !category} className="w-full">
+
+                {/* Pilihan Difficulty - muncul setelah memilih kategori */}
+                {category && (
+                  <div className="space-y-2">
+                    <Label>Tingkat Kesulitan</Label>
+                    <Select onValueChange={setDifficulty}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih tingkat kesulitan..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mudah">Mudah</SelectItem>
+                        <SelectItem value="sedang">Sedang</SelectItem>
+                        <SelectItem value="sulit">Sulit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <Button type="submit" disabled={loading || !category || !difficulty} className="w-full">
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Generate Soal dari Sistem
                 </Button>

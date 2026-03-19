@@ -1,9 +1,29 @@
-// GET /api/game-rooms/[game_room_id]
-// - Mendapatkan detail spesifik sebuah room (biasanya untuk room master)
+/**
+ * GET /api/game-rooms/[game_room_id]
+ * http://localhost:3000/api/game-rooms/c733983d-b3ad-416c-b35a-0812eca80588
+ *
+ * Fungsi:
+ *   1. Mendapatkan suatu baris record dari tabel game_rooms berdasarkan game_room_id
+ *   2. Tujuan utamanya ketika user/creator game ingin mendapatkan detail spesifik sebuah room game
+ */
 
-// PATCH /api/game-rooms/[game_room_id]
-// - room_status akan diupdate mengikuti pembuat game menekan tombol mulai dan finish
-// - room_visibility akan diupdate ketika pembuat game merubah statusnya dari public ke privat atau sebaliknya
+/**
+ * PATCH /api/game-rooms/[game_room_id]
+ * http://localhost:3000/api/game-rooms/c733983d-b3ad-416c-b35a-0812eca80588
+ *
+ * Body:
+ *   {
+ *     "room_status": "ongoing",
+ *     "room_visibility": "private"
+ *   }
+ *
+ * Fungsi:
+ *   1. Mengupdate tabel game_rooms (rooms_status dan room_visibility) berdasarkan game_room_id
+ *   2. Tujuan utamanya adalah ketika quiz/game ada di beberapa kondisi
+ *      a. Creator game menekan tombol mulai maka room_status akan diupdate menjadi "open"
+ *      b. Creator game menekan tombol finish maka room_status akan diupdate menjadi "ongoing"
+ *      c. Creator game mengganti quiz/game yg awalnya dari private menjadi public atau sebaliknya
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
