@@ -1,106 +1,131 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import { AbilityCard } from "@/components/match/AbilityCard";
 import { PlayerGridCard } from "@/components/match/PlayerGridCard";
-import { MOCK_PLAYERS, Player } from "@/lib/constants/players";
 import { cn } from "@/lib/utils";
+import { useStarboxStore } from "@/store/useStarboxStore";
+
+const steps = [
+  { id: "book", icon: "/icons/book.svg" },
+  { id: "battle-1", icon: "/icons/battle.svg" },
+  { id: "battle-2", icon: "/icons/battle.svg" },
+  { id: "battle-3", icon: "/icons/battle.svg" },
+  { id: "battle-4", icon: "/icons/battle.svg" },
+  { id: "battle-5", icon: "/icons/battle.svg" },
+  { id: "treasure", icon: "/icons/treasure.svg" },
+];
 
 export default function StarboxPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [roomCode, setRoomCode] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const steps = [
-    { id: "book", icon: "/icons/book.svg" },
-    { id: "battle-1", icon: "/icons/battle.svg" },
-    { id: "battle-2", icon: "/icons/battle.svg" },
-    { id: "battle-3", icon: "/icons/battle.svg" },
-    { id: "battle-4", icon: "/icons/battle.svg" },
-    { id: "battle-5", icon: "/icons/battle.svg" },
-    { id: "treasure", icon: "/icons/treasure.svg" },
-  ];
+  const roomId = searchParams.get("roomId") ?? "";
+  const code = searchParams.get("code") ?? "---";
+  const nextRound = searchParams.get("nextRound") ?? "6";
 
-  // Ability Data
-  const abilities = [
-    {
-      id: "1",
-      name: "KITAB PENGETAHUAN",
-      description: "Mendapatkan materi untuk menjawab soal berikutnya",
-      stock: 2,
-      image: "/ability-card/material-card.webp",
-      emptyImage: "/ability-card/material-card-empty.webp"
-    },
-    {
-      id: "2",
-      name: "SERANGAN TAJAM",
-      description: "Meningkatkan kekuatan serangan dasar sebesar +10.",
-      stock: 0,
-      image: "/ability-card/attack-card.webp",
-      emptyImage: "/ability-card/attack-card-empty.webp"
-    },
-    {
-      id: "3",
-      name: "RAMUAN PENYEMBUH",
-      description: "Memulihkan 20 poin HP secara instan",
-      stock: 2,
-      image: "/ability-card/heal-card.webp",
-      emptyImage: "/ability-card/heal-card-empty.webp"
-    },
-    {
-      id: "4",
-      name: "PERISAI KOKOH",
-      description: "Mendapatkan pertahanan sebesar 20 poin",
-      stock: 2,
-      image: "/ability-card/shield-card.webp",
-      emptyImage: "/ability-card/shield-card-empty.webp"
-    },
-    {
-      id: "5",
-      name: "PIALA KEJAYAAN",
-      description: "Menambah jumlah trophy yang diperoleh sebesar 5%",
-      stock: 2,
-      image: "/ability-card/trophy-buff-card.webp",
-      emptyImage: "/ability-card/trophy-buff-card-empty.webp"
-    },
-    {
-      id: "6",
-      name: "KANTONG HARTA",
-      description: "Menambah jumlah koin yang diperoleh sebesar 5%",
-      stock: 2,
-      image: "/ability-card/coin-buff-card.webp",
-      emptyImage: "/ability-card/coin-buff-card-empty.webp"
-    },
-  ];
+  const {
+    roomInfo,
+    players,
+    abilities,
+    currentTurnIndex,
+    pickingAbilityId,
+    isLoading,
+    initGameData,
+    selectAbility,
+    nextTurn,
+  } = useStarboxStore();
 
+  // 1. Initial Data Fetching
   useEffect(() => {
-    const fetchStarboxData = async () => {
-      try {
-        setIsLoading(true);
-        // Simulasi fetching data
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+    initGameData(code, roomId);
+  }, [code, roomId, initGameData]);
 
-        const data = {
-          roomCode: "127 089",
-          players: Array(5).fill(MOCK_PLAYERS).flat().slice(0, 40),
-          activeStep: 6, // Treasure
-        };
+  const handleNextRound = useCallback(() => {
+    router.push(`/game/${roomId}?code=${code}&nextRound=${nextRound}`);
+  }, [router, roomId, code, nextRound]);
 
-        setRoomCode(data.roomCode);
-        setPlayers(data.players);
-        setActiveStepIndex(data.activeStep);
-      } catch (error) {
-        console.error("Error fetching starbox data:", error);
-      } finally {
-        setIsLoading(false);
+  const handleExit = () => {
+    router.push("/dashboard");
+  };
+
+  // 2. Turn Management & Bot Execution Effect
+  useEffect(() => {
+    if (isLoading || !roomInfo) return;
+
+    const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
+
+    // Stop conditions: all players picked OR items run out completely
+    if (currentTurnIndex >= players.length || totalStock <= 0) {
+      if (currentTurnIndex > 0 || totalStock <= 0) {
+        // Prevents initial instant redirect if somehow items are empty
+        const timer = setTimeout(() => handleNextRound(), 1000);
+        return () => clearTimeout(timer);
       }
-    };
+      return;
+    }
 
-    fetchStarboxData();
-  }, []);
+    const currentPlayer = players[currentTurnIndex];
+
+    // Jika giliran bot (MOCK OPPONENT)
+    if (!currentPlayer.isMe && roomInfo.max_player !== 1) {
+      if (pickingAbilityId) return; // Prevent overlapping if already picking
+
+      const botTimer = setTimeout(() => {
+        const availableItems = abilities.filter((a) => a.stock > 0);
+        if (availableItems.length > 0) {
+          const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+          selectAbility(randomItem.id);
+
+          setTimeout(() => {
+            nextTurn();
+          }, 1200);
+        } else {
+          nextTurn();
+        }
+      }, 1500);
+
+      return () => clearTimeout(botTimer);
+    }
+  }, [
+    currentTurnIndex,
+    players,
+    abilities,
+    isLoading,
+    roomInfo,
+    pickingAbilityId,
+    selectAbility,
+    nextTurn,
+    handleNextRound,
+  ]);
+
+  // 3. User Click Handler
+  const handleUserClickAbility = (abilityId: string) => {
+    const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
+    if (totalStock <= 0 || pickingAbilityId) return;
+
+    if (roomInfo?.max_player === 1) {
+      // Solo mode -> instant pick & straight to next round
+      selectAbility(abilityId);
+      setTimeout(() => {
+        handleNextRound();
+      }, 800);
+      return;
+    }
+
+    // Multi-player mode
+    if (players[currentTurnIndex]?.isMe) {
+      selectAbility(abilityId);
+      setTimeout(() => {
+        nextTurn();
+      }, 1200);
+    }
+  };
+
+  const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
+  const activeStepIndex = 6; // Treasure step
 
   if (isLoading) {
     return (
@@ -118,7 +143,7 @@ export default function StarboxPage() {
         {/* Header */}
         <header className="w-full flex items-center justify-between mb-2">
           <div className="bg-[#A6A6A6]/40 backdrop-blur-xl px-2 md:px-4 lg:px-6 py-1.5 rounded-lg font-semibold text-white text-sm md:text-base">
-            {roomCode}
+            {code}
           </div>
 
           {/* Icons Indicators */}
@@ -153,7 +178,7 @@ export default function StarboxPage() {
             })}
           </div>
 
-          <MainButton variant="white" className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0">
+          <MainButton variant="white" onClick={handleExit} className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0">
             Keluar
           </MainButton>
         </header>
@@ -163,34 +188,72 @@ export default function StarboxPage() {
           <h1 className="text-white text-xl md:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-lg">
             Takdir ada di tanganmu, pilih satu kekuatan!
           </h1>
+
+          {roomInfo?.max_player !== 1 && currentTurnIndex < players.length && (
+            <p className="mt-2 text-white/80 font-medium text-lg">
+              Giliran: <span className={players[currentTurnIndex]?.isMe ? "text-[#22C55E]" : "text-[#FFCB66]"}>
+                {players[currentTurnIndex]?.isMe ? "Kamu" : players[currentTurnIndex]?.name}
+              </span>
+              <span className="text-white/60 text-sm ml-2">(HP terendah memilih lebih awal)</span>
+            </p>
+          )}
+
+          <p className="mt-2 text-white/60 font-semibold text-sm bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
+            Sisa Item Keseluruhan: <span className="text-white">{remainingItems} Terakhir</span>
+          </p>
         </div>
 
         {/* Ability Selection Grid */}
-        <div className="flex flex-wrap justify-center items-center gap-3 lg:gap-4 w-full mx-auto">
-          {abilities.map((ability) => (
-            <div key={ability.id} className="w-[160px] md:w-[180px] lg:w-[200px] shrink-0">
-              <AbilityCard
-                name={ability.name}
-                description={ability.description}
-                image={ability.image}
-                emptyImage={ability.emptyImage}
-                stock={ability.stock}
-              />
-            </div>
-          ))}
+        <div className={cn(
+          "flex flex-wrap justify-center items-center gap-3 lg:gap-4 w-full mx-auto transition-all",
+          roomInfo?.max_player !== 1 && !players[currentTurnIndex]?.isMe ? "pointer-events-none opacity-90" : ""
+        )}>
+          {abilities.map((ability) => {
+            const isBeingPickedByBot = pickingAbilityId === ability.id;
+            return (
+              <div key={ability.id} className="w-[160px] md:w-[180px] lg:w-[200px] shrink-0 relative transition-all duration-300">
+                <AbilityCard
+                  name={ability.name}
+                  description={ability.description}
+                  image={ability.image}
+                  emptyImage={ability.emptyImage}
+                  stock={ability.stock}
+                  onClick={() => handleUserClickAbility(ability.id)}
+                  className={isBeingPickedByBot ? "scale-105 saturate-150 ring-2 ring-white rounded-lg" : ""}
+                />
+              </div>
+            );
+          })}
         </div>
 
-        {/* Player Grid Container */}
-        <div className="w-full py-6 px-4 sm:px-8 lg:px-10 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 shadow-2xl">
-          <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10 items-center justify-items-center">
-            {players.map((player, idx) => (
-              <PlayerGridCard
-                key={`${player.id}-${idx}`}
-                player={player}
-              />
-            ))}
+        {/* Player Grid Container (Hanya relevan/tampil bagus di mode multiplayer) */}
+        {roomInfo?.max_player !== 1 && (
+          <div className="w-full mt-4 py-6 px-4 sm:px-8 lg:px-10 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 shadow-2xl">
+            <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10 items-center justify-items-center">
+              {players.map((player, idx) => {
+                const isActiveTurn = currentTurnIndex === idx;
+                const hasPicked = idx < currentTurnIndex;
+
+                return (
+                  <div key={`${player.id}-${idx}`} className="relative">
+                    <PlayerGridCard
+                      player={player}
+                      className={cn(
+                        "transition-all duration-300",
+                        isActiveTurn ? "scale-110 drop-shadow-[0_0_15px_rgba(255,204,0,0.8)]" : "",
+                        hasPicked ? "opacity-50 grayscale" : ""
+                      )}
+                    />
+                    {/* Turn Indicator */}
+                    {isActiveTurn && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#FFCC00] rotate-45 border-2 border-white shadow-lg animate-bounce" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </main>
   );

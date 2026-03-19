@@ -13,6 +13,7 @@ interface QuestionCardProps {
   question: string;
   options: Option[];
   onSelect?: (optionId: string) => void;
+  selectedId?: string | null;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export const QuestionCard = ({
   question,
   options,
   onSelect,
+  selectedId,
   className,
 }: QuestionCardProps) => {
   const optionColors: Record<string, string> = {
@@ -37,10 +39,10 @@ export const QuestionCard = ({
   };
 
   return (
-    <div className={cn("w-full max-w-4xl mx-auto flex flex-col gap-4 lg:gap-6", className)}>
+    <div className={cn("w-full max-w-4xl mx-auto flex flex-col gap-4 lg:gap-6 relative isolate z-0 overflow-hidden p-2 -m-2", className)}>
       {/* Main Question Box */}
       <div className={cn(
-        "relative p-6 md:p-10 lg:p-12 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10",
+        "relative p-6 md:p-10 lg:p-12 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border border-white/10 shadow-lg",
         "flex items-center justify-center text-center",
         "min-h-[120px] md:min-h-[180px] lg:min-h-[220px]"
       )}>
@@ -58,12 +60,18 @@ export const QuestionCard = ({
             <button
               key={option.id}
               onClick={() => onSelect?.(option.id)}
+              disabled={!!selectedId}
               className={cn(
                 "group relative flex items-center p-4 lg:p-6 rounded-2xl",
-                "bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 hover:border-white/40 transition-colors",
+                "bg-[#D9D9D9]/20 backdrop-blur-md border-2 transition-colors",
                 "min-h-[70px] md:min-h-[100px] lg:min-h-[140px]",
                 "outline-none focus:outline-none focus-visible:outline-none",
-                "focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                "focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                selectedId === option.id
+                  ? "border-white/60 bg-white/10 scale-[1.02]"
+                  : selectedId
+                    ? "border-white/10 opacity-50 cursor-not-allowed"
+                    : "border-white/10 hover:border-white/40"
               )}
             >
               {/* Label Circle (A, B, C, D) */}

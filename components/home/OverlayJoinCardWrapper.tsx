@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
+import { ToastFailed } from "@/components/common/ToastFailed";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
@@ -9,6 +10,10 @@ export function OverlayJoinCardWrapper() {
   const [roomToJoin, setRoomToJoin] = useState<GameRoomWithPlayerCount | null>(
     null
   );
+  const [toastData, setToastData] = useState<{ isOpen: boolean; code: string }>({
+    isOpen: false,
+    code: ""
+  });
 
   const handleJoinByCode = async (code: string) => {
     if (!code) return;
@@ -22,11 +27,11 @@ export function OverlayJoinCardWrapper() {
       if (resp.ok && rooms.length > 0) {
         setRoomToJoin({ ...rooms[0], player_count: 0 });
       } else {
-        alert("Room with that code not found!");
+        setToastData({ isOpen: true, code });
       }
     } catch (error) {
       console.error("Error joining room:", error);
-      alert("Something went wrong, please try again.");
+      setToastData({ isOpen: true, code });
     }
   };
 
@@ -46,6 +51,12 @@ export function OverlayJoinCardWrapper() {
           onClose={() => setRoomToJoin(null)}
         />
       )}
+
+      <ToastFailed
+        isOpen={toastData.isOpen}
+        code={toastData.code}
+        onClose={() => setToastData((prev) => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

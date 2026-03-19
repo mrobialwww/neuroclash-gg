@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Users, Flag } from "lucide-react";
 import { MainButton } from "@/components/common/MainButton";
 import { Difficulty } from "@/types";
@@ -21,6 +22,7 @@ function resolveImage(src: string | null | undefined, error: boolean): string {
 }
 
 function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
+  const router = useRouter();
   const [imgError, setImgError] = useState(false);
   const displayTitle = room.title || room.topic_material;
   const bannerColor = getBannerColor(room.topic_material);
@@ -92,6 +94,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
           variant="green"
           hasShadow
           className="mt-2 w-full text-lg font-bold py-6 sm:py-7 rounded-xl"
+          onClick={() => router.push(`/game/${room.game_room_id}?code=${room.room_code}`)}
         >
           Bergabung
         </MainButton>

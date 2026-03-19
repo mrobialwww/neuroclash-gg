@@ -14,10 +14,11 @@ interface Player extends User {
 interface PlayerCardProps {
   player: Player;
   isMe?: boolean;
+  hideHealthBar?: boolean;
   className?: string;
 }
 
-export const PlayerCard = ({ player, isMe = false, className }: PlayerCardProps) => {
+export const PlayerCard = ({ player, isMe = false, hideHealthBar = false, className }: PlayerCardProps) => {
   const healthPercentage = (player.health / player.maxHealth) * 100;
 
   return (
@@ -64,18 +65,20 @@ export const PlayerCard = ({ player, isMe = false, className }: PlayerCardProps)
           {player.name}
         </h3>
 
-        {/* HP Bar Section */}
-        <div className="relative h-3 md:h-4 w-full bg-[#1A1B23] rounded-full border border-white/20 overflow-hidden my-1 lg:mb-2 shadow-inner">
-          <div
-            className="h-full bg-[#22C55E] shadow-[0_0_10px_rgba(94,211,106,0.5)]"
-            style={{ width: `${healthPercentage}%` }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-white font-semibold text-[8px] md:text-[10px] lg:text-xs">
-              HP: {player.health}/{player.maxHealth}
-            </span>
+        {/* HP Bar Section - Hidden in Solo mode for opponent */}
+        {!hideHealthBar && (
+          <div className="relative h-3 md:h-4 w-full bg-[#1A1B23] rounded-full border border-white/20 overflow-hidden my-1 lg:mb-2 shadow-inner">
+            <div
+              className="h-full bg-[#22C55E] shadow-[0_0_10px_rgba(94,211,106,0.5)]"
+              style={{ width: `${healthPercentage}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-white font-semibold text-[8px] md:text-[10px] lg:text-xs">
+                HP: {player.health}/{player.maxHealth}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Role Label */}
         <p className="text-white font-medium text-[10px] md:text-xs lg:text-sm">

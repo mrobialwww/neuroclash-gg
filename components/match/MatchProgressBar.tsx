@@ -5,25 +5,17 @@ import { cn } from "@/lib/utils";
 
 interface MatchProgressBarProps {
   duration?: number;
+  timeLeft: number;
   activeStepIndex?: number;
   className?: string;
 }
 
 export function MatchProgressBar({
   duration = 30,
+  timeLeft,
   activeStepIndex = 0,
   className
 }: MatchProgressBarProps) {
-  const [timeLeft, setTimeLeft] = useState(duration);
-
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
   const progressPercentage = (timeLeft / duration) * 100;
 
   const steps = [
