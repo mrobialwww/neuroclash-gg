@@ -2,7 +2,7 @@ import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
 import { GAME_ROOMS } from "@/lib/constants/game-rooms";
-import { userService } from "@/services/userService";
+import { userService } from "@/services/auth/userService";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
