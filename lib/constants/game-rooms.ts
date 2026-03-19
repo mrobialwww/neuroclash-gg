@@ -1,6 +1,8 @@
-import { GameRoom } from "@/types/GameRoom";
-
-export const GAME_ROOMS: GameRoom[] = [
+/**
+ * @deprecated This mock data is no longer used by the dashboard.
+ * The dashboard now fetches real data from Supabase via gameRoomService.
+ */
+export const GAME_ROOMS = [
   // Pemrograman Category
   {
     game_room_id: "1",

@@ -24,6 +24,7 @@ export default function AuthCard({ title, children, background = "/background/Da
               src="/icons/neuroclash-white.svg"
               alt="Neuroclash Logo"
               fill
+              sizes="64px"
               className="object-contain"
               priority
             />

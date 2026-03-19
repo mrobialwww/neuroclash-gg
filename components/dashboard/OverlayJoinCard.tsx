@@ -1,36 +1,32 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Users, Flag } from "lucide-react";
 import { MainButton } from "@/components/common/MainButton";
-import { CategoryType, Difficulty } from "@/types";
+import { Difficulty } from "@/types";
+import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 import { DIFFICULTY_THEME_MAP, getBannerColor } from "@/lib/constants/overlay-theme";
 
 interface OverlayJoinCardProps {
-  title: string;
-  category: CategoryType | string;
-  usersRegistered: number;
-  usersTotal: number;
-  questionsCount: number;
-  iconPath: string;
-  difficulty?: Difficulty;
+  room: GameRoomWithPlayerCount;
   onClose?: () => void;
 }
 
-function OverlayCardContent({
-  title,
-  category,
-  usersRegistered,
-  usersTotal,
-  questionsCount,
-  iconPath,
-  difficulty,
-  onClose,
-}: OverlayJoinCardProps) {
-  const bannerColor = getBannerColor(category);
-  const difficultyTheme = DIFFICULTY_THEME_MAP[difficulty as Difficulty] || DIFFICULTY_THEME_MAP["sedang"];
+const FALLBACK_IMAGE = "/quiz-category/biologi.webp";
+
+function resolveImage(src: string | null | undefined, error: boolean): string {
+  return error || !src ? FALLBACK_IMAGE : src;
+}
+
+function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
+  const [imgError, setImgError] = useState(false);
+  const displayTitle = room.title || room.topic_material;
+  const bannerColor = getBannerColor(room.topic_material);
+  const difficultyTheme =
+    DIFFICULTY_THEME_MAP[room.difficulty as Difficulty] ||
+    DIFFICULTY_THEME_MAP["sedang"];
 
   return (
     <div className="font-(family-name:--font-baloo-2) relative w-full max-w-[400px] md:max-w-[500px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in duration-300">
@@ -53,12 +49,13 @@ function OverlayCardContent({
         {/* Icon Besar */}
         <div className="relative flex h-40 w-40 md:h-48 md:w-48 items-center justify-center">
           <Image
-            src={iconPath}
-            alt={title}
+            src={resolveImage(room.image_url, imgError)}
+            alt={displayTitle}
             width={200}
             height={200}
             className="w-[140px] md:w-[170px] object-contain"
             priority
+            onError={() => setImgError(true)}
           />
         </div>
       </div>
@@ -66,24 +63,28 @@ function OverlayCardContent({
       {/* Content Section */}
       <div className="p-6 sm:p-8 space-y-5">
         <h2 className="text-2xl sm:text-3xl font-extrabold text-[#555555] leading-tight">
-          {title}
+          {displayTitle}
         </h2>
 
         {/* Stats Row */}
         <div className="flex flex-wrap items-center justify-start gap-4 sm:gap-6 pb-4 border-b border-[#D9D9D9]">
           <div className="flex items-center gap-2 text-[#555555]">
             <Users size={22} className="text-[#256AF4]" />
-            <span className="text-base font-bold">{usersRegistered}/{usersTotal} Pemain</span>
+            <span className="text-base font-bold">
+              {room.player_count}/{room.max_player} Pemain
+            </span>
           </div>
           <div className="flex items-center gap-2 text-[#555555]">
             <Flag size={20} className="text-[#256AF4]" />
-            <span className="text-base font-bold">{questionsCount} Ronde</span>
+            <span className="text-base font-bold">
+              {room.total_question} Ronde
+            </span>
           </div>
         </div>
 
         {/* Difficulty Badge */}
         <div className={`inline-block px-4 py-1.5 rounded-lg font-bold text-sm capitalize ${difficultyTheme.badgeBg} ${difficultyTheme.badgeText}`}>
-          Tingkat Kesulitan {difficulty}
+          Tingkat Kesulitan {room.difficulty}
         </div>
 
         {/* Action Button */}

@@ -1,6 +1,6 @@
 import { User } from "./user";
-import { GameRoom, UserGame } from "./game";
 import { Question, Answer, UserAnswer } from "./quiz";
+import { GameRoom, UserGame } from "./GameRoom";
 
 export interface UserStats extends User {
   // Winrate = total_rank_1 / total_match * 100

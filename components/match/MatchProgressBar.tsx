@@ -31,6 +31,8 @@ export function MatchProgressBar({
     { id: "battle-1", icon: "/icons/battle.svg" },
     { id: "battle-2", icon: "/icons/battle.svg" },
     { id: "battle-3", icon: "/icons/battle.svg" },
+    { id: "battle-4", icon: "/icons/battle.svg" },
+    { id: "battle-5", icon: "/icons/battle.svg" },
     { id: "treasure", icon: "/icons/treasure.svg" },
   ];
 
@@ -69,7 +71,7 @@ export function MatchProgressBar({
       </div>
 
       {/* Icons Indicators */}
-      <div className="mt-4 flex justify-center gap-6 md:gap-8">
+      <div className="mt-4 flex justify-center gap-2 sm:gap-4 md:gap-6">
         {steps.map((step, index) => {
           const isActive = index === activeStepIndex;
 

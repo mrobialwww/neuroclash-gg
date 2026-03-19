@@ -39,6 +39,7 @@ export const BuffList = ({ className }: BuffListProps) => {
           src="/match/match-badge.webp"
           alt="Badge"
           fill
+          sizes="(max-width: 768px) 180px, 200px"
           className="object-contain"
           priority
         />
