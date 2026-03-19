@@ -5,25 +5,17 @@ import { cn } from "@/lib/utils";
 
 interface MatchProgressBarProps {
   duration?: number;
+  timeLeft: number;
   activeStepIndex?: number;
   className?: string;
 }
 
 export function MatchProgressBar({
   duration = 30,
+  timeLeft,
   activeStepIndex = 0,
   className
 }: MatchProgressBarProps) {
-  const [timeLeft, setTimeLeft] = useState(duration);
-
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
   const progressPercentage = (timeLeft / duration) * 100;
 
   const steps = [
@@ -31,6 +23,8 @@ export function MatchProgressBar({
     { id: "battle-1", icon: "/icons/battle.svg" },
     { id: "battle-2", icon: "/icons/battle.svg" },
     { id: "battle-3", icon: "/icons/battle.svg" },
+    { id: "battle-4", icon: "/icons/battle.svg" },
+    { id: "battle-5", icon: "/icons/battle.svg" },
     { id: "treasure", icon: "/icons/treasure.svg" },
   ];
 
@@ -69,7 +63,7 @@ export function MatchProgressBar({
       </div>
 
       {/* Icons Indicators */}
-      <div className="mt-4 flex justify-center gap-6 md:gap-8">
+      <div className="mt-4 flex justify-center gap-2 sm:gap-4 md:gap-6">
         {steps.map((step, index) => {
           const isActive = index === activeStepIndex;
 

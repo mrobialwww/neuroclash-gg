@@ -1,25 +1,13 @@
 import { MainButton } from "@/components/common/MainButton";
-import { CourseCard } from "./CourseCard";
-import { MockUser as User } from "@/types/MockUser";
-import { Difficulty } from "@/types";
+import { GameRoomCard } from "./GameRoomCard";
+import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
-interface CourseData {
-  id: string | number;
+interface CategorySectionProps {
   title: string;
-  usersRegistered: number;
-  usersTotal: number;
-  questionsCount: number;
-  iconPath: string;
-  players: User[];
-  difficulty?: Difficulty;
+  rooms: GameRoomWithPlayerCount[];
 }
 
-interface CategoryProps {
-  title: string;
-  courses: CourseData[];
-}
-
-export function CategorySection({ title, courses }: CategoryProps) {
+export function CategorySection({ title, rooms }: CategorySectionProps) {
   return (
     <div className="w-full">
       {/* Header section */}
@@ -37,13 +25,9 @@ export function CategorySection({ title, courses }: CategoryProps) {
 
       {/* Cards list */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {courses.map((course) => (
-          <div key={course.id} className="flex justify-center">
-            <CourseCard
-              {...course}
-              category={title}
-              difficulty={course.difficulty}
-            />
+        {rooms.map((room) => (
+          <div key={room.game_room_id} className="flex justify-center">
+            <GameRoomCard room={room} />
           </div>
         ))}
       </div>
