@@ -16,20 +16,22 @@ export interface LobbyRoomProps {
   roomCode: string;
   roomTitle: string;
   totalSlots: number;
-  currentUser: LobbyPlayer;     // selalu ditampilkan pertama, highlight biru
-  host: LobbyPlayer;            // ditampilkan kedua, highlight merah
-  players: LobbyPlayer[];       // player lain
+  currentUser: LobbyPlayer;
+  host: LobbyPlayer;
+  players: LobbyPlayer[];
   onLeave?: () => void;
 }
 
-// ── PlayerSlot ──────────────────────────────────────────────────────────────
+type OrderedPlayer = {
+  player: LobbyPlayer;
+  highlight?: "self" | "host";
+};
+
+/* ── PlayerSlot ── */
 function PlayerSlot({
   player,
   highlight,
-}: {
-  player: LobbyPlayer;
-  highlight?: "self" | "host";
-}) {
+}: OrderedPlayer) {
   const borderColor =
     highlight === "self"
       ? "#5B9BF5"
@@ -45,45 +47,22 @@ function PlayerSlot({
       : "rgba(255,255,255,0.06)";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 6,
-        flexShrink: 0,
-        width: 80,
-      }}
-    >
-      {/* Avatar circle */}
+    <div className="flex flex-col items-center gap-[6px] shrink-0 w-[80px]">
       <div
+        className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden relative"
         style={{
-          width: 64,
-          height: 64,
-          borderRadius: "50%",
           border: `2.5px solid ${borderColor}`,
           background: bgColor,
+          backgroundColor: getCharacterBgColor(player.character),
           boxShadow:
             highlight === "self"
               ? "0 0 12px rgba(91,155,245,0.45)"
               : highlight === "host"
               ? "0 0 12px rgba(229,90,90,0.45)"
               : "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          position: "relative",
-          backgroundColor: getCharacterBgColor(player.character),
         }}
       >
-        <div
-          style={{
-            position: "relative",
-            width: "80%",
-            height: "80%",
-          }}
-        >
+        <div className="relative w-[80%] h-[80%]">
           <Image
             src={player.image}
             alt={player.name}
@@ -93,49 +72,35 @@ function PlayerSlot({
         </div>
       </div>
 
-      {/* Name */}
       <span
+        className="text-[11px] font-bold text-center max-w-[76px] overflow-hidden text-ellipsis whitespace-nowrap tracking-[0.01em]"
         style={{
-          fontSize: 11,
-          fontWeight: 700,
           color:
             highlight === "self"
               ? "#7BB8FF"
               : highlight === "host"
               ? "#FF8A8A"
               : "rgba(255,255,255,0.75)",
-          textAlign: "center",
-          maxWidth: 76,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
           fontFamily: "'Nunito', sans-serif",
-          letterSpacing: "0.01em",
         }}
       >
         {player.name}
       </span>
 
-      {/* Badge */}
       {(highlight === "self" || highlight === "host") && (
         <span
+          className="mt-[-4px] text-[9px] font-extrabold rounded-full px-[7px] py-[1px] tracking-[0.05em] uppercase"
           style={{
-            marginTop: -4,
-            fontSize: 9,
-            fontWeight: 800,
-            color:
-              highlight === "self"
-                ? "#5B9BF5"
-                : "#E55A5A",
+            color: highlight === "self" ? "#5B9BF5" : "#E55A5A",
             background:
               highlight === "self"
                 ? "rgba(91,155,245,0.15)"
                 : "rgba(229,90,90,0.15)",
-            border: `1px solid ${highlight === "self" ? "rgba(91,155,245,0.4)" : "rgba(229,90,90,0.4)"}`,
-            borderRadius: 20,
-            padding: "1px 7px",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
+            border: `1px solid ${
+              highlight === "self"
+                ? "rgba(91,155,245,0.4)"
+                : "rgba(229,90,90,0.4)"
+            }`,
             fontFamily: "'Nunito', sans-serif",
           }}
         >
@@ -146,7 +111,7 @@ function PlayerSlot({
   );
 }
 
-// ── LobbyRoom ────────────────────────────────────────────────────────────────
+/* ── LobbyRoom ── */
 export function LobbyRoom({
   roomCode,
   roomTitle,
@@ -158,99 +123,55 @@ export function LobbyRoom({
 }: LobbyRoomProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Build ordered list: self first, host second (if different), rest after
   const isSelfHost = currentUser.id === host.id;
-  const orderedPlayers: Array<{ player: LobbyPlayer; highlight?: "self" | "host" }> = [
+
+  /* ⭐ SUPER SAFE TYPE BUILD */
+  const basePlayers: OrderedPlayer[] = [
     { player: currentUser, highlight: "self" },
-    ...(!isSelfHost ? [{ player: host, highlight: "host" as const }] : []),
-    ...players
-      .filter((p) => p.id !== currentUser.id && p.id !== host.id)
-      .map((p) => ({ player: p })),
+  ];
+
+  const hostPlayers: OrderedPlayer[] = !isSelfHost
+    ? [{ player: host, highlight: "host" }]
+    : [];
+
+  const otherPlayers: OrderedPlayer[] = players
+    .filter((p) => p.id !== currentUser.id && p.id !== host.id)
+    .map((p) => ({ player: p }));
+
+  const orderedPlayers: OrderedPlayer[] = [
+    ...basePlayers,
+    ...hostPlayers,
+    ...otherPlayers,
   ];
 
   const participantCount = orderedPlayers.length;
 
   return (
-    <div
-      style={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 0,
-        fontFamily: "'Nunito', 'Segoe UI', sans-serif",
-        color: "#fff",
-        position: "relative",
-        padding: "0 16px",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* ── Top Bar ── */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 860,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 32,
-        }}
-      >
-        {/* Room code pill */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.12)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 10,
-            padding: "8px 18px",
-            fontWeight: 800,
-            fontSize: 15,
-            letterSpacing: "0.12em",
-            color: "#fff",
-          }}
-        >
+    <div className="w-full flex flex-col items-center text-white relative px-4 box-border font-[Nunito,Segoe_UI,sans-serif]">
+      {/* Top */}
+      <div className="w-full max-w-[860px] flex items-center justify-between mb-8">
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] px-[18px] py-2 font-extrabold text-[15px] tracking-[0.12em]">
           {roomCode}
         </div>
 
-        {/* Leave button */}
         <button
           onClick={onLeave}
-          style={{
-            background: "rgba(255,255,255,0.12)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 10,
-            padding: "8px 20px",
-            fontWeight: 800,
-            fontSize: 14,
-            color: "#fff",
-            cursor: "pointer",
-            letterSpacing: "0.03em",
-          }}
+          className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] px-5 py-2 font-extrabold text-sm tracking-[0.03em]"
         >
           Keluar
         </button>
       </div>
 
-      {/* ── Center character ── */}
+      {/* Center Avatar */}
       <div
+        className="w-[120px] h-[120px] rounded-full border-[3px] border-white/25 flex items-center justify-center overflow-hidden relative mb-7"
         style={{
-          width: 120,
-          height: 120,
-          borderRadius: "50%",
           backgroundColor: getCharacterBgColor(currentUser.character),
-          border: "3px solid rgba(255,255,255,0.25)",
-          boxShadow: "0 0 40px rgba(91,155,245,0.3), 0 8px 32px rgba(0,0,0,0.35)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          position: "relative",
-          marginBottom: 28,
+          boxShadow:
+            "0 0 40px rgba(91,155,245,0.3), 0 8px 32px rgba(0,0,0,0.35)",
         }}
       >
-        <div style={{ position: "relative", width: "82%", height: "82%" }}>
+        <div className="relative w-[82%] h-[82%]">
           <Image
             src={currentUser.image}
             alt={currentUser.name}
@@ -260,106 +181,40 @@ export function LobbyRoom({
         </div>
       </div>
 
-      {/* ── Waiting text ── */}
-      <h1
-        style={{
-          fontSize: "clamp(18px, 4vw, 28px)",
-          fontWeight: 900,
-          color: "#fff",
-          margin: 0,
-          marginBottom: 16,
-          textAlign: "center",
-          letterSpacing: "-0.02em",
-          textShadow: "0 2px 16px rgba(0,0,0,0.4)",
-        }}
-      >
+      <h1 className="text-[clamp(18px,4vw,28px)] font-black text-center mb-4 tracking-[-0.02em] drop-shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
         Menunggu Host Memulai Pertandingan...
       </h1>
 
-      {/* ── Room title tag ── */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.1)",
-          backdropFilter: "blur(6px)",
-          border: "1.5px solid rgba(255,255,255,0.2)",
-          borderRadius: 10,
-          padding: "9px 22px",
-          fontSize: 14,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.9)",
-          marginBottom: 40,
-          letterSpacing: "0.02em",
-        }}
-      >
+      <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[10px] px-[22px] py-[9px] text-sm font-bold text-white/90 mb-10 tracking-[0.02em]">
         Materi: {roomTitle}
       </div>
 
-      {/* ── Player list bar ── */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 860,
-          background: "rgba(255,255,255,0.07)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 16,
-          padding: "18px 20px",
-        }}
-      >
-        {/* Header row */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 15,
-              color: "rgba(255,255,255,0.9)",
-              letterSpacing: "0.01em",
-            }}
-          >
+      {/* Player List */}
+      <div className="w-full max-w-[860px] bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl px-5 py-[18px]">
+        <div className="flex justify-between items-center mb-4">
+          <span className="font-extrabold text-[15px] text-white/90">
             Daftar Pemain
           </span>
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 15,
-              color: "rgba(255,255,255,0.7)",
-            }}
-          >
+
+          <span className="font-extrabold text-[15px] text-white/70">
             {participantCount}
-            <span style={{ color: "rgba(255,255,255,0.4)" }}>/{totalSlots}</span>
+            <span className="text-white/40">/{totalSlots}</span>
           </span>
         </div>
 
-        {/* Scrollable player row */}
         <div
           ref={scrollRef}
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            gap: 12,
-            overflowX: "auto",
-            paddingBottom: 6,
-            scrollbarWidth: "none", // Firefox
-          }}
-          className="hide-scrollbar"
+          className="flex gap-3 overflow-x-auto pb-[6px] scrollbar-none"
         >
-          {orderedPlayers.map(({ player, highlight }) => (
-            <PlayerSlot key={player.id} player={player} highlight={highlight} />
+          {orderedPlayers.map((item) => (
+            <PlayerSlot
+              key={item.player.id}
+              player={item.player}
+              highlight={item.highlight}
+            />
           ))}
         </div>
       </div>
-
-      {/* Hide scrollbar for webkit */}
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
     </div>
   );
 }

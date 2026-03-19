@@ -1,6 +1,6 @@
 import React, { Suspense } from "react"; // Tambahkan Suspense
 import { Navbar } from "@/components/layout/Navbar";
-import { userService } from "@/services/userService";
+import { userService } from "@/services/auth/userService";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomeLayout({
