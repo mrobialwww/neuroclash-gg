@@ -30,7 +30,11 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { user_id, character_id, cost, base_character, skin_level } = body;
+    const { user_id, character_id, cost, coin, base_character, skin_level } = body;
+
+    if (cost > coin) {
+      return NextResponse.json({ error: "Coin tidak mencukupi untuk membeli item ini" }, { status: 400 });
+    }
 
     // Memanggil fungsi transaksi (RPC) di Supabase
     const { error } = await supabase.rpc("handle_buy_item", {
