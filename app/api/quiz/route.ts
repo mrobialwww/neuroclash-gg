@@ -36,10 +36,10 @@ export async function POST(req: Request) {
     }
     // 2. Cek apakah request berupa JSON (URL murni)
     else if (contentType.includes("application/json")) {
-      const { category } = await req.json();
+      const { category, difficulty } = await req.json();
       const {
         data: { publicUrl: url },
-      } = supabase.storage.from("materials").getPublicUrl(`${category}/materi.pdf`);
+      } = supabase.storage.from("materials").getPublicUrl(`${category}/${difficulty}.pdf`);
 
       if (url) {
         const response = await fetch(url);
