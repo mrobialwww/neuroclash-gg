@@ -1,54 +1,17 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import HistoryClient from "@/components/history/HistoryClient";
 
-import { StatisticCard } from "@/components/history/StatisticCard";
-import { HistoryTable } from "@/components/history/HistoryTable";
+export default async function HistoryPage() {
+  const supabase = await createClient();
 
-export default function HistoryPage() {
-  const stats = [
-    {
-      label: "Total Pertandingan",
-      value: "47",
-      iconPath: "/icons/sword.svg",
-    },
-    {
-      label: "Win Rate",
-      value: "62.03%",
-      iconPath: "/icons/percent.svg",
-    },
-    {
-      label: "Peringkat Rata-rata",
-      value: "4.94",
-      iconPath: "/icons/chart.svg",
-    },
-    {
-      label: "Peringkat 1",
-      value: "25",
-      iconPath: "/icons/trophy.svg",
-    },
-  ];
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  return (
-    <main className="mx-auto max-w-[1400px] px-6 py-10 pb-20 md:px-12 lg:px-16">
-      <h2 className="mb-4 text-2xl font-bold text-white md:text-3xl">
-        Statistik Pertandingan
-      </h2>
+  // Kalau belum login, redirect ke halaman login
+  if (error || !user?.id) {
+    redirect("/signin");
+  }
 
-      <div className="mb-8 grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <StatisticCard
-            key={index}
-            label={stat.label}
-            value={stat.value}
-            iconPath={stat.iconPath}
-          />
-        ))}
-      </div>
-
-      <h2 className="mb-4 text-2xl font-bold text-white md:text-3xl">
-        Riwayat Pertandingan
-      </h2>
-
-      <HistoryTable />
-    </main>
-  );
+  // userId langsung di-pass ke client component
+  return <HistoryClient userId={user.id} />;
 }
