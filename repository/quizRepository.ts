@@ -1,7 +1,6 @@
-import { Question, Answer } from "@/types/Quiz";
+import { Answer, Question } from "@/types";
 
 // Fetch question by game_room_id + order
-
 export const quizRepository = {
   /**
    * GET /api/quiz/questions/[game_room_id]?question_order=[order]
@@ -52,7 +51,9 @@ export const quizRepository = {
    * GET /api/game-rooms/[roomId]
    * Returns the full game room data including questions.
    */
-  async fetchDetailedRoom(roomId: string): Promise<Record<string, unknown> | null> {
+  async fetchDetailedRoom(
+    roomId: string
+  ): Promise<Record<string, unknown> | null> {
     const res = await fetch(`/api/game-rooms/${roomId}`, { cache: "no-store" });
     if (!res.ok) {
       console.error("[QuizRepo] fetchDetailedRoom failed:", res.status);
@@ -69,7 +70,9 @@ export const quizRepository = {
    * Returns all user_game records for a given room.
    */
   async fetchParticipants(roomId: string): Promise<Record<string, unknown>[]> {
-    const res = await fetch(`/api/user-game/participants/${roomId}`, { cache: "no-store" });
+    const res = await fetch(`/api/user-game/participants/${roomId}`, {
+      cache: "no-store",
+    });
     if (!res.ok) return [];
     const result = await res.json();
     return result.data ?? [];
@@ -103,7 +106,9 @@ export const quizRepository = {
    */
   async deleteLeaveRoom(userGameId: string): Promise<boolean> {
     try {
-      const res = await fetch(`/api/user-game/leave/${userGameId}`, { method: "DELETE" });
+      const res = await fetch(`/api/user-game/leave/${userGameId}`, {
+        method: "DELETE",
+      });
       return res.ok;
     } catch {
       return false;
@@ -128,5 +133,21 @@ export const quizRepository = {
 
     return true;
   },
-};
 
+  /**
+   * PATCH /api/game-rooms/[roomId]/migrate
+   * Updates the host of a room.
+   */
+  async updateRoomHost(roomId: string, newHostId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/game-rooms/${roomId}/migrate`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_host_id: newHostId }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+};

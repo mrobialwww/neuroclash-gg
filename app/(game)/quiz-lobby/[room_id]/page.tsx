@@ -19,6 +19,9 @@ export default function QuizLobbyPage() {
     error,
     currentUser,
     loadLobbyData,
+    setParticipants,
+    subscribeToPresence,
+    unsubscribeFromPresence,
   } = useQuizLobbyStore();
 
   const [isStarting, setIsStarting] = useState(false);
@@ -29,6 +32,31 @@ export default function QuizLobbyPage() {
       loadLobbyData(room_id);
     }
   }, [room_id, loadLobbyData]);
+
+  // Handle presence & migration via store (Separation of Concerns)
+  useEffect(() => {
+    if (!room_id || !currentUser?.id || isLoading) return;
+
+    subscribeToPresence(room_id);
+
+    // Browser closure tracking backup (Beacon)
+    const handleBeforeUnload = () => {
+      const parts = useQuizLobbyStore.getState().participants;
+      const me = parts.find((p) => p.id === currentUser.id);
+      if (me?.userGameId) {
+        // Beacon works even when tab is closed
+        const url = `/api/user-game/leave/${me.userGameId}`;
+        navigator.sendBeacon(url);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      unsubscribeFromPresence();
+    };
+  }, [room_id, currentUser?.id, isLoading, subscribeToPresence, unsubscribeFromPresence]);
 
   const handleLeave = async () => {
     if (isLeaving) return;

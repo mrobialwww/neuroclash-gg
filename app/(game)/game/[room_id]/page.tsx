@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import { MatchProgressBar } from "@/components/match/MatchProgressBar";
@@ -8,9 +8,9 @@ import { QuestionCard } from "@/components/match/QuestionCard";
 import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
-import { MOCK_PLAYERS } from "@/lib/constants/players";
 
-import { useMatchStore, SECONDS_PER_ROUND } from "@/store/useMatchStore";
+import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
+import { quizRepository } from "@/repository/quizRepository";
 
 export default function GamePage() {
   const router = useRouter();
@@ -20,7 +20,6 @@ export default function GamePage() {
   const gameRoomId = params.room_id as string;
   const roomCodeQuery = searchParams.get("code") ?? gameRoomId;
   const initialRound = parseInt(searchParams.get("nextRound") ?? "1", 10);
-  // user_game_id passed from lobby so we can delete on exit
   const userGameId = searchParams.get("ugid") ?? null;
 
   const {
@@ -33,15 +32,16 @@ export default function GamePage() {
     selectedAnswerId,
     isFinished,
     timeLeft,
-    me,
-    opponent,
+    players,
+    currentUser,
     nextRoundUrl,
+    error,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
   } = useMatchStore();
 
-  const activeStepIndex = ((currentOrder - 1) % 5) + 1;
+  const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
   const isSolo = roomInfo?.max_player === 1;
 
   // 1. Initialize Match Room Data
@@ -49,12 +49,18 @@ export default function GamePage() {
     initializeMatch(roomCodeQuery, gameRoomId, initialRound);
   }, [initializeMatch, roomCodeQuery, gameRoomId, initialRound]);
 
-  // Navigation Guard: prevent accidental back-button exit
+  // Handle Error (Ongoing room or not found)
   useEffect(() => {
-    // Push a duplicate history entry so back() stays on this page
+    if (error) {
+      alert(error);
+      router.push("/dashboard");
+    }
+  }, [error, router]);
+
+  // Navigation Guard
+  useEffect(() => {
     window.history.pushState(null, "", window.location.href);
     const handlePopState = () => {
-      // Re-push to trap the user on this page
       window.history.pushState(null, "", window.location.href);
     };
     window.addEventListener("popstate", handlePopState);
@@ -69,42 +75,68 @@ export default function GamePage() {
     }
   }, [nextRoundUrl, router]);
 
-  // 2. Local Timer execution loop
+  // 2. Local Timer
   useEffect(() => {
-    if (isLoadingQuestion || isFinished || selectedAnswerId) return;
+    if (isLoadingQuestion || isFinished || selectedAnswerId || error) return;
 
     const timer = setInterval(() => {
       decrementTimer();
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [
-    isLoadingQuestion,
-    isFinished,
-    selectedAnswerId,
-    decrementTimer,
-  ]);
+  }, [isLoadingQuestion, isFinished, selectedAnswerId, decrementTimer, error]);
 
-  // 3. Answer Action Dispatcher
+  // 3. Mapping Players for UI
+  const { meCard, opponentCard, sortedForList } = useMemo(() => {
+    const meData = players.find((p) => p.id === currentUser?.id);
+    const others = players.filter((p) => p.id !== currentUser?.id);
+
+    // Identitas Lawan: Ambil yang HP-nya tertinggi dari sisa pemain (rival utama)
+    const enemyData = others.length > 0 ? others[0] : null;
+
+    const mapToCard = (p: any) =>
+      p
+        ? {
+          id: p.id,
+          name: p.name,
+          character: p.character || "Slime",
+          image: p.avatar,
+          health: p.health,
+          maxHealth: 100,
+        }
+        : null;
+
+    return {
+      meCard: mapToCard(meData),
+      opponentCard: mapToCard(enemyData),
+      sortedForList: players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        character: p.character || "Slime",
+        image: p.avatar,
+        health: p.health,
+        maxHealth: 100,
+        isMe: p.id === currentUser?.id,
+      })),
+    };
+  }, [players, currentUser]);
+
+  // 4. Answer Action Dispatcher
   const onSelectAnswer = (answerId: string) => {
-    const userId = me?.id ? String(me.id) : "guest";
-    handleSelectAnswer(userId, answerId);
+    if (!currentUser) return;
+    handleSelectAnswer(currentUser.id, answerId);
   };
 
-  // Exit handler: clean up user_game record then navigate
+  // Exit handler
   const handleExit = async () => {
     if (userGameId) {
-      try {
-        await fetch(`/api/user-game/leave/${userGameId}`, { method: "DELETE" });
-      } catch {
-        // Best-effort cleanup, ignore errors
-      }
+      await quizRepository.deleteLeaveRoom(userGameId);
     }
     router.push("/dashboard");
   };
 
-  // Tampilan ketika Loading Data (awal)
-  if (isLoadingQuestion && !currentQuestion) {
+  // Tampilan ketika Loading Data
+  if (isLoadingQuestion && !currentQuestion && !error) {
     return (
       <main className="min-h-screen w-full bg-[#0B0D14] flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-[#3D79F3] border-t-transparent rounded-full animate-spin" />
@@ -124,8 +156,7 @@ export default function GamePage() {
           Quiz Selesai!
         </h1>
         <p className="text-white/60 text-lg text-center">
-          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1}{" "}
-          soal.
+          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.
         </p>
         <MainButton
           variant="green"
@@ -139,7 +170,6 @@ export default function GamePage() {
     );
   }
 
-  // Tampilan Game / Arena Utama
   return (
     <main className="min-h-screen w-full px-4 sm:px-8 md:px-12 py-6 gap-4 flex flex-col items-center overflow-x-hidden">
       {/* Header Info */}
@@ -181,19 +211,21 @@ export default function GamePage() {
               <BuffList className="h-full" />
             </div>
             <div className="w-full max-w-[320px] lg:max-w-none">
-              {me && <PlayerCard player={me} isMe={true} className="w-full" />}
+              {meCard && (
+                <PlayerCard player={meCard as any} isMe={true} className="w-full" />
+              )}
             </div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
           <div className="order-2 lg:order-3 flex flex-col justify-start lg:justify-between items-end lg:items-stretch self-stretch">
             <div className="hidden lg:block max-h-[320px] overflow-hidden">
-              <PlayerList players={MOCK_PLAYERS} className="h-full" />
+              <PlayerList players={sortedForList as any} className="h-full" />
             </div>
             <div className="w-full max-w-[320px] lg:max-w-none">
-              {opponent && (
+              {opponentCard && (
                 <PlayerCard
-                  player={opponent}
+                  player={opponentCard as any}
                   isMe={false}
                   hideHealthBar={isSolo}
                   className="w-full"
@@ -215,14 +247,14 @@ export default function GamePage() {
             )}
           </div>
 
-          {/* Mobile Layout — List Buff dan Lawan pindah ke bawah */}
+          {/* Mobile Layout */}
           <div className="order-4 lg:hidden col-span-1">
             <BuffList className="w-full h-[200px] sm:h-[240px]" />
           </div>
 
           <div className="order-5 lg:hidden col-span-1">
             <PlayerList
-              players={MOCK_PLAYERS}
+              players={sortedForList as any}
               className="w-full h-[200px] sm:h-[240px]"
             />
           </div>

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export interface LobbyPlayer extends Player {
   isHost?: boolean;
   userGameId?: string;
+  joinedAt?: string;
 }
 
 export interface LobbyRoomProps {

@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { quizService } from "@/services/quizService";
 import { userClientService } from "@/services/auth/userClientService";
 import { LobbyPlayer } from "@/components/quiz/Lobby";
+import { createClient } from "@/lib/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
+import { quizRepository } from "@/repository/quizRepository";
 
 export interface RoomData {
   game_room_id: string;
@@ -22,13 +25,20 @@ export interface QuizLobbyState {
   maxPlayers: number;
   error: string | null;
   currentUser: { id: string; username: string; avatar: string } | null;
+  isMigrating: boolean;
 
   loadLobbyData: (roomId: string) => Promise<void>;
   decrementTimer: () => void;
   setError: (msg: string) => void;
+  setParticipants: (p: LobbyPlayer[]) => void;
+
+  // Presence & Migration actions
+  subscribeToPresence: (roomId: string) => void;
+  unsubscribeFromPresence: () => void;
 }
 
 let pendingJoinPromise: Promise<void> | null = null;
+let lobbyChannel: RealtimeChannel | null = null;
 
 export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   roomData: null,
@@ -40,8 +50,10 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   maxPlayers: 1,
   error: null,
   currentUser: null,
+  isMigrating: false,
 
   setError: (msg: string) => set({ error: msg, isLoading: false }),
+  setParticipants: (participants: LobbyPlayer[]) => set({ participants, participantsCount: participants.length }),
 
   loadLobbyData: async (roomId: string) => {
     set({ isLoading: true, error: null });
@@ -124,6 +136,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
             health: 100,
             maxHealth: 100,
             userGameId: String(raw.user_game_id),
+            joinedAt: String(raw.created_at),
           } as LobbyPlayer;
         } catch (err) {
           console.error("Gagal resolving player:", err);
@@ -161,5 +174,105 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
 
   decrementTimer: () => {
     // Implement countdown if host starts the match
+  },
+
+  setParticipants: (participants: LobbyPlayer[]) =>
+    set({ participants, participantsCount: participants.length }),
+
+  subscribeToPresence: (roomId: string) => {
+    const { currentUser, isHost, participants, setParticipants } = get();
+    if (!currentUser || lobbyChannel) return;
+
+    const supabase = createClient();
+    const channel = supabase.channel(`lobby:${roomId}`, {
+      config: { presence: { key: currentUser.id } },
+    });
+
+    const myPlayerPayload = participants.find((p) => p.id === currentUser.id);
+
+    channel
+      .on("presence", { event: "sync" }, async () => {
+        const state = channel.presenceState();
+        const activePresenceIds = Object.keys(state);
+
+        // 1. Update UI List based on Online Status
+        const activeUsersList = Object.values(state).flatMap((s) => s) as any[];
+        const uniquePresencePlayers = new Map();
+        for (const p of activeUsersList) {
+          if (p?.id) uniquePresencePlayers.set(p.id, p);
+        }
+        setParticipants(Array.from(uniquePresencePlayers.values()));
+
+        // 2. Automated Host Migration Logic
+        const { roomData } = get();
+        if (!roomData) return;
+
+        const isCurrentHostOnline = activePresenceIds.includes(roomData.user_id);
+
+        if (!isCurrentHostOnline && !get().isMigrating) {
+          // Elect new host: The most senior (earliest joinedAt) active participant
+          const onlineParticipants = get().participants.filter((p) =>
+            activePresenceIds.includes(p.id)
+          );
+
+          if (onlineParticipants.length === 0) return;
+
+          const newHostCandidate = [...onlineParticipants].sort((a, b) => {
+            const timeA = new Date(a.joinedAt || 0).getTime();
+            const timeB = new Date(b.joinedAt || 0).getTime();
+            return timeA - timeB;
+          })[0];
+
+          // Only the candidate triggers the update to avoid collisions
+          if (newHostCandidate.id === currentUser.id) {
+            console.log("[Migration] Electing NEW Host:", currentUser.username);
+            set({ isMigrating: true });
+            const success = await quizRepository.updateRoomHost(
+              roomId,
+              currentUser.id
+            );
+            if (success) {
+              set({
+                roomData: { ...roomData, user_id: currentUser.id },
+                isHost: true,
+                isMigrating: false,
+              });
+            } else {
+              set({ isMigrating: false });
+            }
+          }
+        }
+      })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "game_rooms",
+        filter: `game_room_id=eq.${roomId}`,
+      }, (payload: any) => {
+        // Real-time UI Sync for Host Label
+        const { roomData } = get();
+        if (roomData && payload.new.user_id) {
+          const newHostId = payload.new.user_id;
+          set({
+            roomData: { ...roomData, user_id: newHostId },
+            isHost: newHostId === get().currentUser?.id,
+          });
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED" && myPlayerPayload) {
+          await channel.track(myPlayerPayload);
+        }
+      });
+
+    lobbyChannel = channel;
+  },
+
+  unsubscribeFromPresence: () => {
+    if (lobbyChannel) {
+      const supabase = createClient();
+      supabase.removeChannel(lobbyChannel);
+      lobbyChannel = null;
+    }
   },
 }));

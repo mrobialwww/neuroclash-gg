@@ -1,5 +1,5 @@
 import { quizRepository } from "@/repository/quizRepository";
-import { Answer } from "@/types/Quiz";
+import { Answer } from "@/types";
 
 // Domain types yang dipakai komponen
 
@@ -75,7 +75,7 @@ export const quizService = {
     // De-duplicate participants based on user_id to avoid double showing
     const uniqueUsers = new Map<string, any>();
     for (const p of participants) {
-      if (p && typeof p === "object" && 'user_id' in p) {
+      if (p && typeof p === "object" && "user_id" in p) {
         uniqueUsers.set(p.user_id as string, p);
       }
     }
@@ -95,10 +95,10 @@ export const quizService = {
     if (roomCode) {
       const room = await quizRepository.fetchDetailedRoom(roomId);
       if (!room || room.room_code !== roomCode) {
-         throw new Error("Kode room tidak valid");
+        throw new Error("Kode room tidak valid");
       }
     }
-    
+
     return quizRepository.postJoinRoom(roomId, userId);
   },
 
@@ -109,8 +109,8 @@ export const quizService = {
   async handleSoloModeInit(roomId: string, userId: string) {
     const roomData = await quizRepository.fetchDetailedRoom(roomId);
     if (roomData && roomData.max_player === 1) {
-       // Join directly
-       return quizRepository.postJoinRoom(roomId, userId);
+      // Join directly
+      return quizRepository.postJoinRoom(roomId, userId);
     }
     return null;
   },
@@ -123,11 +123,11 @@ export const quizService = {
     const res = await fetch(`/api/game-rooms/${roomId}/duplicate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ max_player: maxPlayer })
+      body: JSON.stringify({ max_player: maxPlayer }),
     });
 
     if (!res.ok) {
-       throw new Error("Gagal menduplikasi room");
+      throw new Error("Gagal menduplikasi room");
     }
 
     const json = await res.json();
