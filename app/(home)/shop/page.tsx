@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import ShopClient from "@/components/shop/ShopCLient";
+import ShopClient from "@/components/shop/ShopClient";
 
 export default async function ShopPage() {
   const supabase = await createClient();
-  
+
   const { data: { user }, error } = await supabase.auth.getUser();
 
   // Kalau belum login, redirect ke halaman login

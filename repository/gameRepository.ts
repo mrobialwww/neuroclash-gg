@@ -11,18 +11,19 @@ export const gameRepository = {
   ): Promise<GameRoomWithPlayerCount | null> {
     let targetRoom = null;
 
-    if (code) {
+    if (code && code !== id) {
       const res = await fetch(`/api/game-rooms/code/${code}`);
       const result = await res.json();
-      targetRoom = result.data?.[0];
+      targetRoom = result.data?.[0] ?? result.data ?? null;
     }
 
-    if (!targetRoom && id && code !== id) {
-      const resId = await fetch(`/api/game-rooms/code/${id}`);
+    if (!targetRoom && id) {
+      const resId = await fetch(`/api/game-rooms/${id}`);
       const resIdData = await resId.json();
-      targetRoom = resIdData.data?.[0];
+      targetRoom = resIdData.data?.[0] ?? resIdData.data ?? null;
     }
 
     return targetRoom || null;
   },
 };
+

@@ -48,6 +48,72 @@ export const quizRepository = {
    * POST /api/quiz/user-answer
    * Records a user's answer for the current question.
    */
+  /**
+   * GET /api/game-rooms/[roomId]
+   * Returns the full game room data including questions.
+   */
+  async fetchDetailedRoom(roomId: string): Promise<Record<string, unknown> | null> {
+    const res = await fetch(`/api/game-rooms/${roomId}`, { cache: "no-store" });
+    if (!res.ok) {
+      console.error("[QuizRepo] fetchDetailedRoom failed:", res.status);
+      return null;
+    }
+    const result = await res.json();
+    // Handles both `{ data: [...] }` and `{ data: {...} }` shapes
+    const raw = result.data;
+    return Array.isArray(raw) ? raw[0] ?? null : raw ?? null;
+  },
+
+  /**
+   * GET /api/user-game/participants/[roomId]
+   * Returns all user_game records for a given room.
+   */
+  async fetchParticipants(roomId: string): Promise<Record<string, unknown>[]> {
+    const res = await fetch(`/api/user-game/participants/${roomId}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const result = await res.json();
+    return result.data ?? [];
+  },
+
+  /**
+   * POST /api/user-game/join/[roomId]
+   * Inserts a new user_games record. Returns the created record.
+   */
+  async postJoinRoom(
+    roomId: string,
+    userId: string
+  ): Promise<Record<string, unknown> | null> {
+    const res = await fetch(`/api/user-game/join/${roomId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!res.ok) {
+      console.error("[QuizRepo] postJoinRoom failed:", res.status);
+      return null;
+    }
+    const result = await res.json();
+    const raw = result.data;
+    return Array.isArray(raw) ? raw[0] ?? null : raw ?? null;
+  },
+
+  /**
+   * DELETE /api/user-game/leave/[userGameId]
+   * Removes the user_game record on exit.
+   */
+  async deleteLeaveRoom(userGameId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/user-game/leave/${userGameId}`, { method: "DELETE" });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * POST /api/quiz/user-answer
+   * Records a user's answer for the current question.
+   */
   async submitAnswer(userId: string, answerId: string): Promise<boolean> {
     const res = await fetch("/api/quiz/user-answer", {
       method: "POST",
@@ -63,3 +129,4 @@ export const quizRepository = {
     return true;
   },
 };
+

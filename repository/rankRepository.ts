@@ -1,7 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
-
 export const rankRepository = {
   async getRankByTrophy(trophy: number) {
+    // Dynamic import to avoid bundling server-only supabase/server on the client
+    const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
     const { data, error } = await supabase
