@@ -139,12 +139,12 @@ export default function ShopClient({ userId }: Props) {
 
 	return (
 		<div className="min-h-screen">
-		
+
 			<div className="flex relative">
 				<Sidebar active={filter} onChange={(f) => { setFilter(f); setError(null); }} />
 
 				<main className="flex-1 p-4 md:ml-68">
-					
+
 
 					{error && (
 						<div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -158,7 +158,7 @@ export default function ShopClient({ userId }: Props) {
 						</div>
 					) : (
 						<>
-							
+
 
 							{displayed.length === 0 ? (
 								<div className="text-center py-12 text-gray-500">

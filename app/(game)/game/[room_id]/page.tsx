@@ -20,6 +20,8 @@ export default function GamePage() {
   const gameRoomId = params.room_id as string;
   const roomCodeQuery = searchParams.get("code") ?? gameRoomId;
   const initialRound = parseInt(searchParams.get("nextRound") ?? "1", 10);
+  // user_game_id passed from lobby so we can delete on exit
+  const userGameId = searchParams.get("ugid") ?? null;
 
   const {
     roomCode,
@@ -46,6 +48,18 @@ export default function GamePage() {
   useEffect(() => {
     initializeMatch(roomCodeQuery, gameRoomId, initialRound);
   }, [initializeMatch, roomCodeQuery, gameRoomId, initialRound]);
+
+  // Navigation Guard: prevent accidental back-button exit
+  useEffect(() => {
+    // Push a duplicate history entry so back() stays on this page
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      // Re-push to trap the user on this page
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Handle Async Navigation
   useEffect(() => {
@@ -75,6 +89,18 @@ export default function GamePage() {
   const onSelectAnswer = (answerId: string) => {
     const userId = me?.id ? String(me.id) : "guest";
     handleSelectAnswer(userId, answerId);
+  };
+
+  // Exit handler: clean up user_game record then navigate
+  const handleExit = async () => {
+    if (userGameId) {
+      try {
+        await fetch(`/api/user-game/leave/${userGameId}`, { method: "DELETE" });
+      } catch {
+        // Best-effort cleanup, ignore errors
+      }
+    }
+    router.push("/dashboard");
   };
 
   // Tampilan ketika Loading Data (awal)
@@ -134,7 +160,7 @@ export default function GamePage() {
         <MainButton
           variant="white"
           className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0"
-          onClick={() => router.push("/dashboard")}
+          onClick={handleExit}
         >
           Keluar
         </MainButton>

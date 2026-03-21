@@ -57,7 +57,7 @@ export const CHARACTER_BG_COLORS: Record<string, string> = {
 export function getCharacterBgColor(characterName: string): string {
   // Gunakan pencarian case-insensitive atau default jika tidak ditemukan
   const found = Object.keys(CHARACTER_BG_COLORS).find(
-    (key) => key.toLowerCase() === characterName.toLowerCase()
+    (key) => key.trim().toLowerCase() === characterName.trim().toLowerCase()
   );
 
   return found ? CHARACTER_BG_COLORS[found] : "#E2E8F0";

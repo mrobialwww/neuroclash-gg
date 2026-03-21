@@ -33,7 +33,7 @@ export const PlayerCard = ({ player, isMe = false, hideHealthBar = false, classN
       {/* Avatar Section */}
       <div
         className={cn(
-          "relative shrink-0 rounded-full border-2 lg:border-3 border-white shadow-lg overflow-hidden flex items-center justify-center transition-all duration-300",
+          "relative shrink-0 rounded-full border-2 border-white shadow-lg overflow-hidden flex items-center justify-center transition-all duration-300",
           "w-12 h-12 md:w-14 md:h-14 lg:w-20 lg:h-20 lg:mb-4"
         )}
         style={{
@@ -81,7 +81,7 @@ export const PlayerCard = ({ player, isMe = false, hideHealthBar = false, classN
         )}
 
         {/* Role Label */}
-        <p className="text-white font-medium text-[10px] md:text-xs lg:text-sm">
+        <p className="text-white font-medium text-sm md:text-md">
           {isMe ? "(Kamu)" : "(Lawan)"}
         </p>
       </div>

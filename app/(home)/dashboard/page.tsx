@@ -1,9 +1,10 @@
 import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
-import { userService } from "@/services/userService";
-import { gameRoomService } from "@/services/gameRoomService";
 import { createClient } from "@/lib/supabase/server";
+import { userService } from "@/services/auth/userService";
+import { gameRoomService } from "@/services/gameRoomService";
+
 
 export default async function DashboardPage() {
   const supabase = await createClient();

@@ -5,12 +5,14 @@ import Image from "next/image";
 import { MainButton } from "./MainButton";
 
 interface ToastFailedProps {
-  code: string;
+  code?: string;
   isOpen: boolean;
   onClose: () => void;
+  title?: string;
+  message?: React.ReactNode;
 }
 
-export const ToastFailed = ({ code, isOpen, onClose }: ToastFailedProps) => {
+export const ToastFailed = ({ code, isOpen, onClose, title, message }: ToastFailedProps) => {
   if (!isOpen) return null;
 
   return (
@@ -20,7 +22,7 @@ export const ToastFailed = ({ code, isOpen, onClose }: ToastFailedProps) => {
 
         {/* Title */}
         <h2 className="text-[#FF0000] text-xl md:text-3xl font-black tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(255,0,0,0.3)]">
-          Gagal Bergabung
+          {title || "Gagal Bergabung"}
         </h2>
 
         {/* Mascot */}
@@ -36,12 +38,18 @@ export const ToastFailed = ({ code, isOpen, onClose }: ToastFailedProps) => {
 
         {/* Message */}
         <div className="text-white text-sm md:text-lg font-medium leading-relaxed">
-          <p>
-            Room dengan kode <span className="text-[#FFC300] font-bold">{code}</span> tidak ditemukan!
-          </p>
-          <p className="block">
-            Pastikan kode arena benar dan masih aktif.
-          </p>
+          {message ? (
+            <div>{message}</div>
+          ) : (
+            <>
+              <p>
+                Room dengan kode <span className="text-[#FFC300] font-bold">{code}</span> tidak ditemukan!
+              </p>
+              <p className="block">
+                Pastikan kode arena benar dan masih aktif.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Action Button */}
