@@ -1,5 +1,13 @@
-// GET /api/quiz/questions/[game_room_id]
-// - melakukan pengambilan soal dari table questions berdasarkan game_room_id dan filter order
+/**
+ * GET /api/quiz/questions/[game_room_id]?question_order=[order]
+ * http://localhost:3000/api/quiz/questions/c733983d-b3ad-416c-b35a-0812eca80588?question_order=10
+ *
+ * Fungsi:
+ *   1. Mendapatkan suatu baris record dari tabel questions berdasarkan game_room_id dan order
+ *      (urutan ke-n dari soal)
+ *   2. Tujuan utamanya ketika suatu quiz/game akan memunculkan soal, maka tiap ronde sejumlah n
+ *      akan memanggil endpoint tersebut
+ */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";

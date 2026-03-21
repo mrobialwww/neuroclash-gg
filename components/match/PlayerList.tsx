@@ -31,6 +31,7 @@ export const PlayerList = ({ players, className }: PlayerListProps) => {
           src="/match/match-badge.webp"
           alt="Daftar Pemain Badge"
           fill
+          sizes="(max-width: 768px) 180px, 200px"
           className="object-contain"
           priority
         />

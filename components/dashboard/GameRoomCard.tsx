@@ -4,43 +4,31 @@ import React, { useState } from "react";
 import { Users, Flag } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { AvatarCircles } from "./AvatarCircles";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
-import { MockUser as User } from "@/types/MockUser";
-import { Difficulty } from "@/types";
+import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
-interface CourseCardProps {
-  title: string;
-  category: string;
-  difficulty?: Difficulty;
-  progress: number;
-  usersRegistered: number;
-  usersTotal: number;
-  questionsCount: number;
-  iconPath: string;
-  players: User[];
+interface GameRoomCardProps {
+  room: GameRoomWithPlayerCount;
   onClick?: () => void;
   className?: string;
 }
 
-export function CourseCard({
-  title,
-  category,
-  difficulty,
-  usersRegistered,
-  usersTotal,
-  questionsCount,
-  iconPath,
-  players,
-  onClick,
-  className,
-}: Omit<CourseCardProps, "progress">) {
+const FALLBACK_IMAGE = "/quiz-category/biologi.webp";
+
+function resolveImage(src: string | null | undefined, error: boolean): string {
+  return error || !src ? FALLBACK_IMAGE : src;
+}
+
+export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
   const [open, setOpen] = useState(false);
-  const progress = Math.min((usersRegistered / usersTotal) * 100, 100);
+  const [imgError, setImgError] = useState(false);
+
+  const progress = Math.min((room.player_count / room.max_player) * 100, 100);
+  const displayTitle = room.title || room.topic_material;
 
   const handleClick = () => {
     setOpen(true);
-    if (onClick) onClick();
+    onClick?.();
   };
 
   return (
@@ -54,12 +42,20 @@ export function CourseCard({
       >
         {/* Center Icon Container */}
         <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white shadow-lg transition-transform duration-300 group-hover:scale-105">
-          <Image src={iconPath} alt={title} fill sizes="128px" className="object-contain" priority />
+          <Image
+            src={resolveImage(room.image_url, imgError)}
+            alt={displayTitle}
+            fill
+            sizes="128px"
+            className="object-contain"
+            priority
+            onError={() => setImgError(true)}
+          />
         </div>
 
         {/* Title */}
         <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-[#555555]">
-          {title}
+          {displayTitle}
         </h3>
 
         {/* Progress Bar */}
@@ -67,42 +63,30 @@ export function CourseCard({
           <div
             className="h-full rounded-full bg-[#256AF4] transition-all duration-500"
             style={{ width: `${progress}%` }}
-          ></div>
+          />
         </div>
 
         {/* Footer Stats Row */}
-        <div className="mt-auto flex w-full items-center justify-between">
-          {/* Avatars on the left */}
-          <div className="shrink-0">
-            <AvatarCircles items={players} avatarSize={44} />
-          </div>
-
-          {/* Counters on the right */}
-          <div className="ml-auto flex items-center gap-3">
+        <div className="mt-auto flex w-full items-center justify-end">
+          <div className="flex items-center gap-3">
             <div className="flex flex-col items-center">
               <Users size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
               <span className="text-sm font-extrabold text-[#555555]">
-                {usersRegistered}/{usersTotal}
+                {room.player_count}/{room.max_player}
               </span>
             </div>
             <div className="flex flex-col items-center">
               <Flag size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
-              <span className="text-sm font-extrabold text-[#555555]">{questionsCount}</span>
+              <span className="text-sm font-extrabold text-[#555555]">
+                {room.total_question}
+              </span>
             </div>
           </div>
         </div>
       </div>
+
       {open && (
-        <OverlayJoinCard
-          title={title}
-          category={category}
-          difficulty={difficulty}
-          usersRegistered={usersRegistered}
-          usersTotal={usersTotal}
-          questionsCount={questionsCount}
-          iconPath={iconPath}
-          onClose={() => setOpen(false)}
-        />
+        <OverlayJoinCard room={room} onClose={() => setOpen(false)} />
       )}
     </>
   );

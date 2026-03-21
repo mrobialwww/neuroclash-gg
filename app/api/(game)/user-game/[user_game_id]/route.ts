@@ -1,5 +1,14 @@
-// GET /api/user-game/[user_game_id]
-// - user ingin menampilkan soal & jawabannya sendiri untuk tiap n soal di riwayat game nya
+/**
+ * GET /api/user-game/[user_game_id]
+ * http://localhost:3000/api/user-game/48647dcc-b3ab-4830-a28a-a171eebb13ce
+ *
+ * Fungsi:
+ *   1. Mendapatkan suatu baris record dari tabel user_game berdasarkan user_game_id dan list dari
+ *      tabel questions dan answer
+ *   2. Tujuan utamanya ketika user ingin melihat detail riwayat suatu game/quiz yg pernah diikuti
+ *   3. Return nya berisi statistik akhir dari sebuah quiz/game, Menampilkan riwayat soal beserta hasil
+ *      jawabannya untuk setiap soal dalam game
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";

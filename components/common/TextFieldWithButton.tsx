@@ -17,7 +17,8 @@ const TextFieldWithButton = React.forwardRef<HTMLInputElement, TextFieldWithButt
     const handleInternalSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const formData = new FormData(e.currentTarget);
-      const value = formData.get(props.name || "") as string;
+      const inputName = props.name || "arenaCode";
+      const value = formData.get(inputName) as string;
 
       if (onSubmit && value?.trim() !== "") {
         onSubmit(value);
@@ -25,17 +26,19 @@ const TextFieldWithButton = React.forwardRef<HTMLInputElement, TextFieldWithButt
     };
 
     return (
-      <div
+      <form
+        onSubmit={handleInternalSubmit}
         className={cn(
           "flex items-center bg-white rounded-xl p-1.5 border border-gray-300 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all shadow-sm",
-          wrapperClassName,
+          wrapperClassName
         )}
       >
         <input
           ref={ref}
+          name="arenaCode"
           className={cn(
             "flex-1 min-w-0 bg-transparent px-4 py-2 outline-none text-gray-700 font-semibold placeholder-gray-300 text-sm md:text-base truncate",
-            className,
+            className
           )}
           {...props}
         />
@@ -47,9 +50,9 @@ const TextFieldWithButton = React.forwardRef<HTMLInputElement, TextFieldWithButt
         >
           {buttonContent}
         </MainButton>
-      </div>
+      </form>
     );
-  },
+  }
 );
 
 TextFieldWithButton.displayName = "TextFieldWithButton";

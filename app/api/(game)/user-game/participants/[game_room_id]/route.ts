@@ -1,5 +1,12 @@
-// GET /api/user-game/participants/[game_room_id]
-// - pembuat game ingin melihat siapa saja partisipan dari game yang dibuatnya dengan menggunakan game_room_id
+/**
+ * GET /api/user-game/participants/[game_room_id]
+ * http://localhost:3000/api/user-game/participants/c733983d-b3ad-416c-b35a-0812eca80588
+ *
+ * Fungsi:
+ *   1. Mendapatkan list user_game berdasarkan game_room_id
+ *   2. Tujuan utamanya ketika creator game/quiz apabila ingin melihat siapa saja partisipan dari
+ *      game/quiz yang dibuatnya
+ */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
