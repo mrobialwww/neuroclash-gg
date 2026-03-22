@@ -91,18 +91,18 @@ export default function CreateQuizDummy() {
         </CardHeader>
         <CardContent>
           <div className="mb-6 space-y-2">
-            <Label>Jumlah Soal</Label>
+            <Label>Jumlah Ronde</Label>
             <Select value={questionCount} onValueChange={setQuestionCount}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih jumlah soal..." />
+                <SelectValue placeholder="Pilih jumlah ronde..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="15">15 Soal</SelectItem>
-                <SelectItem value="20">20 Soal</SelectItem>
-                <SelectItem value="25">25 Soal</SelectItem>
-                <SelectItem value="30">30 Soal</SelectItem>
-                <SelectItem value="35">35 Soal</SelectItem>
-                <SelectItem value="40">40 Soal</SelectItem>
+                <SelectItem value="15">15 Ronde</SelectItem>
+                <SelectItem value="20">20 Ronde</SelectItem>
+                <SelectItem value="25">25 Ronde</SelectItem>
+                <SelectItem value="30">30 Ronde</SelectItem>
+                <SelectItem value="35">35 Ronde</SelectItem>
+                <SelectItem value="40">40 Ronde</SelectItem>
               </SelectContent>
             </Select>
           </div>
