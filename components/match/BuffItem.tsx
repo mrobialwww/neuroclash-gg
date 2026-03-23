@@ -10,13 +10,15 @@ interface BuffItemProps {
     image: string;
     label: string;
   };
+  onClick?: () => void;
 }
 
-export const BuffItem = ({ buff }: BuffItemProps) => {
+export const BuffItem = ({ buff, onClick }: BuffItemProps) => {
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
+      onClick={onClick}
       className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
     >
       {/* Icon Container */}
