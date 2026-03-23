@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { quizService, QuizQuestion } from "@/services/quizService";
 import { gameService } from "@/services/gameService";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
-import { PlayerMatchState } from "@/types/Quiz";
+import { PlayerMatchState } from "@/types/quiz";
 import { createClient } from "@/lib/supabase/client";
 import { userClientService } from "@/services/auth/userClientService";
 
@@ -11,6 +11,21 @@ const supabase = createClient();
 export const SECONDS_PER_ROUND = 30;
 export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
+
+interface BattleRoom {
+  battle_room_id: string;
+  game_room_id: string;
+  round_number: number;
+  player1_id: string;
+  player2_id: string;
+  player3_id: string | null;
+  question_id: string;
+  first_answer_user_id: string | null;
+  first_answer_id: string | null;
+  status: "waiting" | "ongoing" | "finished" | "timeout";
+  created_at: string;
+  updated_at: string;
+}
 
 export interface MatchState {
   roomCode: string;
@@ -26,6 +41,8 @@ export interface MatchState {
   timeLeft: number;
   players: PlayerMatchState[];
   currentUser: { id: string; username: string; avatar: string } | null;
+  currentBattleRoom: BattleRoom | null;
+  opponentIds: string[];
   nextRoundUrl: string | null;
   error: string | null;
 
@@ -40,7 +57,9 @@ export interface MatchState {
   decrementTimer: () => void;
   resetMatch: () => void;
   syncPlayersFromDB: (roomId: string) => Promise<void>;
+  syncBattleRoomFromDB: () => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
+  isOpponent: (playerId: string) => boolean;
 }
 
 export const useMatchStore = create<MatchState>((set, get) => ({
@@ -57,10 +76,19 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   timeLeft: SECONDS_PER_ROUND,
   players: [],
   currentUser: null,
+  currentBattleRoom: null,
+  opponentIds: [],
   nextRoundUrl: null,
   error: null,
 
+  isOpponent: (playerId: string) => {
+    return get().opponentIds.includes(playerId);
+  },
+
   initializeMatch: async (roomCode, gameRoomId, initialRound) => {
+    console.log(
+      `[MatchStore] initializeMatch called: ${gameRoomId}, round: ${initialRound}`
+    );
     set({ isLoadingQuestion: true, error: null });
 
     try {
@@ -74,15 +102,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         return;
       }
 
-      // Check Playing Status (Guard)
-      if (room.room_status === "playing" && initialRound === INITIAL_ROUND) {
-        set({
-          error:
-            "Arena sudah dimulai. Kamu tidak bisa bergabung di tengah pertandingan.",
-          isLoadingQuestion: false,
-        });
-        return;
-      }
+      console.log(`[MatchStore] Room status: ${room.room_status}`);
 
       // 2. Get current user
       const user = await userClientService.getCurrentUserNavbarData();
@@ -102,6 +122,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       // 3. Sync Players & Start Subscriptions
       await get().syncPlayersFromDB(gameRoomId);
       get().setupRealtimeSubscription(gameRoomId);
+
+      // 4. Sync Battle Room for current user
+      await get().syncBattleRoomFromDB();
+
+      // 5. Load Question
       await get().loadQuestion(gameRoomId, initialRound);
     } catch (err) {
       console.error("Failed to initialize match:", err);
@@ -110,36 +135,82 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   },
 
   syncPlayersFromDB: async (roomId) => {
+    console.log(`[MatchStore] syncPlayersFromDB START - roomId: ${roomId}`);
+
     try {
-      // API kembali ke flat (hanya kembalikan record user_games)
-      const res = await fetch(`/api/user-game/participants/${roomId}`);
-      if (!res.ok) return;
-
-      const { data } = await res.json();
-      const rawParticipants: any[] = data || [];
-
-      // Resolve player details (username & character) for each raw ID
-      const playerPromises = rawParticipants.map(async (raw) => {
-        const details = await userClientService.getUserMatchData(raw.user_id);
-        return {
-          id: raw.user_id,
-          name: details?.username || "Pemain",
-          avatar: details?.avatar || "/default/Slime.webp",
-          character: details?.character || "Slime",
-          health: raw.health ?? 100,
-          is_alive: (raw.health ?? 100) > 0,
-          score: 0,
-        } as PlayerMatchState;
+      const res = await fetch(`/api/match/participants/${roomId}`, {
+        cache: "no-store",
       });
 
-      const players = await Promise.all(playerPromises);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[MatchStore] API error response text: ${errorText}`);
+        return;
+      }
 
-      // Sort by Health (Highest first)
-      players.sort((a, b) => b.health - a.health);
+      const { data } = await res.json();
+      const players: PlayerMatchState[] = data || [];
+
+      console.log(`[MatchStore] Synced ${players.length} players`);
 
       set({ players });
     } catch (err) {
-      console.error("Failed to sync players:", err);
+      console.error("[MatchStore] Failed to sync players:", err);
+    }
+  },
+
+  syncBattleRoomFromDB: async () => {
+    const { gameRoomId, currentUser, currentOrder } = get();
+
+    if (!gameRoomId || !currentUser) {
+      console.log(
+        "[MatchStore] Cannot sync battle room - missing gameRoomId or currentUser"
+      );
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[MatchStore] API error: ${errorText}`);
+        set({ currentBattleRoom: null, opponentIds: [] });
+        return;
+      }
+
+      const battleRoom: BattleRoom | null = await res.json();
+
+      if (battleRoom) {
+        const opponentIds = [
+          battleRoom.player1_id,
+          battleRoom.player2_id,
+          battleRoom.player3_id,
+        ].filter((id): id is string => id !== null && id !== currentUser.id);
+
+        console.log(
+          `[MatchStore] Synced battle room with opponents:`,
+          opponentIds
+        );
+
+        set({
+          currentBattleRoom: battleRoom,
+          opponentIds,
+        });
+      } else {
+        console.log(
+          `[MatchStore] No battle room found for round ${currentOrder}`
+        );
+        set({ currentBattleRoom: null, opponentIds: [] });
+      }
+    } catch (err) {
+      console.error("[MatchStore] Failed to sync battle room:", err);
+      set({ currentBattleRoom: null, opponentIds: [] });
     }
   },
 
@@ -151,11 +222,48 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         {
           event: "*",
           schema: "public",
-          table: "user_games",
+          table: "game_players",
           filter: `game_room_id=eq.${roomId}`,
         },
         async () => {
           await get().syncPlayersFromDB(roomId);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "battle_rooms",
+          filter: `game_room_id=eq.${roomId}`,
+        },
+        async () => {
+          // Sync battle room when updated
+          await get().syncBattleRoomFromDB();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "match_rounds",
+          filter: `game_room_id=eq.${roomId}`,
+        },
+        async (payload) => {
+          // Handle round changes
+          if (payload.eventType === "UPDATE") {
+            const { new: newRound, old: oldRound } = payload;
+            if (
+              oldRound.status === "waiting" &&
+              newRound.status === "ongoing"
+            ) {
+              // Round baru dimulai
+              await get().syncBattleRoomFromDB();
+              const state = get();
+              await get().loadQuestion(roomId, newRound.round_number);
+            }
+          }
         }
       )
       .on(
@@ -166,7 +274,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
           table: "user_answers",
         },
         async () => {
-          // Optional: handle answer events in UI
+          // Sync battle room when someone answers
+          await get().syncBattleRoomFromDB();
         }
       )
       .subscribe();
@@ -210,7 +319,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     }
 
     const nextOrder = state.currentOrder + 1;
-    set({ currentOrder: nextOrder });
+    set({
+      currentOrder: nextOrder,
+      selectedAnswerId: null,
+      timeLeft: SECONDS_PER_ROUND,
+    });
+
+    // Sync battle room for the new round
+    get().syncBattleRoomFromDB();
+
+    // Load question for the new round
     get().loadQuestion(state.gameRoomId, nextOrder);
   },
 
@@ -218,21 +336,41 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     const state = get();
     if (state.selectedAnswerId || state.isSubmitting) return;
 
+    // Check if someone already answered in this battle room
+    if (state.currentBattleRoom?.first_answer_user_id) {
+      console.log("[MatchStore] Someone already answered in this battle room");
+      return;
+    }
+
     set({ selectedAnswerId: answerId, isSubmitting: true });
 
     try {
-      await quizService.submitAnswer(userId, answerId);
+      // Submit answer to battle API
+      const res = await fetch("/api/battle/submit-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          answer_id: answerId,
+          battle_room_id: state.currentBattleRoom?.battle_room_id,
+          game_room_id: state.gameRoomId,
+          round_number: state.currentOrder,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to submit answer");
+      } else {
+        const result = await res.json();
+        console.log("[MatchStore] Answer result:", result);
+      }
     } catch (e) {
       console.error("Gagal submit answer:", e);
     }
 
     set({ isSubmitting: false });
 
-    // Transition delay to let user see feedback before advancing
-    const TRANSITION_DELAY_MS = 1500;
-    setTimeout(() => {
-      get().advanceRound();
-    }, TRANSITION_DELAY_MS);
+    // Don't auto-advance - wait for server to handle round progression
   },
 
   decrementTimer: () => {
@@ -270,6 +408,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       timeLeft: SECONDS_PER_ROUND,
       players: [],
       currentUser: null,
+      currentBattleRoom: null,
+      opponentIds: [],
       nextRoundUrl: null,
       error: null,
     });

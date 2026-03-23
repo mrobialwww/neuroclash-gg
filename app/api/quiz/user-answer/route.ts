@@ -5,7 +5,8 @@
  * Body:
  *   {
  *     "user_id": "c307f9dc-482f-4442-b566-97dbc258c0e8",
- *     "answer_id": "0014b57b-8912-40ce-962c-29e5836fcf07"
+ *     "answer_id": "0014b57b-8912-40ce-962c-29e5836fcf07",
+ *     "round_number": 1
  *   }
  *
  * Fungsi:
@@ -18,18 +19,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { user_id, answer_id } = await request.json();
+    const { user_id, answer_id, round_number } = await request.json();
 
-    if (!user_id || !answer_id) {
+    if (!user_id || !answer_id || !round_number) {
       return NextResponse.json(
-        { error: "Missing user_id or answer_id" },
+        { error: "Missing user_id, answer_id, or round_number" },
         { status: 400 }
       );
     }
 
     const result = await matchService.processAnswerSubmission(
       user_id,
-      answer_id
+      answer_id,
+      round_number
     );
 
     return NextResponse.json({ success: true, ...result });

@@ -8,7 +8,10 @@ import { Users, Flag } from "lucide-react";
 import { MainButton } from "@/components/common/MainButton";
 import { Difficulty } from "@/types";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
-import { DIFFICULTY_THEME_MAP, getBannerColor } from "@/lib/constants/overlay-theme";
+import {
+  DIFFICULTY_THEME_MAP,
+  getBannerColor,
+} from "@/lib/constants/overlay-theme";
 import { quizService } from "@/services/quizService";
 import { ToastFailed } from "@/components/common/ToastFailed";
 
@@ -26,11 +29,17 @@ function resolveImage(src: string | null | undefined, error: boolean): string {
 function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
-  const [loadingAction, setLoadingAction] = useState<"join" | "multi" | "solo" | null>(null);
-  const [errorConfig, setErrorConfig] = useState({ isOpen: false, title: "", message: "" });
+  const [loadingAction, setLoadingAction] = useState<
+    "join" | "multi" | "solo" | null
+  >(null);
+  const [errorConfig, setErrorConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
-  const displayTitle = room.title || room.topic_material;
-  const bannerColor = getBannerColor(room.topic_material);
+  const displayTitle: string = room.title ?? "";
+  const bannerColor = getBannerColor(room.category);
   const difficultyTheme =
     DIFFICULTY_THEME_MAP[room.difficulty as Difficulty] ||
     DIFFICULTY_THEME_MAP["sedang"];
@@ -42,14 +51,30 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
 
   const handleCreateMulti = async () => {
     setLoadingAction("multi");
+    console.log(
+      `[OverlayJoinCard] handleCreateMulti START - roomId: ${room.game_room_id}`
+    );
+
     try {
-      const newRoom = await quizService.duplicateRoom(room.game_room_id, 40);
+      const newRoom = await quizService.duplicateRoom(
+        room.game_room_id,
+        40,
+        false
+      );
+      console.log(`[OverlayJoinCard] ✅ Multi room created:`, newRoom);
+
+      if (!newRoom || !newRoom.game_room_id) {
+        throw new Error("Invalid room data returned from API");
+      }
+
       router.push(`/quiz-lobby/${newRoom.game_room_id}`);
-    } catch {
+    } catch (error) {
+      console.error(`[OverlayJoinCard] ❌ handleCreateMulti error:`, error);
       setErrorConfig({
         isOpen: true,
         title: "Gagal Membuat Room",
-        message: "Terjadi kesalahan saat memproses data multiplayer. Silakan coba lagi.",
+        message:
+          "Terjadi kesalahan saat memproses data multiplayer. Silakan coba lagi.",
       });
     } finally {
       if (loadingAction === "multi") setLoadingAction(null);
@@ -58,10 +83,25 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
 
   const handleSolo = async () => {
     setLoadingAction("solo");
+    console.log(
+      `[OverlayJoinCard] handleSolo START - roomId: ${room.game_room_id}`
+    );
+
     try {
-      const newRoom = await quizService.duplicateRoom(room.game_room_id, 1);
+      const newRoom = await quizService.duplicateRoom(
+        room.game_room_id,
+        1,
+        true
+      );
+      console.log(`[OverlayJoinCard] ✅ Solo room created:`, newRoom);
+
+      if (!newRoom || !newRoom.game_room_id) {
+        throw new Error("Invalid room data returned from API");
+      }
+
       router.push(`/quiz-lobby/${newRoom.game_room_id}`);
-    } catch {
+    } catch (error) {
+      console.error(`[OverlayJoinCard] ❌ handleSolo error:`, error);
       setErrorConfig({
         isOpen: true,
         title: "Gagal Mode Solo",
@@ -74,31 +114,44 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
 
   return (
     <>
-      <div className="font-(family-name:--font-baloo-2) relative w-full max-w-[400px] md:max-w-[500px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in duration-300">
-
+      <div className="font-(family-name:--font-baloo-2) animate-in fade-in zoom-in relative w-full max-w-[400px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] duration-300 md:max-w-[500px]">
         {/* Top Banner Section */}
-        <div className={`relative flex h-[200px] md:h-[240px] items-center justify-center transition-all ${bannerColor}`}>
-          <div className="absolute right-3 top-3 sm:right-4 sm:top-4 flex items-center gap-2 z-20">
-            <button className="flex items-center gap-2 rounded-md bg-black/50 px-3 py-1.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-black/70">
-              <Image src="/icons/share.svg" alt="Share" width={14} height={14} className="sm:w-4 sm:h-4" />
+        <div
+          className={`relative flex h-[200px] items-center justify-center transition-all md:h-[240px] ${bannerColor}`}
+        >
+          <div className="absolute right-3 top-3 z-20 flex items-center gap-2 sm:right-4 sm:top-4">
+            <button className="flex items-center gap-2 rounded-md bg-black/50 px-3 py-1.5 text-[10px] font-bold text-white backdrop-blur-md transition-all hover:bg-black/70 sm:text-xs">
+              <Image
+                src="/icons/share.svg"
+                alt="Share"
+                width={14}
+                height={14}
+                className="sm:h-4 sm:w-4"
+              />
               Bagikan
             </button>
             <button
               onClick={onClose}
-              className="flex h-7 w-7 md:h-9 md:w-9 items-center justify-center rounded-full bg-black/50 backdrop-blur-md transition-all hover:bg-black/70"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/50 backdrop-blur-md transition-all hover:bg-black/70 md:h-9 md:w-9"
             >
-              <Image src="/icons/cancel.svg" alt="Close" width={12} height={12} className="md:w-[14px] md:h-[14px]" />
+              <Image
+                src="/icons/cancel.svg"
+                alt="Close"
+                width={12}
+                height={12}
+                className="md:h-[14px] md:w-[14px]"
+              />
             </button>
           </div>
 
           {/* Icon Besar */}
-          <div className="relative flex h-40 w-40 md:h-48 md:w-48 items-center justify-center">
+          <div className="relative flex h-40 w-40 items-center justify-center md:h-48 md:w-48">
             <Image
               src={resolveImage(room.image_url, imgError)}
               alt={displayTitle}
               width={200}
               height={200}
-              className="w-[140px] md:w-[170px] object-contain"
+              className="w-[140px] object-contain md:w-[170px]"
               priority
               onError={() => setImgError(true)}
             />
@@ -106,13 +159,13 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
         </div>
 
         {/* Content Section */}
-        <div className="p-6 sm:p-8 space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#555555] leading-tight">
+        <div className="space-y-5 p-6 sm:p-8">
+          <h2 className="text-2xl font-extrabold leading-tight text-[#555555] sm:text-3xl">
             {displayTitle}
           </h2>
 
           {/* Stats Row */}
-          <div className="flex flex-wrap items-center justify-start gap-4 sm:gap-6 pb-4 border-b border-[#D9D9D9]">
+          <div className="flex flex-wrap items-center justify-start gap-4 border-b border-[#D9D9D9] pb-4 sm:gap-6">
             <div className="flex items-center gap-2 text-[#555555]">
               <Users size={22} className="text-[#256AF4]" />
               <span className="text-base font-bold">
@@ -128,7 +181,9 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
           </div>
 
           {/* Difficulty Badge */}
-          <div className={`inline-block px-4 py-1.5 rounded-lg font-bold text-sm capitalize ${difficultyTheme.badgeBg} ${difficultyTheme.badgeText}`}>
+          <div
+            className={`inline-block rounded-lg px-4 py-1.5 text-sm font-bold capitalize ${difficultyTheme.badgeBg} ${difficultyTheme.badgeText}`}
+          >
             Tingkat Kesulitan {room.difficulty}
           </div>
 
@@ -139,7 +194,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
               <MainButton
                 variant="green"
                 hasShadow
-                className="w-full text-sm md:text-lg font-bold py-2 sm:py-4 rounded-xl"
+                className="w-full rounded-xl py-2 text-sm font-bold sm:py-4 md:text-lg"
                 onClick={handleJoin}
                 disabled={loadingAction !== null}
               >
@@ -150,7 +205,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
               <MainButton
                 variant="blue"
                 hasShadow
-                className="w-full text-sm md:text-lg font-bold py-2 sm:py-4 rounded-xl"
+                className="w-full rounded-xl py-2 text-sm font-bold sm:py-4 md:text-lg"
                 onClick={handleCreateMulti}
                 disabled={loadingAction !== null}
               >
@@ -160,7 +215,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
               {/* Tombol 3: Latihan Mandiri */}
               <MainButton
                 variant="white"
-                className="w-full text-sm md:text-lg font-bold py-2 sm:py-4 rounded-xl border-2 border-[#3D79F3] cursor-pointer"
+                className="w-full cursor-pointer rounded-xl border-2 border-[#3D79F3] py-2 text-sm font-bold sm:py-4 md:text-lg"
                 onClick={handleSolo}
                 disabled={loadingAction !== null}
               >
@@ -185,15 +240,18 @@ export function OverlayJoinCard(props: OverlayJoinCardProps) {
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-9999 flex items-center justify-center p-5 sm:p-8">
+    <div className="z-9999 fixed inset-0 flex items-center justify-center p-5 sm:p-8">
       {/* Overlay Background */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+        className="animate-in fade-in absolute inset-0 bg-black/60 backdrop-blur-sm duration-300"
         onClick={props.onClose}
       />
 
       {/* Card Wrapper */}
-      <div className="z-10 w-full flex justify-center" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="z-10 flex w-full justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <OverlayCardContent {...props} />
       </div>
     </div>,

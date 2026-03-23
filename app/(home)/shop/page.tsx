@@ -1,6 +1,7 @@
+import ShopClient from "@/components/shop/ShopCLient";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import ShopClient from "@/components/shop/ShopClient";
+
 
 export default async function ShopPage() {
   const supabase = await createClient();

@@ -9,7 +9,11 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 
-import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
+import {
+  useMatchStore,
+  SECONDS_PER_ROUND,
+  STARBOX_INTERVAL,
+} from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
 
 export default function GamePage() {
@@ -34,11 +38,14 @@ export default function GamePage() {
     timeLeft,
     players,
     currentUser,
+    currentBattleRoom,
+    opponentIds,
     nextRoundUrl,
     error,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
+    isOpponent,
   } = useMatchStore();
 
   const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
@@ -91,19 +98,30 @@ export default function GamePage() {
     const meData = players.find((p) => p.id === currentUser?.id);
     const others = players.filter((p) => p.id !== currentUser?.id);
 
-    // Identitas Lawan: Ambil yang HP-nya tertinggi dari sisa pemain (rival utama)
-    const enemyData = others.length > 0 ? others[0] : null;
+    // Gunakan opponentIds dari battle room untuk menentukan lawan
+    // Hanya player yang ada di battle room yang sama yang menjadi lawan
+    const battleOpponents = opponentIds
+      .map((oppId) => players.find((p) => p.id === oppId))
+      .filter((p): p is (typeof players)[0] => p !== undefined);
+
+    console.log(
+      `[GamePage] Current battle room opponents:`,
+      battleOpponents.map((p) => ({ id: p.id.substring(0, 8), name: p.name }))
+    );
+
+    // Identitas Lawan: Ambil lawan pertama dari battle room
+    const enemyData = battleOpponents.length > 0 ? battleOpponents[0] : null;
 
     const mapToCard = (p: any) =>
       p
         ? {
-          id: p.id,
-          name: p.name,
-          character: p.character || "Slime",
-          image: p.avatar,
-          health: p.health,
-          maxHealth: 100,
-        }
+            id: p.id,
+            name: p.name,
+            character: p.character || "Slime",
+            image: p.avatar,
+            health: p.health,
+            maxHealth: 100,
+          }
         : null;
 
     return {
@@ -117,9 +135,10 @@ export default function GamePage() {
         health: p.health,
         maxHealth: 100,
         isMe: p.id === currentUser?.id,
+        isOpponent: opponentIds.includes(p.id),
       })),
     };
-  }, [players, currentUser]);
+  }, [players, currentUser, opponentIds]);
 
   // 4. Answer Action Dispatcher
   const onSelectAnswer = (answerId: string) => {
@@ -138,9 +157,9 @@ export default function GamePage() {
   // Tampilan ketika Loading Data
   if (isLoadingQuestion && !currentQuestion && !error) {
     return (
-      <main className="min-h-screen w-full bg-[#0B0D14] flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 border-4 border-[#3D79F3] border-t-transparent rounded-full animate-spin" />
-        <p className="text-white text-lg font-semibold animate-pulse">
+      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
+        <p className="animate-pulse text-lg font-semibold text-white">
           Memuat Arena...
         </p>
       </main>
@@ -150,18 +169,19 @@ export default function GamePage() {
   // Tampilan Layar Kemenangan / Selesai
   if (isFinished) {
     return (
-      <main className="min-h-screen w-full bg-[#0B0D14] flex flex-col items-center justify-center space-y-6 px-4">
+      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
         <p className="text-5xl">🏆</p>
-        <h1 className="text-white text-3xl font-extrabold text-center">
+        <h1 className="text-center text-3xl font-extrabold text-white">
           Quiz Selesai!
         </h1>
-        <p className="text-white/60 text-lg text-center">
-          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.
+        <p className="text-center text-lg text-white/60">
+          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1}{" "}
+          soal.
         </p>
         <MainButton
           variant="green"
           hasShadow
-          className="px-10 py-4 text-lg font-bold rounded-xl"
+          className="rounded-xl px-10 py-4 text-lg font-bold"
           onClick={() => router.push("/dashboard")}
         >
           Kembali ke Dashboard
@@ -171,14 +191,14 @@ export default function GamePage() {
   }
 
   return (
-    <main className="min-h-screen w-full px-4 sm:px-8 md:px-12 py-6 gap-4 flex flex-col items-center overflow-x-hidden">
+    <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
       {/* Header Info */}
-      <header className="w-full max-w-[1400px] flex items-center justify-between mb-2">
-        <div className="bg-[#A6A6A6]/40 backdrop-blur-xl px-2 md:px-4 lg:px-6 py-1.5 rounded-lg font-semibold text-white text-sm md:text-base">
+      <header className="mb-2 flex w-full max-w-[1400px] items-center justify-between">
+        <div className="rounded-lg bg-[#A6A6A6]/40 px-2 py-1.5 text-sm font-semibold text-white backdrop-blur-xl md:px-4 md:text-base lg:px-6">
           {roomCode}
         </div>
 
-        <div className="flex-1 block px-2 md:px-4 lg:px-10">
+        <div className="block flex-1 px-2 md:px-4 lg:px-10">
           <MatchProgressBar
             key={`round-${currentOrder}`}
             duration={SECONDS_PER_ROUND}
@@ -189,7 +209,7 @@ export default function GamePage() {
 
         <MainButton
           variant="white"
-          className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0"
+          className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6"
           onClick={handleExit}
         >
           Keluar
@@ -197,29 +217,33 @@ export default function GamePage() {
       </header>
 
       {/* Round indicator */}
-      <p className="text-white/50 text-sm font-medium">
+      <p className="text-sm font-medium text-white/50">
         Soal {currentOrder}
         {totalQuestions ? ` / ${totalQuestions}` : ""}
       </p>
 
       {/* Arena Wrapper */}
-      <div className="flex-1 w-full flex justify-center items-start">
-        <div className="w-full max-w-[1400px] grid grid-cols-2 lg:grid-cols-[210px_minmax(600px,1fr)_210px] gap-x-4 gap-y-6 md:gap-6 items-stretch">
+      <div className="flex w-full flex-1 items-start justify-center">
+        <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
           {/* My Player Card / Kiri */}
-          <div className="order-1 lg:order-1 flex flex-col justify-start lg:justify-between self-stretch">
-            <div className="hidden lg:block max-h-[320px] overflow-hidden">
+          <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
+            <div className="hidden max-h-[320px] overflow-hidden lg:block">
               <BuffList className="h-full" />
             </div>
             <div className="w-full max-w-[320px] lg:max-w-none">
               {meCard && (
-                <PlayerCard player={meCard as any} isMe={true} className="w-full" />
+                <PlayerCard
+                  player={meCard as any}
+                  isMe={true}
+                  className="w-full"
+                />
               )}
             </div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
-          <div className="order-2 lg:order-3 flex flex-col justify-start lg:justify-between items-end lg:items-stretch self-stretch">
-            <div className="hidden lg:block max-h-[320px] overflow-hidden">
+          <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
+            <div className="hidden max-h-[320px] overflow-hidden lg:block">
               <PlayerList players={sortedForList as any} className="h-full" />
             </div>
             <div className="w-full max-w-[320px] lg:max-w-none">
@@ -235,27 +259,27 @@ export default function GamePage() {
           </div>
 
           {/* Kolom Tengah Utama — Area Pertanyaan */}
-          <div className="col-span-2 lg:col-span-1 order-3 lg:order-2 flex flex-col mt-2 lg:mt-0 isolate">
+          <div className="isolate order-3 col-span-2 mt-2 flex flex-col lg:order-2 lg:col-span-1 lg:mt-0">
             {currentQuestion && (
               <QuestionCard
                 question={currentQuestion.question_text}
                 options={currentQuestion.options}
                 onSelect={onSelectAnswer}
                 selectedId={selectedAnswerId}
-                className="w-full h-auto"
+                className="h-auto w-full"
               />
             )}
           </div>
 
           {/* Mobile Layout */}
-          <div className="order-4 lg:hidden col-span-1">
-            <BuffList className="w-full h-[200px] sm:h-[240px]" />
+          <div className="order-4 col-span-1 lg:hidden">
+            <BuffList className="h-[200px] w-full sm:h-[240px]" />
           </div>
 
-          <div className="order-5 lg:hidden col-span-1">
+          <div className="order-5 col-span-1 lg:hidden">
             <PlayerList
               players={sortedForList as any}
-              className="w-full h-[200px] sm:h-[240px]"
+              className="h-[200px] w-full sm:h-[240px]"
             />
           </div>
         </div>

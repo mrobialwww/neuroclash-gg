@@ -11,7 +11,7 @@
  *   }
  *
  * Fungsi:
- *   1. Mengupdate tabel user_games (status, trophy_won, coins_earned, updated_at) dan tabel users
+ *   1. Mengupdate tabel user_games (trophy_won, coins_earned, updated_at) dan tabel users
  *      (total_trophy, coin, total_match, placement_ration, total_rank_1, updated_at) secara sekaligus
  *      menggunakan transaction
  *   2. Tujuan utamanya ketika user telah menyelesaikan game/quiz dan mendapatkan statistik nya di
@@ -21,7 +21,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ game_room_id: string }> }) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ game_room_id: string }> }
+) {
   try {
     const supabase = await createClient();
 
@@ -48,6 +51,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ga
     });
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

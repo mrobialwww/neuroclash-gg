@@ -11,6 +11,7 @@ interface Player extends User {
   health: number;
   maxHealth: number;
   isMe?: boolean;
+  isOpponent?: boolean;
 }
 
 interface PlayerItemProps {
@@ -24,21 +25,22 @@ export const PlayerItem = ({ player, className }: PlayerItemProps) => {
   return (
     <div
       className={cn(
-        "relative flex items-center justify-between gap-3 transition-all duration-300 w-full rounded-r-full rounded-l-none",
+        "relative flex w-full items-center justify-between gap-3 rounded-l-none rounded-r-full transition-all duration-300",
         player.isMe
           ? "bg-linear-to-r from-[#E6AA00]/0 to-[#E6AA00] px-1"
           : "bg-transparent",
+        player.isOpponent && "border-2 border-yellow-500",
         className
       )}
     >
       {/* Left Side: Name and Health Bar */}
-      <div className="flex-1 min-w-0 space-y-1 flex flex-col items-end pl-2">
-        <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight w-full text-right">
+      <div className="flex min-w-0 flex-1 flex-col items-end space-y-1 pl-2">
+        <h3 className="w-full truncate text-right text-xs font-semibold leading-tight text-white md:text-sm">
           {player.name} {player.isMe && "(Kamu)"}
         </h3>
 
         {/* Health Bar Container */}
-        <div className="relative h-2 w-full bg-black/40 rounded-full border border-white/5 overflow-hidden">
+        <div className="relative h-2 w-full overflow-hidden rounded-full border border-white/5 bg-black/40">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${healthPercentage}%` }}
@@ -48,8 +50,8 @@ export const PlayerItem = ({ player, className }: PlayerItemProps) => {
         </div>
 
         {/* Health Value with Icon */}
-        <div className="flex items-center gap-1 justify-end w-full">
-          <div className="relative w-3.5 h-3.5">
+        <div className="flex w-full items-center justify-end gap-1">
+          <div className="relative h-3.5 w-3.5">
             <Image
               src="/icons/health.svg"
               alt="HP"
@@ -58,7 +60,7 @@ export const PlayerItem = ({ player, className }: PlayerItemProps) => {
               className="object-contain"
             />
           </div>
-          <span className="text-white/90 font-regular text-xs md:text-sm">
+          <span className="font-regular text-xs text-white/90 md:text-sm">
             {player.health}
           </span>
         </div>
@@ -67,14 +69,14 @@ export const PlayerItem = ({ player, className }: PlayerItemProps) => {
       {/* Right Side: Avatar */}
       <div
         className={cn(
-          "relative shrink-0 rounded-full border-2 border-white flex items-center justify-center overflow-hidden transition-all duration-300",
-          "w-[40px] h-[40px] md:w-[48px] md:h-[48px]",
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white transition-all duration-300",
+          "h-[40px] w-[40px] md:h-[48px] md:w-[48px]"
         )}
         style={{
           backgroundColor: getCharacterBgColor(player.character),
         }}
       >
-        <div className="relative w-[85%] h-[85%] flex items-center justify-center mt-1">
+        <div className="relative mt-1 flex h-[85%] w-[85%] items-center justify-center">
           <Image
             src={player.image}
             alt={player.character}

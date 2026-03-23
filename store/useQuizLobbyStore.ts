@@ -39,6 +39,8 @@ export interface QuizLobbyState {
 
 let pendingJoinPromise: Promise<void> | null = null;
 let lobbyChannel: RealtimeChannel | null = null;
+let isSubscribed = false;
+let currentRoomId: string | null = null;
 
 export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   roomData: null,
@@ -53,7 +55,8 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   isMigrating: false,
 
   setError: (msg: string) => set({ error: msg, isLoading: false }),
-  setParticipants: (participants: LobbyPlayer[]) => set({ participants, participantsCount: participants.length }),
+  setParticipants: (participants: LobbyPlayer[]) =>
+    set({ participants, participantsCount: participants.length }),
 
   loadLobbyData: async (roomId: string) => {
     set({ isLoading: true, error: null });
@@ -176,12 +179,56 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
     // Implement countdown if host starts the match
   },
 
-  setParticipants: (participants: LobbyPlayer[]) =>
-    set({ participants, participantsCount: participants.length }),
-
   subscribeToPresence: (roomId: string) => {
-    const { currentUser, isHost, participants, setParticipants } = get();
-    if (!currentUser || lobbyChannel) return;
+    console.log(
+      `[LobbyStore] subscribeToPresence START - roomId: ${roomId}, currentRoomId: ${currentRoomId}`
+    );
+
+    const { currentUser, participants } = get();
+    if (!currentUser) {
+      console.log("[LobbyStore] ❌ No current user, skipping subscription");
+      return;
+    }
+
+    // Cek apakah room berubah, jika berbeda unsubscribe dulu
+    if (currentRoomId && currentRoomId !== roomId) {
+      console.log(
+        `[LobbyStore] 🔄 Room changed from ${currentRoomId} to ${roomId}`
+      );
+      if (lobbyChannel && isSubscribed) {
+        console.log(
+          `[LobbyStore] Unsubscribing from old channel ${currentRoomId}`
+        );
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(lobbyChannel);
+        } catch (err) {
+          console.error("[LobbyStore] Error removing old channel:", err);
+        }
+      }
+      lobbyChannel = null;
+      isSubscribed = false;
+    }
+
+    // Jangan subscribe ulang jika sudah subscribe ke room yang sama
+    if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
+      console.log(
+        `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
+      );
+      return;
+    }
+
+    // Set current room ID sebelum subscribe
+    currentRoomId = roomId;
+    console.log(`[LobbyStore] 📍 Setting currentRoomId to: ${roomId}`);
+
+    // Jangan subscribe ulang jika sudah subscribe ke room yang sama
+    if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
+      console.log(
+        `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
+      );
+      return;
+    }
 
     const supabase = createClient();
     const channel = supabase.channel(`lobby:${roomId}`, {
@@ -189,11 +236,15 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
     });
 
     const myPlayerPayload = participants.find((p) => p.id === currentUser.id);
+    console.log("[LobbyStore] My player payload:", myPlayerPayload);
 
+    // Presence sync - update player list saat player join/leave
     channel
       .on("presence", { event: "sync" }, async () => {
+        console.log("[LobbyStore] Presence sync event fired");
         const state = channel.presenceState();
         const activePresenceIds = Object.keys(state);
+        console.log("[LobbyStore] Active presence IDs:", activePresenceIds);
 
         // 1. Update UI List based on Online Status
         const activeUsersList = Object.values(state).flatMap((s) => s) as any[];
@@ -201,18 +252,21 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
         for (const p of activeUsersList) {
           if (p?.id) uniquePresencePlayers.set(p.id, p);
         }
+        const { setParticipants } = get();
         setParticipants(Array.from(uniquePresencePlayers.values()));
 
         // 2. Automated Host Migration Logic
         const { roomData } = get();
         if (!roomData) return;
 
-        const isCurrentHostOnline = activePresenceIds.includes(roomData.user_id);
+        const isCurrentHostOnline = activePresenceIds.includes(
+          roomData.user_id
+        );
 
         if (!isCurrentHostOnline && !get().isMigrating) {
           // Elect new host: The most senior (earliest joinedAt) active participant
           const onlineParticipants = get().participants.filter((p) =>
-            activePresenceIds.includes(p.id)
+            activePresenceIds.includes(String(p.id))
           );
 
           if (onlineParticipants.length === 0) return;
@@ -243,25 +297,111 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           }
         }
       })
-      .on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "game_rooms",
-        filter: `game_room_id=eq.${roomId}`,
-      }, (payload: any) => {
-        // Real-time UI Sync for Host Label
-        const { roomData } = get();
-        if (roomData && payload.new.user_id) {
-          const newHostId = payload.new.user_id;
-          set({
-            roomData: { ...roomData, user_id: newHostId },
-            isHost: newHostId === get().currentUser?.id,
-          });
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "game_rooms",
+          filter: `game_room_id=eq.${roomId}`,
+        },
+        (payload: any) => {
+          console.log(`[LobbyStore] 📡 postgres_changes event received!`);
+          console.log(`[LobbyStore] Event: UPDATE`);
+          console.log(`[LobbyStore] Table: game_rooms`);
+          console.log(`[LobbyStore] Filter: game_room_id=eq.${roomId}`);
+          console.log(
+            `[LobbyStore] Payload:`,
+            JSON.stringify(payload, null, 2)
+          );
+
+          // Real-time UI Sync for Host Label
+          const { roomData, currentUser } = get();
+          if (roomData && payload.new.user_id) {
+            const newHostId = payload.new.user_id;
+            console.log(
+              `[LobbyStore] 🎭 Host changed: ${payload.old.user_id} → ${newHostId}`
+            );
+            set({
+              roomData: { ...roomData, user_id: newHostId },
+              isHost: newHostId === get().currentUser?.id,
+            });
+          }
+
+          // Redirect semua player ke halaman game saat room_status berubah jadi 'playing'
+          if (
+            roomData &&
+            payload.new.room_status === "playing" &&
+            payload.old.room_status !== "playing"
+          ) {
+            console.log(
+              `[LobbyStore] ==================================================`
+            );
+            console.log(
+              `[LobbyStore] 🎮 MATCH STARTED! Redirecting all players to game...`
+            );
+            console.log(`[LobbyStore] Current user ID: ${currentUser?.id}`);
+            console.log(`[LobbyStore] Is current user host? ${get().isHost}`);
+            console.log(`[LobbyStore] Room data:`, roomData);
+            console.log(
+              `[LobbyStore] Room status changed:`,
+              payload.old.room_status,
+              "→",
+              payload.new.room_status
+            );
+            console.log(
+              `[LobbyStore] Game URL: /game/${roomId}?code=${roomData.room_code}`
+            );
+            console.log(
+              `[LobbyStore] ==================================================`
+            );
+
+            if (typeof window !== "undefined" && currentUser?.id) {
+              const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
+              console.log(`[LobbyStore] 🚀 Redirecting to: ${gameUrl}`);
+              window.location.href = gameUrl;
+            } else {
+              console.error(
+                `[LobbyStore] ❌ Cannot redirect: window or currentUser is undefined`
+              );
+            }
+          }
         }
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED" && myPlayerPayload) {
-          await channel.track(myPlayerPayload);
+      )
+      .subscribe((status) => {
+        console.log("[Lobby] Channel subscription status:", status);
+
+        if (status === "SUBSCRIBED") {
+          isSubscribed = true;
+          console.log("[Lobby] ✅ Channel subscribed successfully");
+
+          // Track my presence setelah channel siap
+          if (myPlayerPayload) {
+            channel
+              .track(myPlayerPayload)
+              .then(() => {
+                console.log("[Lobby] ✅ Presence tracked successfully");
+              })
+              .catch((err) => {
+                console.error("[Lobby] ❌ Error tracking presence:", err);
+              });
+          }
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("[Lobby] ❌ Channel error or timeout:", status);
+          isSubscribed = false;
+          lobbyChannel = null;
+
+          // Retry subscription after delay
+          setTimeout(() => {
+            console.log("[Lobby] 🔁 Retrying subscription...");
+            get().subscribeToPresence(roomId);
+          }, 3000);
+        } else if (status === "CLOSED") {
+          console.warn("[Lobby] ⚠️ Channel closed");
+          isSubscribed = false;
+          lobbyChannel = null;
+        } else {
+          console.log("[Lobby] Channel status:", status);
         }
       });
 

@@ -15,7 +15,7 @@
  *   {
  *     "user_id": "c307f9dc-482f-4442-b566-97dbc258c0e8",
  *     "room_code": "1AGT2025",
- *     "topic_material": "sejarah",
+ *     "category": "sejarah",
  *     "title": "miskin",
  *     "max_player": "13",
  *     "total_question": "13",
@@ -46,75 +46,199 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase.from("game_rooms").select("*").eq("room_status", "open").eq("room_visibility", "public");
+    const { data, error } = await supabase
+      .from("game_rooms")
+      .select("*")
+      .eq("room_status", "open")
+      .eq("room_visibility", "public");
 
     if (error) {
-      console.error("Supabase Error:", error);
+      console.error("[API] Error fetching game_rooms:", error);
       throw error;
     }
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("[API] GET /api/game-rooms Error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
+  console.log("=".repeat(60));
+  console.log("[API] POST /api/game-rooms START");
+  console.log("=".repeat(60));
+
   try {
     const supabase = await createClient();
 
-    const { questions: listQuestions, ...restOfBody } = await request.json();
+    console.log("[API] Step 0: Reading request body");
+    let requestBody;
 
-    //jika FE tidak memberikan field category(karena dari file pdf), maka isi otomatis dari "theme_materials"
-    if (!restOfBody.topic_material) {
-      restOfBody.topic_material = listQuestions.theme_materials;
+    try {
+      requestBody = await request.json();
+      console.log("[API] Request body keys:", Object.keys(requestBody));
+      console.log("[API] Request body (partial):", {
+        user_id: requestBody.user_id,
+        room_code: requestBody.room_code,
+        category: requestBody.category,
+        max_player: requestBody.max_player,
+      });
+    } catch (jsonError) {
+      console.error("[API] Error reading request.json():", jsonError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await supabase.from("game_rooms").insert(restOfBody).select();
+    const { questions: listQuestions, ...restOfBody } = requestBody;
 
-    const gameRoomId = data?.[0]?.game_room_id;
+    console.log("[API] Step 1: Processing category");
+    if (!restOfBody.category) {
+      restOfBody.category = listQuestions.theme_materials;
+      console.log("[API] Set category from listQuestions.theme_materials");
+    }
 
-    const questions = listQuestions.list_questions.map(async (question: any) => {
-      const questionData = {
-        game_room_id: gameRoomId,
-        question_order: question.order,
-        question_text: question.question,
-      };
-      const { data: questionRes, error: questionErr } = await supabase.from("questions").insert(questionData).select();
-
-      if (questionErr) {
-        console.error("Gagal insert question:", questionErr);
-        return;
-      }
-
-      const newQuestionId = questionRes?.[0]?.question_id;
-
-      const answers = question.options.map(async (answer: any) => {
-        const answerData = {
-          question_id: newQuestionId,
-          key: answer.key,
-          answer_text: answer.text,
-          is_correct: answer.is_correct,
-        };
-        const { data: answerRes, error: answerErr } = await supabase.from("answers").insert(answerData).select();
-        if (answerErr) {
-          console.error("Gagal insert answer:", answerErr);
-        }
-      });
-      await Promise.all(answers);
+    console.log("[API] Step 2: Inserting to game_rooms");
+    console.log("[API] Room data (partial):", {
+      room_code: restOfBody.room_code,
+      category: restOfBody.category,
+      max_player: restOfBody.max_player,
+      room_status: restOfBody.room_status,
+      room_visibility: restOfBody.room_visibility,
     });
+
+    const { data: roomsData, error: roomError } = await supabase
+      .from("game_rooms")
+      .insert(restOfBody)
+      .select();
+
+    if (roomError) {
+      console.error("[API] Error inserting game_rooms:", roomError);
+      console.error("[API] Error message:", roomError.message);
+      console.error("[API] Error code:", (roomError as any)?.code);
+      console.error("[API] Error details:", (roomError as any)?.details);
+      throw roomError;
+    }
+
+    console.log("[API] Room created successfully!");
+    console.log("[API] Inserted room data:", roomsData);
+
+    const gameRoomId = roomsData?.[0]?.game_room_id;
+
+    if (!gameRoomId) {
+      console.error("[API] Failed to get game_room_id from inserted data");
+      throw new Error("Failed to get game_room_id");
+    }
+
+    console.log(`[API] game_room_id: ${gameRoomId}`);
+
+    console.log("[API] Step 3: Inserting questions");
+    const questions = listQuestions.list_questions.map(
+      async (question: any, index: number) => {
+        const questionData = {
+          game_room_id: gameRoomId,
+          question_order: question.order,
+          question_text: question.question,
+        };
+
+        const { data: questionRes, error: questionErr } = await supabase
+          .from("questions")
+          .insert(questionData)
+          .select();
+
+        if (questionErr) {
+          console.error(
+            `[API] Error inserting question ${index + 1}:`,
+            questionErr
+          );
+          return;
+        }
+
+        const newQuestionId = questionRes?.[0]?.question_id;
+
+        if (!newQuestionId) {
+          console.error(
+            `[API] Failed to get question_id for question ${index + 1}`
+          );
+          return;
+        }
+
+        console.log(
+          `[API] Question ${
+            index + 1
+          } inserted successfully, question_id: ${newQuestionId}`
+        );
+
+        const answers = question.options.map(
+          async (answer: any, ansIndex: number) => {
+            const answerData = {
+              question_id: newQuestionId,
+              key: answer.key,
+              answer_text: answer.text,
+              is_correct: answer.is_correct,
+            };
+
+            const { data: answerRes, error: answerErr } = await supabase
+              .from("answers")
+              .insert(answerData)
+              .select();
+
+            if (answerErr) {
+              console.error(
+                `[API] Error inserting answer ${ansIndex + 1} for question ${
+                  index + 1
+                }:`,
+                answerErr
+              );
+            } else {
+              console.log(
+                `[API] Answer ${ansIndex + 1} for question ${
+                  index + 1
+                } inserted successfully`
+              );
+            }
+          }
+        );
+
+        await Promise.all(answers);
+      }
+    );
+
     await Promise.all(questions);
 
-    if (error) {
-      console.error("Supabase Error:", error);
-      throw error;
-    }
+    console.log("[API] POST /api/game-rooms SUCCESS");
+    console.log("=".repeat(60));
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: roomsData });
   } catch (error) {
-    console.error("API Error:", error);
-    console.log("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("[API] FINAL ERROR in POST /api/game-rooms:");
+    console.error("[API] Error:", error);
+    console.error(
+      "[API] Error message:",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.error(
+      "[API] Error stack:",
+      error instanceof Error ? error.stack : "No stack"
+    );
+    console.error(
+      "[API] Error name:",
+      error instanceof Error ? error.name : "Unknown"
+    );
+    console.error("[API] Error code:", (error as any)?.code || "No code");
+    console.log("=".repeat(60));
+
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+        details: error instanceof Error ? error.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
