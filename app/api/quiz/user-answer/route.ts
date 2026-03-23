@@ -5,7 +5,8 @@
  * Body:
  *   {
  *     "user_id": "c307f9dc-482f-4442-b566-97dbc258c0e8",
- *     "answer_id": "0014b57b-8912-40ce-962c-29e5836fcf07"
+ *     "answer_id": "0014b57b-8912-40ce-962c-29e5836fcf07",
+ *     "round_number": 1
  *   }
  *
  * Fungsi:
@@ -13,25 +14,34 @@
  *   2. Tujuan utamanya ketika user tiap selesai menjawab soal di suatu ronde dalam quiz/game
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { matchService } from "@/services/matchService";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { user_id, answer_id, round_number } = await request.json();
 
-    const body = await request.json();
-    console.log(body.user_id);
-    const { data, error } = await supabase.from("user_answers").insert(body).select();
-
-    if (error) {
-      console.error("Supabase Error:", error);
-      throw error;
+    if (!user_id || !answer_id || !round_number) {
+      return NextResponse.json(
+        { error: "Missing user_id, answer_id, or round_number" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ data });
+    const result = await matchService.processAnswerSubmission(
+      user_id,
+      answer_id,
+      round_number
+    );
+
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("API Error [POST /api/quiz/user-answer]:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      },
+      { status: 500 }
+    );
   }
 }

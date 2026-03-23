@@ -1,19 +1,26 @@
-import { rankRepository } from "@/repository/rankRepository";
-import { userRepository } from "@/repository/userRepository";
-
 export const userService = {
   async getNavbarData(userId: string) {
     if (!userId) return null;
 
     try {
-      // Cek di Repository
-      const data = await userRepository.getUserWithActiveCharacter(userId);
+      let data;
+      // If we are in the browser, we must fetch from API to avoid server-only dependencies
+      if (typeof window !== "undefined") {
+        const res = await fetch(`/api/users/${userId}`, { cache: "no-store" });
+        if (!res.ok) return null;
+        const result = await res.json();
+        // The API returns data as an array
+        data = Array.isArray(result.data) ? result.data[0] : result.data;
 
-      if (!data) {
-        // Logika Fallback
-        console.warn("[Service] Falling back to basic user data...");
-        return null;
+        // Since the current API doesn't return user_characters, we might need a separate call
+        // but for now we follow the logic and let it fallback to default if missing
+      } else {
+        // Safe only in Server Components - use dynamic import to avoid bundling on client
+        const { userRepository } = await import("@/repository/userRepository");
+        data = await userRepository.getUserWithActiveCharacter(userId);
       }
+
+      if (!data) return null;
 
       // Mapping karakter
       const userChars = data.user_characters;
@@ -34,6 +41,10 @@ export const userService = {
 
   async getDashboardData(userId: string) {
     try {
+      // Safe only in Server Components - use dynamic import to avoid bundling on client
+      const { userRepository } = await import("@/repository/userRepository");
+      const { rankRepository } = await import("@/repository/rankRepository");
+
       const user = await userRepository.getUserWithActiveCharacter(userId);
       if (!user) return null;
 

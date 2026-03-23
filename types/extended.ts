@@ -1,5 +1,5 @@
-import { User } from "./User";
-import { Question, Answer, UserAnswer } from "./Quiz";
+import { User } from "./user";
+import { Question, Answer, UserAnswer } from "./quiz";
 import { GameRoom, UserGame } from "./GameRoom";
 
 export interface UserStats extends User {

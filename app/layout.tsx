@@ -24,16 +24,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${baloo2.variable} antialiased relative min-h-screen`}>
-        {/* Scrolling Background Container */}
-        <div className="absolute inset-0 -z-50 w-full h-full overflow-hidden">
-          <Image
-            src="/background.webp"
-            alt="Background"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+        {/* Scrolling Background Container - Looping & Mirrored */}
+        <div className="absolute inset-0 -z-50 w-full flex flex-col pointer-events-none select-none overflow-hidden h-full">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className={`relative shrink-0 w-full h-screen ${i % 2 !== 0 ? "scale-y-[-1]" : ""}`}
+            >
+              <Image
+                src="/background.webp"
+                alt={`Background Tile ${i}`}
+                fill
+                priority={i < 2}
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
+          ))}
         </div>
 
         {/* Konten Utama */}
