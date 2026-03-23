@@ -53,10 +53,14 @@ export const quizService = {
   },
 
   /**
-   * Submit the user's selected answer.
+   * Submit user's selected answer.
    */
-  async submitAnswer(userId: string, answerId: string): Promise<boolean> {
-    return quizRepository.submitAnswer(userId, answerId);
+  async submitAnswer(
+    userId: string,
+    answerId: string,
+    roundNumber: number
+  ): Promise<boolean> {
+    return quizRepository.submitAnswer(userId, answerId, roundNumber);
   },
 
   /**
@@ -72,7 +76,6 @@ export const quizService = {
 
     if (!roomData) return null;
 
-    // De-duplicate participants based on user_id to avoid double showing
     const uniqueUsers = new Map<string, any>();
     for (const p of participants) {
       if (p && typeof p === "object" && "user_id" in p) {
@@ -116,21 +119,45 @@ export const quizService = {
   },
 
   /**
-   * duplicateRoom(roomId, maxPlayer)
+   * duplicateRoom(roomId, maxPlayer, isSolo)
    * Create a new instance of a room.
+   * @param isSolo - true untuk mode solo (max_player = 1), false untuk multi (max_player = 15/20/40)
    */
-  async duplicateRoom(roomId: string, maxPlayer: number) {
+  async duplicateRoom(
+    roomId: string,
+    maxPlayer: number,
+    isSolo: boolean = false
+  ) {
+    console.log(
+      `[QuizService] duplicateRoom START - roomId: ${roomId}, maxPlayer: ${maxPlayer}, isSolo: ${isSolo}`
+    );
+
     const res = await fetch(`/api/game-rooms/${roomId}/duplicate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ max_player: maxPlayer }),
+      body: JSON.stringify({ max_player: maxPlayer, is_solo: isSolo }),
     });
 
+    console.log(`[QuizService] Response status: ${res.status}, ok: ${res.ok}`);
+
     if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[QuizService] ❌ duplicateRoom failed:`, errorText);
       throw new Error("Gagal menduplikasi room");
     }
 
     const json = await res.json();
-    return json.data;
+    console.log(`[QuizService] ✅ Response:`, json);
+
+    // Cek apakah response punya property 'data' atau langsung return object
+    if (json.data) {
+      console.log(`[QuizService] ✅ Returning data:`, json.data);
+      return json.data;
+    } else {
+      console.log(
+        `[QuizService] ⚠️ No 'data' property, returning json directly`
+      );
+      return json;
+    }
   },
 };

@@ -8,17 +8,17 @@ export interface GroupedGameRooms {
 
 export const gameRoomService = {
   /**
-   * Fetch public open rooms and group them by topic_material.
+   * Fetch public open rooms and group them by category.
    * Returns an array of { topic, rooms[] } for rendering CategorySections.
    */
   async getGroupedPublicRooms(): Promise<GroupedGameRooms[]> {
     const rooms = await gameRoomRepository.getPublicOpenRooms();
 
-    // Group by topic_material (acts as category)
+    // Group by category (acts as topic)
     const groupMap = new Map<string, GameRoomWithPlayerCount[]>();
 
     for (const room of rooms) {
-      const topic = room.topic_material;
+      const topic = room.category;
       if (!groupMap.has(topic)) {
         groupMap.set(topic, []);
       }

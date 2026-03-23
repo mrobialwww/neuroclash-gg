@@ -8,7 +8,7 @@ export interface GameRoom {
   game_room_id: string;
   user_id: string;
   room_code: string;
-  topic_material: string;
+  category: string;
   title: string | null;
   max_player: number;
   total_question: number;

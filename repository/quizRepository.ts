@@ -117,13 +117,21 @@ export const quizRepository = {
 
   /**
    * POST /api/quiz/user-answer
-   * Records a user's answer for the current question.
+   * Records a user's answer for current question.
    */
-  async submitAnswer(userId: string, answerId: string): Promise<boolean> {
+  async submitAnswer(
+    userId: string,
+    answerId: string,
+    roundNumber: number
+  ): Promise<boolean> {
     const res = await fetch("/api/quiz/user-answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, answer_id: answerId }),
+      body: JSON.stringify({
+        user_id: userId,
+        answer_id: answerId,
+        round_number: roundNumber,
+      }),
     });
 
     if (!res.ok) {

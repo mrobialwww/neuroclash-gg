@@ -47,7 +47,11 @@ export const matchService = {
    * Proses jawaban user saat disubmit.
    * Menghitung apakah user tersebut terkena damage.
    */
-  async processAnswerSubmission(userId: string, answerId: string) {
+  async processAnswerSubmission(
+    userId: string,
+    answerId: string,
+    roundNumber: number
+  ) {
     // 1. Dapatkan detail jawaban
     const answerDetail = await matchRepository.getAnswerDetail(answerId);
     if (!answerDetail) throw new Error("Jawaban tidak ditemukan.");
@@ -71,8 +75,8 @@ export const matchService = {
     const totalQuestions =
       (questionData.game_rooms as any).total_question || 20;
 
-    // 3. Simpan jawaban ke user_answers (Repo)
-    await matchRepository.submitAnswer(userId, answerId);
+    // 3. Simpan jawaban ke user_answers (Repo) dengan game_room_id dan round_number
+    await matchRepository.submitAnswer(userId, answerId, roomId, roundNumber);
 
     // 4. Kalkulasi damage
     const damage = this.calculateDamage(currentOrder, totalQuestions);
