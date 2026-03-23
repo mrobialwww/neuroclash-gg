@@ -15,7 +15,7 @@
  *   {
  *     "user_id": "c307f9dc-482f-4442-b566-97dbc258c0e8",
  *     "room_code": "1AGT2025",
- *     "topic_material": "sejarah",
+ *     "category": "sejarah",
  *     "title": "miskin",
  *     "max_player": "13",
  *     "total_question": "13",
@@ -66,14 +66,25 @@ export async function POST(request: NextRequest) {
 
     const { questions: listQuestions, ...restOfBody } = await request.json();
 
+    const listAbilities = listQuestions.ability_materials;
+
     //jika FE tidak memberikan field category(karena dari file pdf), maka isi otomatis dari "theme_materials"
-    if (!restOfBody.topic_material) {
-      restOfBody.topic_material = listQuestions.theme_materials;
+    if (!restOfBody.category) {
+      restOfBody.category = listQuestions.theme_materials;
     }
 
     const { data, error } = await supabase.from("game_rooms").insert(restOfBody).select();
 
+    if (error) {
+      console.error("Supabase Error:", error);
+      throw error;
+    }
+
     const gameRoomId = data?.[0]?.game_room_id;
+
+    if (!gameRoomId) {
+      throw new Error("Gagal mendapatkan game_room_id dari data yang dimasukkan.");
+    }
 
     const questions = listQuestions.list_questions.map(async (question: any) => {
       const questionData = {
@@ -102,14 +113,23 @@ export async function POST(request: NextRequest) {
           console.error("Gagal insert answer:", answerErr);
         }
       });
+
       await Promise.all(answers);
     });
-    await Promise.all(questions);
+    const ability_materials = listAbilities.map(async (ability: any) => {
+      const abilityData = {
+        game_room_id: gameRoomId,
+        title: ability.title,
+        content: ability.text,
+      };
+      const { data: abilityRes, error: abilityErr } = await supabase.from("ability_materials").insert(abilityData).select();
+      if (abilityErr) {
+        console.error("Gagal insert ability material:", abilityErr);
+      }
+    });
 
-    if (error) {
-      console.error("Supabase Error:", error);
-      throw error;
-    }
+    await Promise.all(questions);
+    await Promise.all(ability_materials);
 
     return NextResponse.json({ data });
   } catch (error) {
