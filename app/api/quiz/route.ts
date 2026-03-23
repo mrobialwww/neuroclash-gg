@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     let buffer: Buffer;
+    let questionCount = 20;
     const contentType = req.headers.get("content-type") || "";
 
     // 1. Cek apakah request berupa form-data (File Fisik / URL via form)
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const file = formData.get("pdf") as File | null;
       const url = formData.get("url") as string | null;
+      const qc = formData.get("questionCount") as string | null;
+      if (qc) questionCount = parseInt(qc, 10);
 
       if (file && file.size > 0) {
         // Jika ada file fisik yang diunggah
@@ -36,7 +39,9 @@ export async function POST(req: Request) {
     }
     // 2. Cek apakah request berupa JSON (URL murni)
     else if (contentType.includes("application/json")) {
-      const { category, difficulty } = await req.json();
+      const body = await req.json();
+      const { category, difficulty, questionCount: qc } = body;
+      if (qc) questionCount = parseInt(qc, 10);
       const {
         data: { publicUrl: url },
       } = supabase.storage.from("materials").getPublicUrl(`${category}/${difficulty}.pdf`);
@@ -63,10 +68,12 @@ export async function POST(req: Request) {
       responseMimeType: "application/json",
     };
 
+    const targetCount = questionCount + Math.ceil(questionCount / 10);
+
     const result = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: [
-        `Buatkan 20 soal pilihan ganda dari dokumen PDF ini.
+        `Buatkan ${targetCount} soal pilihan ganda dari dokumen PDF ini.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
@@ -86,7 +93,7 @@ Format JSON yang harus dikembalikan:
   ]
 }
 Pastikan:
-- "order" dimulai dari 1 hingga 20
+- "order" dimulai dari 1 hingga ${targetCount}
 - "is_correct" bernilai true hanya untuk 1 pilihan yang benar, sisanya false
 - "explanation" berisi penjelasan singkat 1-2 kalimat mengapa jawaban tersebut benar
 - Semua soal relevan dengan isi dokumen

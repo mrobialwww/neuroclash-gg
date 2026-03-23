@@ -17,6 +17,7 @@ export default function CreateQuizDummy() {
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("");
+  const [questionCount, setQuestionCount] = useState<string>("20");
 
   /**
    * Skenario 1: Upload File Fisik (multipart/form-data)
@@ -31,6 +32,7 @@ export default function CreateQuizDummy() {
     try {
       const formData = new FormData();
       formData.append("pdf", file);
+      formData.append("questionCount", questionCount);
 
       // fetch tidak perlu headers Content-Type karena browser akan
       // otomatis menentukan boundary untuk multipart/form-data
@@ -67,7 +69,7 @@ export default function CreateQuizDummy() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ category, difficulty }),
+        body: JSON.stringify({ category, difficulty, questionCount }),
       });
 
       const data = await response.json();
@@ -88,6 +90,23 @@ export default function CreateQuizDummy() {
           <CardDescription>Pilih metode yang Anda inginkan untuk men-generate soal kuis dari PDF.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 space-y-2">
+            <Label>Jumlah Ronde</Label>
+            <Select value={questionCount} onValueChange={setQuestionCount}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih jumlah ronde..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 Ronde</SelectItem>
+                <SelectItem value="20">20 Ronde</SelectItem>
+                <SelectItem value="25">25 Ronde</SelectItem>
+                <SelectItem value="30">30 Ronde</SelectItem>
+                <SelectItem value="35">35 Ronde</SelectItem>
+                <SelectItem value="40">40 Ronde</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Tabs defaultValue="upload" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="upload">Upload PDF Desktop</TabsTrigger>
