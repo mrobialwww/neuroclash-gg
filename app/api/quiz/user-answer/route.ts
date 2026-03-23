@@ -13,25 +13,33 @@
  *   2. Tujuan utamanya ketika user tiap selesai menjawab soal di suatu ronde dalam quiz/game
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { matchService } from "@/services/matchService";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { user_id, answer_id } = await request.json();
 
-    const body = await request.json();
-    console.log(body.user_id);
-    const { data, error } = await supabase.from("user_answers").insert(body).select();
-
-    if (error) {
-      console.error("Supabase Error:", error);
-      throw error;
+    if (!user_id || !answer_id) {
+      return NextResponse.json(
+        { error: "Missing user_id or answer_id" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ data });
+    const result = await matchService.processAnswerSubmission(
+      user_id,
+      answer_id
+    );
+
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("API Error [POST /api/quiz/user-answer]:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      },
+      { status: 500 }
+    );
   }
 }
