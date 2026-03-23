@@ -97,10 +97,11 @@ export async function POST(request: NextRequest) {
 
     const { questions: listQuestions, ...restOfBody } = requestBody;
 
-    console.log("[API] Step 1: Processing category");
+    const listAbilities = listQuestions.ability_materials;
+
+    //jika FE tidak memberikan field category(karena dari file pdf), maka isi otomatis dari "theme_materials"
     if (!restOfBody.category) {
       restOfBody.category = listQuestions.theme_materials;
-      console.log("[API] Set category from listQuestions.theme_materials");
     }
 
     console.log("[API] Step 2: Inserting to game_rooms");
@@ -112,21 +113,25 @@ export async function POST(request: NextRequest) {
       room_visibility: restOfBody.room_visibility,
     });
 
-    const { data: roomsData, error: roomError } = await supabase
-      .from("game_rooms")
-      .insert(restOfBody)
-      .select();
-
-    if (roomError) {
-      console.error("[API] Error inserting game_rooms:", roomError);
-      console.error("[API] Error message:", roomError.message);
-      console.error("[API] Error code:", (roomError as any)?.code);
-      console.error("[API] Error details:", (roomError as any)?.details);
-      throw roomError;
+    if (error) {
+      console.error("Supabase Error:", error);
+      throw error;
     }
 
-    console.log("[API] Room created successfully!");
-    console.log("[API] Inserted room data:", roomsData);
+    const gameRoomId = data?.[0]?.game_room_id;
+
+    if (!gameRoomId) {
+      throw new Error("Gagal mendapatkan game_room_id dari data yang dimasukkan.");
+    }
+
+    const questions = listQuestions.list_questions.map(async (question: any) => {
+      const questionData = {
+        game_room_id: gameRoomId,
+        question_order: question.order,
+        question_text: question.question,
+        is_profbubu: question.is_profbubu,
+      };
+      const { data: questionRes, error: questionErr } = await supabase.from("questions").insert(questionData).select();
 
     const gameRoomId = roomsData?.[0]?.game_room_id;
 
@@ -158,61 +163,24 @@ export async function POST(request: NextRequest) {
           );
           return;
         }
+      });
 
-        const newQuestionId = questionRes?.[0]?.question_id;
-
-        if (!newQuestionId) {
-          console.error(
-            `[API] Failed to get question_id for question ${index + 1}`
-          );
-          return;
-        }
-
-        console.log(
-          `[API] Question ${
-            index + 1
-          } inserted successfully, question_id: ${newQuestionId}`
-        );
-
-        const answers = question.options.map(
-          async (answer: any, ansIndex: number) => {
-            const answerData = {
-              question_id: newQuestionId,
-              key: answer.key,
-              answer_text: answer.text,
-              is_correct: answer.is_correct,
-            };
-
-            const { data: answerRes, error: answerErr } = await supabase
-              .from("answers")
-              .insert(answerData)
-              .select();
-
-            if (answerErr) {
-              console.error(
-                `[API] Error inserting answer ${ansIndex + 1} for question ${
-                  index + 1
-                }:`,
-                answerErr
-              );
-            } else {
-              console.log(
-                `[API] Answer ${ansIndex + 1} for question ${
-                  index + 1
-                } inserted successfully`
-              );
-            }
-          }
-        );
-
-        await Promise.all(answers);
+      await Promise.all(answers);
+    });
+    const ability_materials = listAbilities.map(async (ability: any) => {
+      const abilityData = {
+        game_room_id: gameRoomId,
+        title: ability.title,
+        content: ability.text,
+      };
+      const { data: abilityRes, error: abilityErr } = await supabase.from("ability_materials").insert(abilityData).select();
+      if (abilityErr) {
+        console.error("Gagal insert ability material:", abilityErr);
       }
-    );
+    });
 
     await Promise.all(questions);
-
-    console.log("[API] POST /api/game-rooms SUCCESS");
-    console.log("=".repeat(60));
+    await Promise.all(ability_materials);
 
     return NextResponse.json({ data: roomsData });
   } catch (error) {
