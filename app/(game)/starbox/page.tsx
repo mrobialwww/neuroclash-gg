@@ -238,6 +238,7 @@ export default function StarboxPage() {
                   <div key={`${player.id}-${idx}`} className="relative">
                     <PlayerGridCard
                       player={player}
+                      hideHealthBar={true}
                       className={cn(
                         "transition-all duration-300",
                         isActiveTurn ? "scale-110 drop-shadow-[0_0_15px_rgba(255,204,0,0.8)]" : "",

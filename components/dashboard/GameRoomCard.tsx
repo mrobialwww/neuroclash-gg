@@ -24,7 +24,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
   const [imgError, setImgError] = useState(false);
 
   const progress = Math.min((room.player_count / room.max_player) * 100, 100);
-  const displayTitle = room.title || room.topic_material;
+  const displayTitle = room.title || room.category;
 
   const handleClick = () => {
     setOpen(true);

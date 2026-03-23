@@ -3,9 +3,13 @@
 import React from "react";
 import Image from "next/image";
 import { MainButton } from "@/components/common/MainButton";
-import { MOCK_HISTORY } from "@/lib/constants/history";
+import { HistoryItem } from "@/types/HistoryItem";
 
-export function HistoryTable() {
+interface HistoryTableProps {
+  historyData: HistoryItem[];
+}
+
+export function HistoryTable({ historyData }: HistoryTableProps) {
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.05)]">
       <div className="overflow-x-auto">
@@ -24,7 +28,7 @@ export function HistoryTable() {
           </thead>
 
           <tbody className="divide-y divide-gray-100">
-            {MOCK_HISTORY.map((item) => (
+            {historyData.map((item) => (
               <tr key={item.id} className="transition-colors hover:bg-gray-50/50">
                 {/* Avatar */}
                 <td className="px-4 py-3 md:px-6 md:py-5">
