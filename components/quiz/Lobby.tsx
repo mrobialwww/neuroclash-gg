@@ -127,7 +127,7 @@ export function LobbyRoom({
                 onClick={handleCopy}
                 className="mt-2 flex items-center justify-center gap-2 bg-[#D9D9D9]/20 hover:bg-[#D9D9D9]/30 text-white px-5 py-2.5 rounded-full font-bold transition-all shadow-lg active:scale-95 text-sm md:text-base border border-white/10 backdrop-blur-sm group"
               >
-                <span className="opacity-90 group-hover:opacity-100 uppercase tracking-wider">{roomCode}</span>
+                <span className="opacity-90 group-hover:opacity-100 uppercase tracking-wide">{roomCode}</span>
                 <div className="bg-white/20 p-1 md:p-1.5 rounded-full">
                   {copied ? <Check size={16} strokeWidth={3} className="text-green-300" /> : <Copy size={16} />}
                 </div>
