@@ -1,4 +1,4 @@
-import ShopClient from "@/components/shop/ShopCLient";
+import ShopClient from "@/components/shop/ShopClient";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 

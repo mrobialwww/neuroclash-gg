@@ -112,9 +112,6 @@ export async function POST(request: NextRequest) {
       throw roomError;
     }
 
-    console.log("[API] Room created successfully!");
-    console.log("[API] Inserted room data:", roomsData);
-
     const gameRoomId = roomsData?.[0]?.game_room_id;
 
     if (!gameRoomId) {

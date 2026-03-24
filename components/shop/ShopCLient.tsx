@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-
-import Sidebar from "@/components/shop/sidebar";
-import Card from "@/components/shop/card";
 import {
   getAllCharacters,
   getUserCharacters,
   UserCharacterWithDetails,
 } from "@/services/shop/shopService";
-import { Character } from "@/types";
+import Card from "./CharacterCard";
+import { Sidebar } from "./Sidebar";
 
 type Filter = "karakter" | "skin" | "dimiliki";
 
@@ -155,41 +153,44 @@ export default function ShopClient({ userId }: Props) {
           }}
         />
 
-        <main className="md:ml-68 flex-1 p-4">
-          {error && (
-            <div className="mb-4 rounded border border-red-400 bg-red-100 p-4 text-red-700">
-              {error}
-            </div>
-          )}
+        <main className="md:ml-68 flex-1 min-h-screen">
+          <div className="mx-auto max-w-[1400px] px-6 py-10 pb-20 md:px-8 lg:px-12">
+            {error && (
+              <div className="mb-6 rounded-xl border border-red-500/50 bg-red-500/10 p-5 text-red-400 backdrop-blur-sm">
+                <span className="font-bold">Error:</span> {error}
+              </div>
+            )}
 
-          {loading ? (
-            <div className="py-12 text-center text-gray-600">
-              Memuat {filter}...
-            </div>
-          ) : (
-            <>
-              {displayed.length === 0 ? (
-                <div className="py-12 text-center text-gray-500">
-                  Tidak ada {filter} untuk ditampilkan
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {displayed.map((item) => (
-                    <Card
-                      key={`${item.character_id}-${item.skin_level}`}
-                      id={String(item.character_id)}
-                      image_url={item.image_url}
-                      skin_name={item.skin_name}
-                      cost={item.cost}
-                      skin_level={item.skin_level}
-                      name={item.base_character}
-                      owned={item.owned}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+            {loading ? (
+              <div className="py-20 flex flex-col items-center justify-center gap-4">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-white/40 font-bold uppercase tracking-widest text-sm">Memuat {filter}...</p>
+              </div>
+            ) : (
+              <>
+                {displayed.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <p className="text-white/30 text-lg font-medium italic">Tidak ada {filter} untuk ditampilkan</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {displayed.map((item) => (
+                      <Card
+                        key={`${item.character_id}-${item.skin_level}`}
+                        id={String(item.character_id)}
+                        image_url={item.image_url}
+                        skin_name={item.skin_name}
+                        cost={item.cost}
+                        skin_level={item.skin_level}
+                        name={item.base_character}
+                        owned={item.owned}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </main>
       </div>
     </div>
