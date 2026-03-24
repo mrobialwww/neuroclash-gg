@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export interface BattleRoom {
   battle_room_id: string;
@@ -45,11 +45,25 @@ export const battleRoomService = {
    * Check apakah semua kombinasi lawan sudah terpenuhi
    * Untuk n players, total kombinasi = n * (n-1) / 2
    * Contoh: 4 players = 6 kombinasi, 5 players = 10 kombinasi
+   *
+   * SPECIAL RULE: Jika hanya tersisa 2-3 players, jangan reset
+   * Biarkan mereka terus bertemu (request dari user)
    */
   allOpponentsAssigned(gameId: string, alivePlayerIds: string[]): boolean {
     const cache = this.playerOpponentsCache.get(gameId) || [];
 
     if (cache.length === 0) return false;
+
+    const alivePlayerCount = alivePlayerIds.length;
+
+    // SPECIAL RULE: Jika hanya 2-3 players, jangan reset
+    // Biarkan mereka terus bertemu meskipun semua kombinasi sudah habis
+    if (alivePlayerCount <= 3) {
+      console.log(
+        `[BattleRoomService] ⚠️ Only ${alivePlayerCount} players alive - NO RESET`
+      );
+      return false;
+    }
 
     // Hitung total kombinasi yang mungkin: n * (n-1) / 2
     const totalPossibleCombos =
@@ -77,6 +91,7 @@ export const battleRoomService = {
 
   /**
    * Reset opponent history ketika semua kombinasi sudah habis
+   * Tidak akan dipanggil jika hanya 2-3 players yang hidup
    */
   resetOpponentHistory(gameId: string) {
     console.log(
@@ -84,6 +99,9 @@ export const battleRoomService = {
     );
     console.log(`[BattleRoomService] ⚠️ ALL COMBINATIONS COMPLETED`);
     console.log(`[BattleRoomService] 🔄 RESETTING opponent history`);
+    console.log(
+      `[BattleRoomService] Note: Only for 4+ players (2-3 players keep meeting)`
+    );
     console.log(
       `[BattleRoomService] ==================================================`
     );
@@ -376,8 +394,13 @@ export const battleRoomService = {
       `[BattleRoomService] ==================================================`
     );
 
-    // 0. Reset opponent cache setiap round
-    this.resetOpponentCache(gameId);
+    // 0. Reset opponent cache hanya saat first round (round 1)
+    if (roundNumber === 1) {
+      this.resetOpponentCache(gameId);
+      console.log(
+        `[BattleRoomService] Round 1 - Reset opponent cache for fresh start`
+      );
+    }
 
     // 1. Hapus battle rooms yang sudah ada untuk round ini
     console.log(

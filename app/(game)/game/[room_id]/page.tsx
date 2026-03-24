@@ -34,18 +34,22 @@ export default function GamePage() {
     currentQuestion,
     isLoadingQuestion,
     selectedAnswerId,
+    isSubmitting,
     isFinished,
     timeLeft,
     players,
     currentUser,
     currentBattleRoom,
     opponentIds,
+    firstAnswerPlayerId,
+    firstAnswerId,
     nextRoundUrl,
     error,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
     isOpponent,
+    canAnswer,
   } = useMatchStore();
 
   const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
@@ -84,14 +88,14 @@ export default function GamePage() {
 
   // 2. Local Timer
   useEffect(() => {
-    if (isLoadingQuestion || isFinished || selectedAnswerId || error) return;
+    if (isLoadingQuestion || isFinished || error) return;
 
     const timer = setInterval(() => {
       decrementTimer();
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isLoadingQuestion, isFinished, selectedAnswerId, decrementTimer, error]);
+  }, [isLoadingQuestion, isFinished, decrementTimer, error, timeLeft]);
 
   // 3. Mapping Players for UI
   const { meCard, opponentCard, sortedForList } = useMemo(() => {
@@ -261,13 +265,24 @@ export default function GamePage() {
           {/* Kolom Tengah Utama — Area Pertanyaan */}
           <div className="isolate order-3 col-span-2 mt-2 flex flex-col lg:order-2 lg:col-span-1 lg:mt-0">
             {currentQuestion && (
-              <QuestionCard
-                question={currentQuestion.question_text}
-                options={currentQuestion.options}
-                onSelect={onSelectAnswer}
-                selectedId={selectedAnswerId}
-                className="h-auto w-full"
-              />
+              <>
+                {firstAnswerPlayerId && (
+                  <div className="mb-4 text-center font-semibold text-yellow-400">
+                    {players.find((p) => p.id === firstAnswerPlayerId)?.name}{" "}
+                    menjawab pertama!
+                  </div>
+                )}
+                <QuestionCard
+                  question={currentQuestion.question_text}
+                  options={currentQuestion.options}
+                  onSelect={onSelectAnswer}
+                  selectedId={selectedAnswerId}
+                  disabled={canAnswer() === false}
+                  canAnswer={canAnswer}
+                  firstAnswerId={firstAnswerId}
+                  className="h-auto w-full"
+                />
+              </>
             )}
           </div>
 
