@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       responseMimeType: "application/json",
     };
 
-    const targetCount = round % 2 === 0 ? round + Math.floor(round / 10) + 1 : round + Math.ceil(round / 10);
+    const targetCount = round + Math.ceil(round / 10);
     const abilityMaterials = Math.round(0.2 * (maxPlayer + maxPlayer / 5));
 
     const result = await ai.models.generateContent({
