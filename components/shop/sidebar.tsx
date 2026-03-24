@@ -2,18 +2,19 @@ import React from "react";
 import Image from "next/image";
 
 type SidebarProps = {
-	active?: "karakter" | "skin" | "dimiliki";
-	onChange?: (filter: "karakter" | "skin" | "dimiliki") => void;
+	active?: "karakter" | "skin" | "dimiliki" | "room";
+	onChange?: (filter: "karakter" | "skin" | "dimiliki" | "room") => void;
 };
 
 const navItems: Array<{
 	name: string;
-	key: "karakter" | "skin" | "dimiliki";
+	key: "karakter" | "skin" | "dimiliki" | "room";
 	icon: string;
 }> = [
 		{ name: "Karakter", key: "karakter", icon: "/icons/character.svg" },
 		{ name: "Skin", key: "skin", icon: "/icons/skin.svg" },
 		{ name: "Dimiliki", key: "dimiliki", icon: "/icons/owned.svg" },
+		{ name: "Ruang Ganti", key: "room", icon: "/icons/room.svg" },
 	];
 
 export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
@@ -61,9 +62,8 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
 				</nav>
 			</aside>
 
-			{/* Bottom navigation — tampil di bawah md */}
 			<nav
-				className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex text-white bg-[#172844]"
+				className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex text-white bg-[#172844] pb-[env(safe-area-inset-bottom)]"
 			>
 				{navItems.map((item) => {
 					const isActive = active === item.key;
@@ -88,9 +88,6 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
 					);
 				})}
 			</nav>
-
-			{/* Spacer agar konten tidak tertutup bottom nav di mobile */}
-			<div className="md:hidden h-16" />
 		</>
 	);
 }

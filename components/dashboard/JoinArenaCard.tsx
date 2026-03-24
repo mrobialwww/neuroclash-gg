@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
-import { ToastFailed } from "@/components/common/ToastFailed";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
@@ -122,7 +122,7 @@ export function JoinArenaCard({
         />
       )}
 
-      <ToastFailed
+      <ToastOverlay
         isOpen={toastData.isOpen}
         code={toastData.code}
         onClose={() => setToastData((prev) => ({ ...prev, isOpen: false }))}

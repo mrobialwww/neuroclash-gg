@@ -21,40 +21,57 @@
  *      b. Jika tidak maka user tidak diperkenankan untuk membeli dan menambahkan skin
  *         yang bersangkutan ke dalam tabel user_characters
  */
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { buyCharacter } from "@/services/shop/shopService.server";
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-
     const body = await request.json();
 
-    const { user_id, character_id, cost, coin, base_character, skin_level } = body;
+    const { user_id, character_id, cost, coin, base_character, skin_level } =
+      body;
 
-    if (cost > coin) {
-      return NextResponse.json({ error: "Coin tidak mencukupi untuk membeli item ini" }, { status: 400 });
+    // Validate required fields
+    if (
+      !user_id ||
+      character_id === undefined ||
+      cost === undefined ||
+      coin === undefined ||
+      !base_character ||
+      !skin_level
+    ) {
+      return NextResponse.json(
+        { error: "Data tidak lengkap untuk melakukan pembelian" },
+        { status: 400 }
+      );
     }
 
-    // Memanggil fungsi transaksi (RPC) di Supabase
-    const { error } = await supabase.rpc("handle_buy_item", {
-      p_user_id: user_id,
-      p_character_id: character_id,
-      p_cost: cost,
-      p_base_character: base_character,
-      p_skin_level: skin_level,
+    // Panggil service yang menangani logic & validasi
+    await buyCharacter({
+      userId: user_id,
+      characterId: character_id,
+      cost,
+      coin,
+      baseCharacter: base_character,
+      skinLevel: skin_level,
     });
-
-    if (error) {
-      console.error("Gagal membeli item:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
 
     return NextResponse.json({
       message: "Berhasil melakukan pembelian karakter baru",
     });
-  } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("API Error [POST /api/user-character]:", error);
+
+    // Check if it's a known error from the service
+    const status =
+      error.message &&
+      (error.message.includes("Coin") || error.message.includes("default"))
+        ? 400
+        : 500;
+
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status }
+    );
   }
 }

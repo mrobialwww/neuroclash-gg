@@ -13,6 +13,7 @@ export type CardProps = {
   skin_level?: Level;
   owned?: boolean;
   character_bg?: string;
+  onPurchase?: () => void;
 };
 
 const LEVEL_COLORS: Record<Level, string> = {
@@ -21,9 +22,7 @@ const LEVEL_COLORS: Record<Level, string> = {
   legend: "#C89B00",
 };
 
-const OWNED_BG = "#9CA3AF";
-
-export default function Card({
+export default function CharacterCard({
   image_url,
   name,
   skin_name,
@@ -31,11 +30,10 @@ export default function Card({
   skin_level = "default",
   owned = false,
   character_bg,
+  onPurchase,
 }: CardProps) {
   let bg: string;
-  if (owned) {
-    bg = OWNED_BG;
-  } else if (skin_level === "epic") {
+  if (skin_level === "epic") {
     bg = LEVEL_COLORS.epic;
   } else if (skin_level === "legend") {
     bg = LEVEL_COLORS.legend;
@@ -47,7 +45,7 @@ export default function Card({
 
   return (
     <div
-      className="relative flex flex-col items-center rounded-xl overflow-hidden shadow-lg select-none group w-full aspect-2/3"
+      className="relative flex flex-col items-center rounded-xl overflow-hidden shadow-lg select-none group w-full aspect-[2/2.8] sm:aspect-2/3"
       style={{ backgroundColor: bg }}
     >
       {/* Radial highlight */}
@@ -57,46 +55,46 @@ export default function Card({
       />
 
       {/* Badges */}
-      {!owned && skin_level !== "default" && (
+      {skin_level !== "default" && (
         <div
           className={cn(
-            "absolute top-2 right-2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full shadow-sm",
+            "absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-20 flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-sm",
             skin_level === "legend" ? "bg-[#FFE270] text-[#796100]" : "bg-[#ECC5FE] text-[#631D76]"
           )}
         >
           <NextImage
             src={skin_level === "legend" ? "/icons/legend.svg" : "/icons/epic.svg"}
-            width={14}
-            height={14}
+            width={12}
+            height={12}
             alt={skin_level}
-            className="w-3.5 h-3.5 md:w-4 md:h-4"
+            className="w-3 h-3 md:w-4 md:h-4"
           />
-          <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider leading-none">
+          <span className="text-[8px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide leading-none">
             {skin_level}
           </span>
         </div>
       )}
 
       {/* Character Image */}
-      <div className="relative z-10 flex flex-1 items-center justify-center w-full px-4 pt-6">
+      <div className="relative z-10 flex flex-1 items-center justify-center w-full px-3 pt-4 sm:px-4 sm:pt-6">
         {image_url ? (
-          <div className="relative w-[65%] aspect-square flex items-center justify-center">
+          <div className="relative w-[75%] sm:w-[65%] aspect-square flex items-center justify-center">
             <NextImage
               src={image_url}
               alt={displayName}
               fill
-              sizes="(max-width: 768px) 33vw, 20vw"
+              sizes="(max-width: 640px) 40vw, (max-width: 1024px) 25vw, 20vw"
               className="object-contain drop-shadow-2xl transition-transform duration-300 group-hover:scale-110"
             />
           </div>
         ) : (
-          <div className="text-white/30 text-xs font-bold uppercase tracking-widest">No Image</div>
+          <div className="text-white/30 text-[10px] font-bold uppercase tracking-widest">No Image</div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 flex w-full flex-col items-center gap-3 md:gap-4 px-4 pb-5 pt-2">
-        <h3 className="w-full truncate text-center font-bold text-white text-lg md:text-xl lg:text-2xl drop-shadow-md">
+      <div className="relative z-10 flex w-full flex-col items-center gap-2 sm:gap-4 px-3 pb-4 pt-1 sm:px-4 sm:pb-5 sm:pt-2">
+        <h3 className="w-full truncate text-center font-bold text-white text-sm sm:text-lg md:text-xl lg:text-2xl drop-shadow-md">
           {displayName}
         </h3>
 
@@ -107,6 +105,7 @@ export default function Card({
           </div>
         ) : (
           <button
+            onClick={onPurchase}
             className="flex w-full items-center justify-center gap-2 py-1.5 rounded-md bg-white shadow-xl hover:bg-white/95 active:scale-95 transition-all group/btn cursor-pointer"
           >
             <NextImage
