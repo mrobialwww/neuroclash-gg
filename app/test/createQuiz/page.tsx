@@ -16,8 +16,9 @@ export default function CreateQuizDummy() {
   // State terpisah untuk masing-masing skenario
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<string>("");
+  const [maxPlayer, setMaxPlayer] = useState<string>("0");
+  const [round, setRound] = useState<string>("0");
   const [difficulty, setDifficulty] = useState<string>("");
-  const [questionCount, setQuestionCount] = useState<string>("20");
 
   /**
    * Skenario 1: Upload File Fisik (multipart/form-data)
@@ -32,7 +33,9 @@ export default function CreateQuizDummy() {
     try {
       const formData = new FormData();
       formData.append("pdf", file);
-      formData.append("questionCount", questionCount);
+      formData.append("maxPlayer", maxPlayer);
+      formData.append("round", round);
+      formData.append("difficulty", difficulty);
 
       // fetch tidak perlu headers Content-Type karena browser akan
       // otomatis menentukan boundary untuk multipart/form-data
@@ -69,7 +72,7 @@ export default function CreateQuizDummy() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ category, difficulty, questionCount }),
+        body: JSON.stringify({ category, maxPlayer, round, difficulty }),
       });
 
       const data = await response.json();
@@ -90,9 +93,28 @@ export default function CreateQuizDummy() {
           <CardDescription>Pilih metode yang Anda inginkan untuk men-generate soal kuis dari PDF.</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Jumlah maks pemain */}
+          <div className="mb-6 space-y-2">
+            <Label>Jumlah Maksimal Pemain</Label>
+            <Select value={maxPlayer} onValueChange={setMaxPlayer}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih jumlah maksimal pemain..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 Pemain</SelectItem>
+                <SelectItem value="20">20 Pemain</SelectItem>
+                <SelectItem value="25">25 Pemain</SelectItem>
+                <SelectItem value="30">30 Pemain</SelectItem>
+                <SelectItem value="35">35 Pemain</SelectItem>
+                <SelectItem value="40">40 Pemain</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Jumlah maks round */}
           <div className="mb-6 space-y-2">
             <Label>Jumlah Ronde</Label>
-            <Select value={questionCount} onValueChange={setQuestionCount}>
+            <Select value={round} onValueChange={setRound}>
               <SelectTrigger>
                 <SelectValue placeholder="Pilih jumlah ronde..." />
               </SelectTrigger>
@@ -103,6 +125,21 @@ export default function CreateQuizDummy() {
                 <SelectItem value="30">30 Ronde</SelectItem>
                 <SelectItem value="35">35 Ronde</SelectItem>
                 <SelectItem value="40">40 Ronde</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Pilih tingkat kesulitan */}
+          <div className="space-y-2">
+            <Label>Tingkat Kesulitan</Label>
+            <Select onValueChange={setDifficulty}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih tingkat kesulitan..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mudah">Mudah</SelectItem>
+                <SelectItem value="sedang">Sedang</SelectItem>
+                <SelectItem value="sulit">Sulit</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -143,29 +180,12 @@ export default function CreateQuizDummy() {
                       <SelectItem value="biologi">Biologi Sel</SelectItem>
                       <SelectItem value="pancasila">Dasar Pancasila</SelectItem>
                       <SelectItem value="bahasaindonesia">Bahasa Indonesia</SelectItem>
-                      <SelectItem value="bahasainggris">Bahasa Inggirs</SelectItem>
+                      <SelectItem value="bahasainggris">Bahasa Inggris</SelectItem>
                       <SelectItem value="pemrograman">Pemrograman</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">Materi ini akan diambil otomatis di sistem: /materials/[kategori]/[materi].pdf</p>
                 </div>
-
-                {/* Pilihan Difficulty - muncul setelah memilih kategori */}
-                {category && (
-                  <div className="space-y-2">
-                    <Label>Tingkat Kesulitan</Label>
-                    <Select onValueChange={setDifficulty}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih tingkat kesulitan..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mudah">Mudah</SelectItem>
-                        <SelectItem value="sedang">Sedang</SelectItem>
-                        <SelectItem value="sulit">Sulit</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
 
                 <Button type="submit" disabled={loading || !category || !difficulty} className="w-full">
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

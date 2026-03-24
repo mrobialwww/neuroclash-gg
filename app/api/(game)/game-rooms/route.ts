@@ -46,11 +46,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("game_rooms")
-      .select("*")
-      .eq("room_status", "open")
-      .eq("room_visibility", "public");
+    const { data, error } = await supabase.from("game_rooms").select("*").eq("room_status", "open").eq("room_visibility", "public");
 
     if (error) {
       console.error("[API] Error fetching game_rooms:", error);
@@ -60,10 +56,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data });
   } catch (error) {
     console.error("[API] GET /api/game-rooms Error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -89,14 +82,11 @@ export async function POST(request: NextRequest) {
       });
     } catch (jsonError) {
       console.error("[API] Error reading request.json():", jsonError);
-      return NextResponse.json(
-        { error: "Invalid JSON in request body" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
     const { questions: listQuestions, ...restOfBody } = requestBody;
-
+    const listAbilities = listQuestions.ability_materials;
     console.log("[API] Step 1: Processing category");
     if (!restOfBody.category) {
       restOfBody.category = listQuestions.theme_materials;
@@ -112,10 +102,7 @@ export async function POST(request: NextRequest) {
       room_visibility: restOfBody.room_visibility,
     });
 
-    const { data: roomsData, error: roomError } = await supabase
-      .from("game_rooms")
-      .insert(restOfBody)
-      .select();
+    const { data: roomsData, error: roomError } = await supabase.from("game_rooms").insert(restOfBody).select();
 
     if (roomError) {
       console.error("[API] Error inserting game_rooms:", roomError);
@@ -138,78 +125,63 @@ export async function POST(request: NextRequest) {
     console.log(`[API] game_room_id: ${gameRoomId}`);
 
     console.log("[API] Step 3: Inserting questions");
-    const questions = listQuestions.list_questions.map(
-      async (question: any, index: number) => {
-        const questionData = {
-          game_room_id: gameRoomId,
-          question_order: question.order,
-          question_text: question.question,
+    const questions = listQuestions.list_questions.map(async (question: any, index: number) => {
+      const questionData = {
+        game_room_id: gameRoomId,
+        question_order: question.order,
+        question_text: question.question,
+      };
+
+      const { data: questionRes, error: questionErr } = await supabase.from("questions").insert(questionData).select();
+
+      if (questionErr) {
+        console.error(`[API] Error inserting question ${index + 1}:`, questionErr);
+        return;
+      }
+
+      const newQuestionId = questionRes?.[0]?.question_id;
+
+      if (!newQuestionId) {
+        console.error(`[API] Failed to get question_id for question ${index + 1}`);
+        return;
+      }
+
+      console.log(`[API] Question ${index + 1} inserted successfully, question_id: ${newQuestionId}`);
+
+      const answers = question.options.map(async (answer: any, ansIndex: number) => {
+        const answerData = {
+          question_id: newQuestionId,
+          key: answer.key,
+          answer_text: answer.text,
+          is_correct: answer.is_correct,
         };
 
-        const { data: questionRes, error: questionErr } = await supabase
-          .from("questions")
-          .insert(questionData)
-          .select();
+        const { data: answerRes, error: answerErr } = await supabase.from("answers").insert(answerData).select();
 
-        if (questionErr) {
-          console.error(
-            `[API] Error inserting question ${index + 1}:`,
-            questionErr
-          );
-          return;
+        if (answerErr) {
+          console.error(`[API] Error inserting answer ${ansIndex + 1} for question ${index + 1}:`, answerErr);
+        } else {
+          console.log(`[API] Answer ${ansIndex + 1} for question ${index + 1} inserted successfully`);
         }
+      });
 
-        const newQuestionId = questionRes?.[0]?.question_id;
+      await Promise.all(answers);
+    });
 
-        if (!newQuestionId) {
-          console.error(
-            `[API] Failed to get question_id for question ${index + 1}`
-          );
-          return;
-        }
-
-        console.log(
-          `[API] Question ${
-            index + 1
-          } inserted successfully, question_id: ${newQuestionId}`
-        );
-
-        const answers = question.options.map(
-          async (answer: any, ansIndex: number) => {
-            const answerData = {
-              question_id: newQuestionId,
-              key: answer.key,
-              answer_text: answer.text,
-              is_correct: answer.is_correct,
-            };
-
-            const { data: answerRes, error: answerErr } = await supabase
-              .from("answers")
-              .insert(answerData)
-              .select();
-
-            if (answerErr) {
-              console.error(
-                `[API] Error inserting answer ${ansIndex + 1} for question ${
-                  index + 1
-                }:`,
-                answerErr
-              );
-            } else {
-              console.log(
-                `[API] Answer ${ansIndex + 1} for question ${
-                  index + 1
-                } inserted successfully`
-              );
-            }
-          }
-        );
-
-        await Promise.all(answers);
+    const ability_materials = listAbilities.map(async (ability: any) => {
+      const abilityData = {
+        game_room_id: gameRoomId,
+        title: ability.title,
+        content: ability.text,
+      };
+      const { data: abilityRes, error: abilityErr } = await supabase.from("ability_materials").insert(abilityData).select();
+      if (abilityErr) {
+        console.error("Gagal insert ability material:", abilityErr);
       }
-    );
+    });
 
     await Promise.all(questions);
+    await Promise.all(ability_materials);
 
     console.log("[API] POST /api/game-rooms SUCCESS");
     console.log("=".repeat(60));
@@ -218,18 +190,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[API] FINAL ERROR in POST /api/game-rooms:");
     console.error("[API] Error:", error);
-    console.error(
-      "[API] Error message:",
-      error instanceof Error ? error.message : String(error)
-    );
-    console.error(
-      "[API] Error stack:",
-      error instanceof Error ? error.stack : "No stack"
-    );
-    console.error(
-      "[API] Error name:",
-      error instanceof Error ? error.name : "Unknown"
-    );
+    console.error("[API] Error message:", error instanceof Error ? error.message : String(error));
+    console.error("[API] Error stack:", error instanceof Error ? error.stack : "No stack");
+    console.error("[API] Error name:", error instanceof Error ? error.name : "Unknown");
     console.error("[API] Error code:", (error as any)?.code || "No code");
     console.log("=".repeat(60));
 
@@ -238,7 +201,7 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : "Internal Server Error",
         details: error instanceof Error ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

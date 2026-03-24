@@ -12,7 +12,9 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     let buffer: Buffer;
-    let questionCount = 20;
+    let round = 0;
+    let maxPlayer = 0;
+    let difficulty;
     const contentType = req.headers.get("content-type") || "";
 
     // 1. Cek apakah request berupa form-data (File Fisik / URL via form)
@@ -20,8 +22,12 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const file = formData.get("pdf") as File | null;
       const url = formData.get("url") as string | null;
-      const qc = formData.get("questionCount") as string | null;
-      if (qc) questionCount = parseInt(qc, 10);
+      const rd = formData.get("round") as string | null;
+      const mp = formData.get("maxPlayer") as string | null;
+      const df = formData.get("difficulty") as string | null;
+      if (rd) round = parseInt(rd, 10);
+      if (mp) maxPlayer = parseInt(mp, 10);
+      if (df) difficulty = df;
 
       if (file && file.size > 0) {
         // Jika ada file fisik yang diunggah
@@ -40,8 +46,9 @@ export async function POST(req: Request) {
     // 2. Cek apakah request berupa JSON (URL murni)
     else if (contentType.includes("application/json")) {
       const body = await req.json();
-      const { category, difficulty, questionCount: qc } = body;
-      if (qc) questionCount = parseInt(qc, 10);
+      const { category, difficulty, round: rd, maxPlayer: mp } = body;
+      if (rd) round = parseInt(rd, 10);
+      if (mp) maxPlayer = parseInt(mp, 10);
       const {
         data: { publicUrl: url },
       } = supabase.storage.from("materials").getPublicUrl(`${category}/${difficulty}.pdf`);
@@ -68,12 +75,14 @@ export async function POST(req: Request) {
       responseMimeType: "application/json",
     };
 
-    const targetCount = questionCount + Math.ceil(questionCount / 10);
+    const targetCount = round + Math.ceil(round / 10);
+    const abilityMaterials = Math.round(0.2 * (maxPlayer + maxPlayer / 5));
 
     const result = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: [
-        `Buatkan ${targetCount} soal pilihan ganda dari dokumen PDF ini.
+        `Buatkan ${targetCount} ${contentType.includes("multipart/form-data") ? `dengan tingkat kesulitan ${difficulty}` : ""} soal pilihan ganda dari dokumen PDF ini.
+Buatkan juga materi bacaan singkat (masing-masing cukup 4-5 kalimat) sejumlah ${abilityMaterials} buah yang diambil dari intisari dokumen tersebut.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
@@ -89,6 +98,12 @@ Format JSON yang harus dikembalikan:
         { "key": "D", "text": "pilihan D", "is_correct": false }
       ],
       "explanation": "penjelasan singkat mengapa jawaban tersebut benar"
+    }
+  ],
+  "ability_materials" : [
+    {
+      "title": "judul materi bacaan",
+      "text": "isi materi bacaan singkat 4-5 kalimat yang diambil dari intisari dokumen"
     }
   ]
 }
@@ -111,7 +126,7 @@ Pastikan:
 
     const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
-    const cleanedParsed = JSON.parse(rawText);
+    const cleanedParsed = JSON.parse(cleaned);
 
     return NextResponse.json(
       {
