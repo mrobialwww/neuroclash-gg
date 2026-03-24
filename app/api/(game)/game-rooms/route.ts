@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
         game_room_id: gameRoomId,
         question_order: question.order,
         question_text: question.question,
-        is_profbubu: question.is_profbubu,
       };
       const { data: questionRes, error: questionErr } = await supabase.from("questions").insert(questionData).select();
 

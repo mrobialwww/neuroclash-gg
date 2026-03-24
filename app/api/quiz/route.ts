@@ -97,7 +97,6 @@ Format JSON yang harus dikembalikan:
         { "key": "C", "text": "pilihan C", "is_correct": false },
         { "key": "D", "text": "pilihan D", "is_correct": false }
       ],
-      "is_profbubu": false,
       "explanation": "penjelasan singkat mengapa jawaban tersebut benar"
     }
   ],
@@ -111,7 +110,6 @@ Format JSON yang harus dikembalikan:
 Pastikan:
 - "order" dimulai dari 1 hingga ${targetCount}
 - "is_correct" bernilai true hanya untuk 1 pilihan yang benar, sisanya false
-- "is_profbubu" WAJIB bernilai boolean murni (true atau false). Berjalan murni acak dengan nilai 'true' untuk tepat ${targetCount - round} soal, dan sisanya 'false'.
 - "explanation" berisi penjelasan singkat 1-2 kalimat mengapa jawaban tersebut benar
 - Semua soal relevan dengan isi dokumen
 - "order" merepresentasikan urutan tingkat kesulitan soal dari paling mudah ke paling susah`,
