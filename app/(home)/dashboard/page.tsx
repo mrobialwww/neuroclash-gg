@@ -10,11 +10,20 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Parallel fetch: user data + game rooms
-  const [dashboardData, groupedRooms] = await Promise.all([
+  // Parallel fetch: user data + public grouped rooms + user's own rooms
+  const [dashboardData, groupedRooms, userRooms] = await Promise.all([
     user ? userService.getDashboardData(user.id) : null,
     gameRoomService.getGroupedPublicRooms(),
+    user ? gameRoomService.getUserRooms(user.id) : [],
   ]);
+
+  // Helper formatting for category titles
+  const formatTopicTitle = (topic: string) => {
+    const t = topic.toLowerCase();
+    if (t === "bahasaindonesia") return "Bahasa Indonesia";
+    if (t === "bahasainggris") return "Bahasa Inggris";
+    return topic.charAt(0).toUpperCase() + topic.slice(1);
+  };
 
   return (
     <main className="mx-auto max-w-[1400px] space-y-8 px-6 py-10 pb-20 md:px-12 lg:px-16">
@@ -28,15 +37,31 @@ export default async function DashboardPage() {
         <CreateArenaCard />
       </div>
 
-      {/* Categories Section */}
-      <div className="space-y-8">
-        {groupedRooms.map((group) => (
+      <div className="space-y-12">
+        {/* Arena Kamu Section (Personalized) */}
+        {userRooms && userRooms.length > 0 && (
           <CategorySection
-            key={group.topic}
-            title={group.topic}
-            rooms={group.rooms}
+            key="arena-kamu"
+            title="Arena Kamu"
+            rooms={userRooms}
           />
-        ))}
+        )}
+
+        {/* Categories Section (Public) */}
+        {groupedRooms.map((group) => {
+          // Filter to ensure only public rooms are shown in categorized sections
+          const publicRooms = group.rooms.filter(r => r.room_visibility === 'public');
+
+          if (publicRooms.length === 0) return null;
+
+          return (
+            <CategorySection
+              key={group.topic}
+              title={formatTopicTitle(group.topic)}
+              rooms={publicRooms}
+            />
+          );
+        })}
       </div>
     </main>
   );
