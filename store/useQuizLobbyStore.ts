@@ -55,8 +55,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   isMigrating: false,
 
   setError: (msg: string) => set({ error: msg, isLoading: false }),
-  setParticipants: (participants: LobbyPlayer[]) =>
-    set({ participants, participantsCount: participants.length }),
+  setParticipants: (participants: LobbyPlayer[]) => set({ participants, participantsCount: participants.length }),
 
   loadLobbyData: async (roomId: string) => {
     set({ isLoading: true, error: null });
@@ -78,14 +77,10 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
       }
 
       // If user not in participants, try to joining
-      const isParticipant = lobbyData.participants.some(
-        (p) => p.user_id === currentUser.id
-      );
+      const isParticipant = lobbyData.participants.some((p) => p.user_id === currentUser.id);
       if (!isParticipant) {
         if (!pendingJoinPromise) {
-          pendingJoinPromise = quizService
-            .joinRoomByCode(roomId, currentUser.id)
-            .then(() => {});
+          pendingJoinPromise = quizService.joinRoomByCode(roomId, currentUser.id).then(() => {});
         }
         try {
           await pendingJoinPromise;
@@ -119,16 +114,12 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           ]);
 
           const userResult = await userRes.json();
-          const userData = Array.isArray(userResult.data)
-            ? userResult.data[0]
-            : userResult.data;
+          const userData = Array.isArray(userResult.data) ? userResult.data[0] : userResult.data;
 
           let characterData = null;
           if (charRes.ok) {
             const charResult = await charRes.json();
-            characterData = Array.isArray(charResult.data)
-              ? charResult.data[0]
-              : charResult.data;
+            characterData = Array.isArray(charResult.data) ? charResult.data[0] : charResult.data;
           }
 
           return {
@@ -180,9 +171,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   },
 
   subscribeToPresence: (roomId: string) => {
-    console.log(
-      `[LobbyStore] subscribeToPresence START - roomId: ${roomId}, currentRoomId: ${currentRoomId}`
-    );
+    console.log(`[LobbyStore] subscribeToPresence START - roomId: ${roomId}, currentRoomId: ${currentRoomId}`);
 
     const { currentUser, participants } = get();
     if (!currentUser) {
@@ -192,13 +181,9 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
 
     // Cek apakah room berubah, jika berbeda unsubscribe dulu
     if (currentRoomId && currentRoomId !== roomId) {
-      console.log(
-        `[LobbyStore] 🔄 Room changed from ${currentRoomId} to ${roomId}`
-      );
+      console.log(`[LobbyStore] 🔄 Room changed from ${currentRoomId} to ${roomId}`);
       if (lobbyChannel && isSubscribed) {
-        console.log(
-          `[LobbyStore] Unsubscribing from old channel ${currentRoomId}`
-        );
+        console.log(`[LobbyStore] Unsubscribing from old channel ${currentRoomId}`);
         try {
           const supabase = createClient();
           supabase.removeChannel(lobbyChannel);
@@ -212,9 +197,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
 
     // Jangan subscribe ulang jika sudah subscribe ke room yang sama
     if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
-      console.log(
-        `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
-      );
+      console.log(`[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`);
       return;
     }
 
@@ -224,9 +207,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
 
     // Jangan subscribe ulang jika sudah subscribe ke room yang sama
     if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
-      console.log(
-        `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
-      );
+      console.log(`[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`);
       return;
     }
 
@@ -259,15 +240,11 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
         const { roomData } = get();
         if (!roomData) return;
 
-        const isCurrentHostOnline = activePresenceIds.includes(
-          roomData.user_id
-        );
+        const isCurrentHostOnline = activePresenceIds.includes(roomData.user_id);
 
         if (!isCurrentHostOnline && !get().isMigrating) {
           // Elect new host: The most senior (earliest joinedAt) active participant
-          const onlineParticipants = get().participants.filter((p) =>
-            activePresenceIds.includes(String(p.id))
-          );
+          const onlineParticipants = get().participants.filter((p) => activePresenceIds.includes(String(p.id)));
 
           if (onlineParticipants.length === 0) return;
 
@@ -281,10 +258,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           if (newHostCandidate.id === currentUser.id) {
             console.log("[Migration] Electing NEW Host:", currentUser.username);
             set({ isMigrating: true });
-            const success = await quizRepository.updateRoomHost(
-              roomId,
-              currentUser.id
-            );
+            const success = await quizRepository.updateRoomHost(roomId, currentUser.id);
             if (success) {
               set({
                 roomData: { ...roomData, user_id: currentUser.id },
@@ -310,18 +284,13 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           console.log(`[LobbyStore] Event: UPDATE`);
           console.log(`[LobbyStore] Table: game_rooms`);
           console.log(`[LobbyStore] Filter: game_room_id=eq.${roomId}`);
-          console.log(
-            `[LobbyStore] Payload:`,
-            JSON.stringify(payload, null, 2)
-          );
+          console.log(`[LobbyStore] Payload:`, JSON.stringify(payload, null, 2));
 
           // Real-time UI Sync for Host Label
           const { roomData, currentUser } = get();
           if (roomData && payload.new.user_id) {
             const newHostId = payload.new.user_id;
-            console.log(
-              `[LobbyStore] 🎭 Host changed: ${payload.old.user_id} → ${newHostId}`
-            );
+            console.log(`[LobbyStore] 🎭 Host changed: ${payload.old.user_id} → ${newHostId}`);
             set({
               roomData: { ...roomData, user_id: newHostId },
               isHost: newHostId === get().currentUser?.id,
@@ -329,44 +298,28 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           }
 
           // Redirect semua player ke halaman game saat room_status berubah jadi 'playing'
-          if (
-            roomData &&
-            payload.new.room_status === "playing" &&
-            payload.old.room_status !== "playing"
-          ) {
-            console.log(
-              `[LobbyStore] ==================================================`
-            );
-            console.log(
-              `[LobbyStore] 🎮 MATCH STARTED! Redirecting all players to game...`
-            );
+          if (roomData && payload.new.room_status === "playing" && payload.old.room_status !== "playing") {
+            console.log(`[LobbyStore] ==================================================`);
+            console.log(`[LobbyStore] 🎮 MATCH STARTED! Redirecting all players to game...`);
             console.log(`[LobbyStore] Current user ID: ${currentUser?.id}`);
             console.log(`[LobbyStore] Is current user host? ${get().isHost}`);
             console.log(`[LobbyStore] Room data:`, roomData);
-            console.log(
-              `[LobbyStore] Room status changed:`,
-              payload.old.room_status,
-              "→",
-              payload.new.room_status
-            );
-            console.log(
-              `[LobbyStore] Game URL: /game/${roomId}?code=${roomData.room_code}`
-            );
-            console.log(
-              `[LobbyStore] ==================================================`
-            );
+            console.log(`[LobbyStore] Room status changed:`, payload.old.room_status, "→", payload.new.room_status);
+            console.log(`[LobbyStore] Game URL: /game/${roomId}?code=${roomData.room_code}`);
+            console.log(`[LobbyStore] ==================================================`);
 
             if (typeof window !== "undefined" && currentUser?.id) {
-              const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
+              //  const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
+
+              // ====== Testinggg starbox ygy jgn dihapus
+              const gameUrl = `/starbox?roomId=${roomId}&code=${roomData.room_code}&nextRound=1`;
               console.log(`[LobbyStore] 🚀 Redirecting to: ${gameUrl}`);
               window.location.href = gameUrl;
             } else {
-              console.error(
-                `[LobbyStore] ❌ Cannot redirect: window or currentUser is undefined`
-              );
+              console.error(`[LobbyStore] ❌ Cannot redirect: window or currentUser is undefined`);
             }
           }
-        }
+        },
       )
       .subscribe((status) => {
         console.log("[Lobby] Channel subscription status:", status);

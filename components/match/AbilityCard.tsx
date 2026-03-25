@@ -14,26 +14,19 @@ interface AbilityCardProps {
   onClick?: () => void;
 }
 
-export const AbilityCard = ({
-  name,
-  image,
-  emptyImage,
-  stock,
-  className,
-  onClick
-}: AbilityCardProps) => {
+export const AbilityCard = ({ name, image, emptyImage, stock, className, onClick }: AbilityCardProps) => {
   const displayImage = stock > 0 ? image : emptyImage;
 
   return (
     <div
       className={cn(
-        "relative cursor-pointer group transition-all duration-200 transform",
-        stock > 0 ? "hover:scale-[1.02] hover:-translate-y-1 active:scale-95" : "opacity-80 grayscale-[0.3]",
-        className
+        "group relative transform cursor-pointer transition-all duration-200",
+        stock > 0 ? "hover:-translate-y-1 hover:scale-[1.02] active:scale-95" : "opacity-80 grayscale-[0.3]",
+        className,
       )}
       onClick={stock > 0 ? onClick : undefined}
     >
-      <div className="relative w-full aspect-412/212 drop-shadow-2xl">
+      <div className="aspect-412/212 relative w-full drop-shadow-2xl">
         <Image
           src={displayImage}
           alt={name}
@@ -44,11 +37,9 @@ export const AbilityCard = ({
         />
 
         {/* Stock text in top right corner overlaying the ribbon */}
-        <div className="absolute top-[1.5%] right-[4%] z-10 pointer-events-none">
+        <div className="pointer-events-none absolute right-[4%] top-[1.5%] z-10">
           <div className="flex items-center justify-end">
-            <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              x{stock}
-            </span>
+            <span className="text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] md:text-base">x{stock}</span>
           </div>
         </div>
       </div>

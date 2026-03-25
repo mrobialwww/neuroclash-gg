@@ -1,6 +1,6 @@
 import { gameRepository } from "@/repository/gameRepository";
 import { createClient } from "@/lib/supabase/client";
-import { MOCK_PLAYERS, Player } from "@/lib/constants/players";
+import { Player } from "@/lib/constants/players";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
 export const gameService = {
@@ -16,22 +16,18 @@ export const gameService = {
    */
   async getCurrentPlayer(): Promise<Player | null> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) return null;
 
-    const { data: profile } = await supabase
-      .from("users")
-      .select("*, user_characters(is_used, characters(*))")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: profile } = await supabase.from("users").select("*, user_characters(is_used, characters(*))").eq("user_id", user.id).maybeSingle();
 
     if (!profile) return null;
 
     const userChars: any = profile.user_characters;
-    const activeChar = Array.isArray(userChars)
-      ? userChars.find((uc: any) => uc.is_used)?.characters
-      : null;
+    const activeChar = Array.isArray(userChars) ? userChars.find((uc: any) => uc.is_used)?.characters : null;
 
     return {
       id: user.id,
@@ -47,44 +43,44 @@ export const gameService = {
   /**
    * Orchestrate Match Players initializations (Aku vs Lawan).
    */
-  async loadMatchPlayers(roomMaxPlayer: number = 8): Promise<{ me: Player; opponent: Player }> {
-    let mePlayer = await this.getCurrentPlayer();
-    
-    if (!mePlayer) {
-      mePlayer = MOCK_PLAYERS.find((p) => p.isMe) ?? MOCK_PLAYERS[0];
-    }
+  // async loadMatchPlayers(roomMaxPlayer: number = 8): Promise<{ me: Player; opponent: Player }> {
+  //   let mePlayer = await this.getCurrentPlayer();
 
-    let opponentPlayer: Player;
-    
-    if (roomMaxPlayer === 1) {
-      opponentPlayer = {
-        id: "prof-bubu",
-        name: "Prof. Bubu",
-        character: "Prof Bubu",
-        image: "/match/prof-bubu.webp",
-        health: 100,
-        maxHealth: 100,
-      };
-    } else {
-      opponentPlayer = MOCK_PLAYERS.find((p) => !p.isMe) ?? MOCK_PLAYERS[1];
-    }
+  //   if (!mePlayer) {
+  //     mePlayer = MOCK_PLAYERS.find((p) => p.isMe) ?? MOCK_PLAYERS[0];
+  //   }
 
-    return { me: mePlayer, opponent: opponentPlayer };
-  },
+  //   let opponentPlayer: Player;
+
+  //   if (roomMaxPlayer === 1) {
+  //     opponentPlayer = {
+  //       id: "prof-bubu",
+  //       name: "Prof. Bubu",
+  //       character: "Prof Bubu",
+  //       image: "/match/prof-bubu.webp",
+  //       health: 100,
+  //       maxHealth: 100,
+  //     };
+  //   } else {
+  //     opponentPlayer = MOCK_PLAYERS.find((p) => !p.isMe) ?? MOCK_PLAYERS[1];
+  //   }
+
+  //   return { me: mePlayer, opponent: opponentPlayer };
+  // },
 
   /**
    * Orchestrate Starbox logic for turn-based player fetching.
    * Men-sortir player berdasarkan darah minimum.
    */
-  async loadStarboxPlayersTurnBased(roomMaxPlayer: number = 8): Promise<Player[]> {
-    // Sorting (terendah -> tertinggi di-copy agar MOCK tidak termutasi global)
-    const sortedPlayers = [...MOCK_PLAYERS].sort((a, b) => a.health - b.health);
+  // async loadStarboxPlayersTurnBased(roomMaxPlayer: number = 8): Promise<Player[]> {
+  //   // Sorting (terendah -> tertinggi di-copy agar MOCK tidak termutasi global)
+  //   const sortedPlayers = [...MOCK_PLAYERS].sort((a, b) => a.health - b.health);
 
-    if (roomMaxPlayer === 1) {
-      // Solo mode, find me only
-      return [sortedPlayers.find((p) => p.isMe) ?? sortedPlayers[0]];
-    }
+  //   if (roomMaxPlayer === 1) {
+  //     // Solo mode, find me only
+  //     return [sortedPlayers.find((p) => p.isMe) ?? sortedPlayers[0]];
+  //   }
 
-    return sortedPlayers.slice(0, roomMaxPlayer);
-  }
+  //   return sortedPlayers.slice(0, roomMaxPlayer);
+  // },
 };

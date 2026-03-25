@@ -29,31 +29,22 @@ export const BuffList = ({ className }: BuffListProps) => {
   return (
     <div
       className={cn(
-        "relative w-full p-2 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 shadow-2xl flex flex-col items-center",
-        className
+        "relative flex w-full flex-col items-center rounded-2xl border-2 border-white/10 bg-[#D9D9D9]/20 p-2 shadow-2xl backdrop-blur-md",
+        className,
       )}
     >
       {/* Header Badge */}
-      <div className="relative w-full max-w-[180px] h-[35px] md:h-[40px] shrink-0 flex items-center justify-center mb-3">
-        <Image
-          src="/match/match-badge.webp"
-          alt="Badge"
-          fill
-          sizes="(max-width: 768px) 180px, 200px"
-          className="object-contain"
-          priority
-        />
-        <h2 className="relative z-10 text-white font-semibold text-[10px] xs:text-xs md:text-base tracking-tight mt-0.5">
-          Materi & Kekuatan
-        </h2>
+      <div className="relative mb-3 flex h-[35px] w-full max-w-[180px] shrink-0 items-center justify-center md:h-[40px]">
+        <Image src="/match/match-badge.webp" alt="Badge" fill sizes="(max-width: 768px) 180px, 200px" className="object-contain" priority />
+        <h2 className="xs:text-xs relative z-10 mt-0.5 text-[10px] font-semibold tracking-tight text-white md:text-base">Materi & Kekuatan</h2>
       </div>
 
       {/* Buff Grid Container */}
-      <div className="w-full flex-1 overflow-y-auto scrollbar-hide pb-2">
+      <div className="scrollbar-hide w-full flex-1 overflow-y-auto pb-2">
         <div
           className="grid gap-x-2 gap-y-4"
           style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))"
+            gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
           }}
         >
           {MOCK_BUFFS.map((buff) => (
