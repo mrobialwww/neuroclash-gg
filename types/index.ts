@@ -6,3 +6,4 @@ export * from "./HistoryItem";
 export * from "./user";
 export * from "./GameRoom";
 export * from "./character";
+export * from "./leaderboard";
