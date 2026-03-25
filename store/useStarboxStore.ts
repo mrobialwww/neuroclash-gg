@@ -78,7 +78,9 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
 
       let totalPlayer = activeParticipants.length || 1;
 
-      activeParticipants = activeParticipants.map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
+      activeParticipants = activeParticipants
+        .sort((a, b) => (a.health ?? 100) - (b.health ?? 100))
+        .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
       // if (roomConfig.max_player === 1) {
       //   // Solo mode, find me only atau mock 1
       //   activeParticipants = activeParticipants.filter(p => p.id === currentUser?.id);
