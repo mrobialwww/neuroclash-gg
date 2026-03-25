@@ -8,7 +8,6 @@ export interface CreateRoomParams {
   category: string;
   title: string | null;
   max_player: number;
-  total_question: number;
   total_round: number;
   difficulty: string;
   image_url: string;
@@ -33,6 +32,26 @@ export const gameRoomRepository = {
 
     if (error) {
       console.error("[GameRoomRepo] Error fetching rooms:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+  },
+
+  /**
+   * Fetch all game rooms created by a specific user.
+   */
+  async getUserRooms(userId: string): Promise<GameRoomWithPlayerCount[]> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("game_rooms")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[GameRoomRepo] Error fetching user rooms:", error.message);
       return [];
     }
 
@@ -139,7 +158,6 @@ export const gameRoomRepository = {
         category: params.category,
         title: params.title,
         max_player: params.max_player,
-        total_question: params.total_question,
         total_round: params.total_round,
         difficulty: params.difficulty,
         image_url: params.image_url,
@@ -150,12 +168,8 @@ export const gameRoomRepository = {
       .single();
 
     if (error) {
-      console.error("[GameRoomRepo] createRoom error:", error);
-      console.error("[GameRoomRepo] Error code:", error.code);
-      console.error("[GameRoomRepo] Error message:", error.message);
-      console.error("[GameRoomRepo] Error details:", error.details);
-      console.error("[GameRoomRepo] Error hint:", error.hint);
-      console.error("[GameRoomRepo] Params:", params);
+      console.error("[GameRoomRepo] createRoom error:", JSON.stringify(error, null, 2));
+      console.error("[GameRoomRepo] Params that caused error:", JSON.stringify(params, null, 2));
       return null;
     }
 
@@ -223,5 +237,32 @@ export const gameRoomRepository = {
       questionsInserted: questionsInserted,
       answersInserted: answersInserted,
     };
+  },
+
+  /**
+   * Insert ability materials untuk room baru.
+   */
+  async insertAbilityMaterials(
+    gameRoomId: string,
+    materials: any[]
+  ): Promise<number> {
+    const supabase = await createClient();
+    let insertedCount = 0;
+
+    for (const ability of materials) {
+      const { data } = await supabase
+        .from("ability_materials")
+        .insert({
+          game_room_id: gameRoomId,
+          title: ability.title,
+          content: ability.text ?? ability.content,
+        })
+        .select()
+        .single();
+
+      if (data) insertedCount++;
+    }
+
+    return insertedCount;
   },
 };

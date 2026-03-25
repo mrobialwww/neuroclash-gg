@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,9 @@ import { Loader2 } from "lucide-react";
 
 export default function CreateQuizDummy() {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<any>(null); // State untuk menampung hasil JSON dari Gemini
+  const [savedRoom, setSavedRoom] = useState<any>(null);
 
   // State terpisah untuk masing-masing skenario
   const [file, setFile] = useState<File | null>(null);
@@ -29,6 +32,7 @@ export default function CreateQuizDummy() {
 
     setLoading(true);
     setResult(null);
+    setSavedRoom(null);
 
     try {
       const formData = new FormData();
@@ -64,6 +68,7 @@ export default function CreateQuizDummy() {
 
     setLoading(true);
     setResult(null);
+    setSavedRoom(null);
 
     try {
       const response = await fetch("/api/quiz", {
@@ -82,6 +87,43 @@ export default function CreateQuizDummy() {
       alert("Terjadi kesalahan saat memproses kategori.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateRoom = async () => {
+    if (!result) return;
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Anda belum login! Silakan login untuk membuat ruangan.");
+        setSaving(false);
+        return;
+      }
+
+      const response = await fetch("/api/game-rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          category: category || "",
+          max_player: maxPlayer,
+          total_question: maxPlayer,
+          total_round: round,
+          difficulty: difficulty,
+          questions: result.geminiFile ? result.geminiFile : result, // Send only the gemini content
+        }),
+      });
+      const data = await response.json();
+      setSavedRoom(data);
+      alert("Game Room berhasil dibuat dan disimpan ke database!");
+    } catch (error) {
+      console.error(error);
+      alert("Gagal menyimpan Game Room.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -203,6 +245,21 @@ export default function CreateQuizDummy() {
             <CardTitle className="text-green-700">Hasil Generate AI!</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="flex justify-end mb-4">
+              <Button onClick={handleCreateRoom} disabled={saving} className="bg-green-600 hover:bg-green-700">
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Simpan ke Database
+              </Button>
+            </div>
+
+            {savedRoom && (
+              <div className="mb-4 p-4 border rounded bg-slate-900 border-slate-700">
+                <p className="text-white font-semibold mb-2">Saved Game Room Data:</p>
+                <pre className="text-slate-200 text-xs overflow-x-auto">{JSON.stringify(savedRoom, null, 2)}</pre>
+              </div>
+            )}
+
+            <p className="text-white font-semibold mb-2">Gemini Result:</p>
             <pre className="bg-slate-950 text-slate-50 p-4 rounded-lg overflow-x-auto text-sm">{JSON.stringify(result, null, 2)}</pre>
           </CardContent>
         </Card>

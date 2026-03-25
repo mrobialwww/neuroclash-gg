@@ -8,13 +8,13 @@ import {
   UserCharacterWithDetails,
 } from "@/services/shop/shopService";
 import CharacterCard from "./CharacterCard";
-import Sidebar from "./Sidebar";
 import { ToastOverlay } from "@/components/common/ToastOverlay";
 import Image from "next/image";
 import { useUserStore } from "@/store/useUserStore";
 import { cn } from "@/lib/utils";
 
 import ShowroomView from "./ShowroomView";
+import Sidebar from "./ShopSidebar";
 
 type Filter = "karakter" | "skin" | "dimiliki" | "room";
 

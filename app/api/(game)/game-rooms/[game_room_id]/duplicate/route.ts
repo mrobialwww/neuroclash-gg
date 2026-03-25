@@ -136,7 +136,6 @@ export async function POST(
       category: originalRoom.category,
       title: originalRoom.title || originalRoom.category,
       max_player: Number(max_player),
-      total_question: originalRoom.total_question,
       total_round: originalRoom.total_round,
       difficulty: originalRoom.difficulty,
       image_url: originalRoom.image_url,

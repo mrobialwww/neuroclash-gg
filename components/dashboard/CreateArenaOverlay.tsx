@@ -7,12 +7,17 @@ import { CategoryType, Difficulty } from "@/types/enums";
 type CreateArenaModalProps = {
   open: boolean;
   onClose: () => void;
+  isLoading?: boolean;
+  loadingText?: string;
+  errorMsg?: string | null;
   onSubmit?: (data: {
     materiId: string | null;
     file: File | null;
     maxPlayers: number;
     jumlahSoal: number;
     difficulty: Difficulty;
+    room_visibility: "public" | "private";
+    title: string;
   }) => void;
 };
 
@@ -32,6 +37,11 @@ const DIFFICULTIES: { label: string; value: Difficulty }[] = [
   { label: "Mudah", value: "mudah" },
   { label: "Sedang", value: "sedang" },
   { label: "Sulit", value: "sulit" },
+];
+
+const VISIBILITY_OPTIONS: { label: string; value: "public" | "private" }[] = [
+  { label: "Publik", value: "public" },
+  { label: "Privat", value: "private" },
 ];
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -90,14 +100,19 @@ export default function CreateArenaModal({
   open,
   onClose,
   onSubmit,
+  isLoading = false,
+  loadingText,
+  errorMsg = null,
 }: CreateArenaModalProps) {
   const [selectedMateri, setSelectedMateri] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [maxPlayers, setMaxPlayers] = useState(20);
-  const [jumlahSoal, setJumlahSoal] = useState(20);
-  const [difficulty, setDifficulty] = useState<Difficulty>("mudah");
+  const [maxPlayers, setMaxPlayers] = useState<number | null>(null);
+  const [jumlahSoal, setJumlahSoal] = useState<number | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [roomVisibility, setRoomVisibility] = useState<"public" | "private" | null>(null);
+  const [title, setTitle] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,13 +145,27 @@ export default function CreateArenaModal({
     setUploadedFile(null);
   };
 
+  let warningMessage = "";
+  if (!title.trim()) warningMessage = "Isi Judul Kuis";
+  else if (!selectedMateri && !uploadedFile) warningMessage = "Pilih Materi atau Upload Dokumen";
+  else if (!maxPlayers) warningMessage = "Pilih Jumlah Maksimal Pemain";
+  else if (!jumlahSoal) warningMessage = "Pilih Jumlah Soal";
+  else if (!difficulty) warningMessage = "Pilih Tingkat Kesulitan";
+  else if (!roomVisibility) warningMessage = "Pilih Visibilitas Room";
+
+  const isFormComplete = warningMessage === "";
+
   const handleSubmit = () => {
+    if (!isFormComplete) return;
+
     onSubmit?.({
       materiId: selectedMateri,
       file: uploadedFile,
-      maxPlayers,
-      jumlahSoal,
-      difficulty
+      maxPlayers: maxPlayers!,
+      jumlahSoal: jumlahSoal!,
+      difficulty: difficulty!,
+      room_visibility: roomVisibility!,
+      title
     });
   };
 
@@ -165,6 +194,18 @@ export default function CreateArenaModal({
           <div className="text-center mb-6 md:mb-8 pr-6">
             <h2 className="text-white text-2xl font-bold">Buat Arena Baru</h2>
             <p className="text-white/80 text-sm mt-1.5 leading-relaxed">Buat room kuis seru dengan materi yang menantang</p>
+          </div>
+
+          {/* Judul Kuis Input */}
+          <div className="mb-5 md:mb-6">
+            <p className="text-white text-sm font-semibold mb-3">Judul Kuis</p>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Masukkan judul quiz..."
+              className="w-full bg-[#0d0f2b] border border-[#383347] rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-blue-500 transition-colors placeholder-white/40"
+            />
           </div>
 
           {/* Materi Section Label */}
@@ -308,16 +349,84 @@ export default function CreateArenaModal({
               })}
             </div>
           </div>
+
+          {/* Room Visibility Selection */}
+          <div className="mt-5 md:mt-6">
+            <p className="text-white text-sm font-semibold mb-3">Visibilitas Room</p>
+            <div className="grid grid-cols-2 gap-3">
+              {VISIBILITY_OPTIONS.map((v) => {
+                const isActive = roomVisibility === v.value;
+                return (
+                  <button
+                    key={v.value}
+                    onClick={() => setRoomVisibility(v.value)}
+                    className={cn(
+                      "py-1 md:py-1.5 text-sm font-bold transition-all border rounded-lg cursor-pointer",
+                      isActive
+                        ? "bg-blue-600 border-blue-600 text-white shadow-lg"
+                        : "bg-transparent border-[#383347] text-white/60 hover:text-white hover:border-gray-500"
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* ── Action Bar (Submit) ── */}
         <div className="px-6 md:px-8 py-5 border-t border-[#383347] bg-[#040619]">
+          {/* Error Banner */}
+          {errorMsg && (
+            <div className="mb-3 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
+              {errorMsg}
+            </div>
+          )}
           <button
             onClick={handleSubmit}
-            className="group w-full py-2 md:py-3 text-white font-bold text-base md:text-md flex items-center justify-center gap-2 bg-blue-600 rounded-lg shadow-xl shadow-blue-900/10 transition-all hover:bg-blue-500 active:scale-[0.98] cursor-pointer"
+            disabled={isLoading || !isFormComplete}
+            className={cn(
+              "group w-full py-2 md:py-3 text-white font-bold text-base md:text-md flex items-center justify-center gap-2 rounded-lg shadow-xl transition-all",
+              isLoading || !isFormComplete
+                ? "bg-gray-600 cursor-not-allowed opacity-60"
+                : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/10 active:scale-[0.98] cursor-pointer"
+            )}
           >
-            <span className="transition-transform group-hover:scale-110 group-hover:-rotate-12">🚀</span>
-            Buat Arena Baru
+            {isLoading ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                {loadingText || "Memproses..."}
+              </>
+            ) : !isFormComplete ? (
+              <>
+                {warningMessage}
+              </>
+            ) : (
+              <>
+                <span className="transition-transform group-hover:scale-110 group-hover:-rotate-12">🚀</span>
+                Buat Arena Baru
+              </>
+            )}
           </button>
         </div>
       </div>

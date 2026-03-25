@@ -40,7 +40,10 @@ export async function POST(req: Request) {
         const arrayBuffer = await response.arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       } else {
-        return NextResponse.json({ message: "Harap sertakan file 'pdf' atau teks 'url'." }, { status: 400 });
+        return NextResponse.json(
+          { message: "Harap sertakan file 'pdf' atau teks 'url'." },
+          { status: 400 }
+        );
       }
     }
     // 2. Cek apakah request berupa JSON (URL murni)
@@ -51,7 +54,9 @@ export async function POST(req: Request) {
       if (mp) maxPlayer = parseInt(mp, 10);
       const {
         data: { publicUrl: url },
-      } = supabase.storage.from("materials").getPublicUrl(`${category}/${difficulty}.pdf`);
+      } = supabase.storage
+        .from("materials")
+        .getPublicUrl(`${category}/${difficulty}.pdf`);
 
       if (url) {
         const response = await fetch(url);
@@ -59,12 +64,21 @@ export async function POST(req: Request) {
         const arrayBuffer = await response.arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       } else {
-        return NextResponse.json({ message: "URL tidak ditemukan dalam body JSON." }, { status: 400 });
+        return NextResponse.json(
+          { message: "URL tidak ditemukan dalam body JSON." },
+          { status: 400 }
+        );
       }
     }
     // 3. Format tidak didukung
     else {
-      return NextResponse.json({ message: "Format Content-Type tidak didukung. Gunakan form-data atau application/json." }, { status: 415 });
+      return NextResponse.json(
+        {
+          message:
+            "Format Content-Type tidak didukung. Gunakan form-data atau application/json.",
+        },
+        { status: 415 }
+      );
     }
 
     const generationConfig = {
@@ -81,12 +95,16 @@ export async function POST(req: Request) {
     const result = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: [
-        `Buatkan ${targetCount} ${contentType.includes("multipart/form-data") ? `dengan tingkat kesulitan ${difficulty}` : ""} soal pilihan ganda dari dokumen PDF ini.
+        `Buatkan ${targetCount} ${
+          contentType.includes("multipart/form-data")
+            ? `dengan tingkat kesulitan ${difficulty}`
+            : ""
+        } soal pilihan ganda dari dokumen PDF ini.
 Buatkan juga materi bacaan singkat (masing-masing cukup 4-5 kalimat) sejumlah ${abilityMaterials} buah yang diambil dari intisari dokumen tersebut.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
-  "theme_materials": "tema materi dari dokumen, hanya berisi 1/2 kata saja",
+  "theme_materials": "tema materi dari dokumen. Jika cocok, gunakan salah satu dari enum ini persis: bahasaindonesia | bahasainggris | biologi | pancasila | pemrograman | sejarah. Tapi jika tidak ada yang cocok (misal matematika), tuliskan materinya (contoh: matematika).",
   "list_questions": [
     {
       "order": 1,
@@ -133,11 +151,14 @@ Pastikan:
         message: "Berhasil diproses.",
         geminiFile: cleanedParsed,
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("Error API:", error);
     console.log("Error API:", error);
-    return NextResponse.json({ message: "Terjadi kesalahan pada server saat memproses dokumen." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Terjadi kesalahan pada server saat memproses dokumen." },
+      { status: 500 }
+    );
   }
 }
