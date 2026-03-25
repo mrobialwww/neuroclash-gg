@@ -78,8 +78,8 @@ export const PlayerGridCard = ({
       >
         <div className="relative w-[75%] h-[75%] flex items-center justify-center">
           <Image
-            src={player.image}
-            alt={player.character}
+            src={player.image || "/default/Slime.webp"}
+            alt={player.character || "Player"}
             fill
             sizes="(max-width: 768px) 64px, 80px"
             className="object-contain drop-shadow-md"
