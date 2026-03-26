@@ -52,28 +52,58 @@ export const matchService = {
     answerId: string,
     roundNumber: number
   ) {
+    console.log(
+      `[MatchService] Processing answer for userId: ${userId}, answerId: ${answerId}`
+    );
+
     // 1. Dapatkan detail jawaban
     const answerDetail = await matchRepository.getAnswerDetail(answerId);
     if (!answerDetail) throw new Error("Jawaban tidak ditemukan.");
 
     const { is_correct, question_id } = answerDetail;
+    console.log(
+      `[MatchService] Found question_id: ${question_id} for answer_id: ${answerId}`
+    );
 
     // 2. Dapatkan detail room dan question order melalui question_id
     const supabase = await (
       await import("@/lib/supabase/server")
     ).createClient();
-    const { data: questionData } = await supabase
-      .from("questions")
-      .select("game_room_id, question_order, game_rooms(total_question)")
-      .eq("question_id", question_id)
-      .single();
 
-    if (!questionData) throw new Error("Question metadata not found.");
+    // Fetch question details without join first to isolate issues
+    const { data: questionData, error: qError } = await supabase
+      .from("questions")
+      .select("game_room_id, question_order")
+      .eq("question_id", question_id)
+      .maybeSingle();
+
+    if (qError) {
+      console.error("[MatchService] Supabase error fetching question:", qError);
+      throw new Error(`Gagal mengambil metadata pertanyaan: ${qError.message}`);
+    }
+
+    if (!questionData) {
+      console.error(
+        `[MatchService] Question not found in DB for ID: ${question_id}`
+      );
+      throw new Error("Metadata pertanyaan tidak ditemukan di database.");
+    }
 
     const roomId = questionData.game_room_id;
     const currentOrder = questionData.question_order;
-    const totalQuestions =
-      (questionData.game_rooms as any).total_question || 20;
+
+    // Fetch room details separately for reliability
+    const { data: roomData } = await supabase
+      .from("game_rooms")
+      .select("total_round")
+      .eq("game_room_id", roomId)
+      .maybeSingle();
+
+    const totalQuestions = roomData?.total_round || 20;
+
+    console.log(
+      `[MatchService] Match details: roomId=${roomId}, order=${currentOrder}, total=${totalQuestions}`
+    );
 
     // 3. Simpan jawaban ke user_answers (Repo) dengan game_room_id dan round_number
     await matchRepository.submitAnswer(userId, answerId, roomId, roundNumber);
@@ -103,7 +133,11 @@ export const matchService = {
       // kita periksa apakah user_id ini adalah yang pertama menjawab benar.
       const correctOnes = allAnswers.filter((a: any) => a.answer.is_correct);
 
-      if (correctOnes.length > 1 && correctOnes[0].user_id !== userId) {
+      // Solo mode logic or first correct responder
+      if (correctOnes.length > 0 && correctOnes[0].user_id === userId) {
+        // User ini yang tercepat (pertama kali benar) atau satu-satunya di solo mode
+        isWinner = true;
+      } else if (correctOnes.length > 1) {
         // Ada yang lebih cepat dan benar -> User ini kena damage
         damageApplied = damage;
         const participants = await matchRepository.getParticipants(roomId);
@@ -115,12 +149,6 @@ export const matchService = {
             Math.max(0, userState.health - damage)
           );
         }
-      } else if (
-        correctOnes.length === 1 &&
-        correctOnes[0].user_id === userId
-      ) {
-        // User ini yang tercepat (pertama kali benar)
-        isWinner = true;
       }
     }
 

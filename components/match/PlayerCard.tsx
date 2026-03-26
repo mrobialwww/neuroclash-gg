@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,22 @@ export const PlayerCard = ({
   className,
 }: PlayerCardProps) => {
   const healthPercentage = (player.health / player.maxHealth) * 100;
+
+  // Suppress the transition animation on the very first render
+  const isMounted = useRef(false);
+  const [enableTransition, setEnableTransition] = useState(false);
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      // Allow one frame to paint with the initial width before enabling
+      // transition so subsequent HP changes animate smoothly
+      const raf = requestAnimationFrame(() => {
+        setEnableTransition(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, []);
 
   return (
     <div
@@ -81,7 +97,10 @@ export const PlayerCard = ({
         {!hideHealthBar && (
           <div className="relative my-1 h-3 w-full overflow-hidden rounded-full border border-white/20 bg-[#1A1B23] shadow-inner md:h-4 lg:mb-2">
             <div
-              className="h-full bg-[#22C55E] shadow-[0_0_10px_rgba(94,211,106,0.5)]"
+              className={cn(
+                "h-full bg-[#22C55E] shadow-[0_0_10px_rgba(94,211,106,0.5)]",
+                enableTransition && "transition-[width] duration-300 ease-out"
+              )}
               style={{ width: `${healthPercentage}%` }}
             />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

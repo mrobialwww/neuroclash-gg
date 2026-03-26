@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
-import { ToastFailed } from "@/components/common/ToastFailed";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
@@ -10,16 +10,20 @@ export function OverlayJoinCardWrapper() {
   const [roomToJoin, setRoomToJoin] = useState<GameRoomWithPlayerCount | null>(
     null
   );
-  const [toastData, setToastData] = useState<{ isOpen: boolean; code: string }>({
-    isOpen: false,
-    code: ""
-  });
+  const [toastData, setToastData] = useState<{ isOpen: boolean; code: string }>(
+    {
+      isOpen: false,
+      code: "",
+    }
+  );
 
   const handleJoinByCode = async (code: string) => {
     if (!code) return;
 
     try {
-      const resp = await fetch(`/api/game-rooms/code/${code}`);
+      const resp = await fetch(`/api/game-rooms/code/${code}`, {
+        credentials: "include",
+      });
       const result = await resp.json();
 
       // API contract: { data: GameRoom[] } — ambil elemen pertama
@@ -52,7 +56,7 @@ export function OverlayJoinCardWrapper() {
         />
       )}
 
-      <ToastFailed
+      <ToastOverlay
         isOpen={toastData.isOpen}
         code={toastData.code}
         onClose={() => setToastData((prev) => ({ ...prev, isOpen: false }))}

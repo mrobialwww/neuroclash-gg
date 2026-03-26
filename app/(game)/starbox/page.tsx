@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { MainButton } from "@/components/common/MainButton";
@@ -19,6 +19,11 @@ const steps = [
   { id: "treasure", icon: "/icons/treasure.svg" },
 ];
 
+/** Durasi timer per giliran (ms) — habis = auto-pick random */
+const TURN_DURATION_MS = 3000;
+/** Interval update progress bar (ms) */
+const PROGRESS_TICK_MS = 50;
+
 export default function StarboxPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,162 +36,163 @@ export default function StarboxPage() {
     roomInfo,
     players,
     abilities,
-    currentTurnIndex,
     pickingAbilityId,
     isLoading,
+    isHost,
+    myPlayerId,
+    pickedPlayerIds,
+    currentTurnIndex,
     initGameData,
     selectAbility,
-    nextTurn,
+    autoAssignRemaining,
+    cleanup,
+    reset,
   } = useStarboxStore();
 
-  // 1. Initial Data Fetching
+  // ── 1. Initial Data Fetching
   useEffect(() => {
-    initGameData(code, roomId);
-  }, [code, roomId, initGameData]);
+    initGameData(code, roomId, nextRound);
+    return () => cleanup();
+  }, [code, roomId, initGameData, cleanup, nextRound]);
 
   const handleNextRound = useCallback(() => {
     router.push(`/game/${roomId}?code=${code}&nextRound=${nextRound}`);
   }, [router, roomId, code, nextRound]);
 
   const handleExit = () => {
+    reset();
     router.push("/dashboard");
   };
 
-  // 2. Turn Management & Bot Execution Effect
+  // ── 2. Derived state (event-driven, dari Zustand `currentTurnIndex`) ───
+  const allTurnsDone = players.length > 0 && currentTurnIndex >= players.length;
+  const isMyTurn = roomInfo?.max_player !== 1 && currentTurnIndex < players.length && !!players[currentTurnIndex]?.isMe;
+  const iHavePicked = myPlayerId ? pickedPlayerIds.includes(myPlayerId) : false;
+
+  // ── 3. Per-turn timer: 3 detik per giliran, auto-pick random jika habis ─
+  const [progress, setProgress] = useState(0);
+  const [turnCountdown, setTurnCountdown] = useState(TURN_DURATION_MS / 1000);
+  const autoPickedThisTurn = useRef(false);
+
   useEffect(() => {
-    if (isLoading || !roomInfo) return;
-
-    const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
-
-    // Stop conditions: all players picked OR items run out completely
-    if (currentTurnIndex >= players.length || totalStock <= 0) {
-      if (currentTurnIndex > 0 || totalStock <= 0) {
-        // Prevents initial instant redirect if somehow items are empty
-        const timer = setTimeout(() => handleNextRound(), 1000);
-        return () => clearTimeout(timer);
-      }
+    if (allTurnsDone || isLoading) {
+      setProgress(0);
+      setTurnCountdown(TURN_DURATION_MS / 1000);
       return;
     }
 
-    const currentPlayer = players[currentTurnIndex];
-
-    // Jika giliran bot (MOCK OPPONENT)
-    if (!currentPlayer.isMe && roomInfo.max_player !== 1) {
-      if (pickingAbilityId) return; // Prevent overlapping if already picking
-
-      const botTimer = setTimeout(() => {
-        const availableItems = abilities.filter((a) => a.stock > 0);
-        if (availableItems.length > 0) {
-          const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
-          selectAbility(randomItem.id);
-
-          setTimeout(() => {
-            nextTurn();
-          }, 1200);
-        } else {
-          nextTurn();
-        }
-      }, 1500);
-
-      return () => clearTimeout(botTimer);
-    }
-  }, [
-    currentTurnIndex,
-    players,
-    abilities,
-    isLoading,
-    roomInfo,
-    pickingAbilityId,
-    selectAbility,
-    nextTurn,
-    handleNextRound,
-  ]);
-
-  // 3. User Click Handler
-  const handleUserClickAbility = (abilityId: string) => {
-    const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
-    if (totalStock <= 0 || pickingAbilityId) return;
-
-    if (roomInfo?.max_player === 1) {
-      // Solo mode -> instant pick & straight to next round
-      selectAbility(abilityId);
-      setTimeout(() => {
-        handleNextRound();
-      }, 800);
-      return;
-    }
-
-    // Multi-player mode
-    if (players[currentTurnIndex]?.isMe) {
-      selectAbility(abilityId);
-      setTimeout(() => {
-        nextTurn();
-      }, 1200);
-    }
-  };
-
-  const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
-  const activeStepIndex = 6; // Treasure step
-
-  const [progress, setProgress] = React.useState(0);
-
-  // 4. Timer Logic
-  useEffect(() => {
-    if (isLoading || !roomInfo || currentTurnIndex >= players.length) return;
-
+    // Reset saat giliran berganti
     setProgress(0);
-    const duration = 3000; // 3 seconds
-    const intervalTime = 50;
-    const step = (100 / (duration / intervalTime));
+    setTurnCountdown(TURN_DURATION_MS / 1000);
+    autoPickedThisTurn.current = false;
+    const startTime = Date.now();
 
     const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          nextTurn();
-          return 100;
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / TURN_DURATION_MS) * 100);
+      const remaining = Math.max(0, Math.ceil((TURN_DURATION_MS - elapsed) / 1000));
+      setProgress(pct);
+      setTurnCountdown(remaining);
+
+      // Timer habis → auto-pick random untuk giliran saya
+      if (elapsed >= TURN_DURATION_MS && !autoPickedThisTurn.current) {
+        autoPickedThisTurn.current = true;
+
+        const state = useStarboxStore.getState();
+        const currentPlayer = state.players[state.currentTurnIndex];
+        if (!currentPlayer) return;
+
+        // Hanya user yang sedang giliran yang menjalankan auto-pick
+        if (currentPlayer.isMe) {
+          const available = state.abilities.filter((a) => a.stock > 0);
+          if (available.length > 0) {
+            const randomAbility = available[Math.floor(Math.random() * available.length)];
+            console.log(`[Starbox] Auto-pick: ${randomAbility.name} untuk ${currentPlayer.name}`);
+            state.selectAbility(roomId, randomAbility.id, currentPlayer.id);
+          }
         }
-        return prev + step;
-      });
-    }, intervalTime);
+      }
+    }, PROGRESS_TICK_MS);
 
     return () => clearInterval(interval);
-  }, [currentTurnIndex, isLoading, roomInfo, players.length, nextTurn]);
+  }, [currentTurnIndex, allTurnsDone, isLoading, roomId]);
 
+  // ── 4. Auto-transition: semua giliran selesai → redirect
+  const autoAssignDone = useRef(false);
+
+  useEffect(() => {
+    if (!allTurnsDone || isLoading || !roomInfo || autoAssignDone.current) return;
+    autoAssignDone.current = true;
+
+    if (isHost) {
+      import("@/repository/abilityRoomRepository").then(({ abilityRoomRepository }) => {
+        autoAssignRemaining(roomId).then(async () => {
+          await abilityRoomRepository.initialAbilites(roomId, players.length, true);
+          setTimeout(() => handleNextRound(), 1500);
+        });
+      });
+    } else {
+      setTimeout(() => handleNextRound(), 2500);
+    }
+  }, [allTurnsDone, isLoading, roomInfo, isHost, roomId, autoAssignRemaining, handleNextRound, players.length]);
+
+  // ── 5. Click handler
+  const handleUserClickAbility = useCallback(
+    (abilityId: string) => {
+      const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
+      if (totalStock <= 0 || pickingAbilityId) return;
+
+      if (roomInfo?.max_player === 1) {
+        selectAbility(roomId, abilityId, players[currentTurnIndex]?.id);
+        setTimeout(() => handleNextRound(), 800);
+        return;
+      }
+
+      if (isMyTurn && !iHavePicked) {
+        autoPickedThisTurn.current = true; // Cegah auto-pick setelah user sudah pilih manual
+        selectAbility(roomId, abilityId, players[currentTurnIndex]?.id);
+      }
+    },
+    [abilities, pickingAbilityId, roomInfo, roomId, players, currentTurnIndex, selectAbility, handleNextRound, isMyTurn, iHavePicked],
+  );
+
+  const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
+  const activeStepIndex = 6;
+  const canPickAbility = roomInfo?.max_player === 1 || (isMyTurn && !iHavePicked && !pickingAbilityId);
+
+  // ── Loading screen
   if (isLoading) {
     return (
-      <main className="min-h-screen w-full flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 border-4 border-[#3D79F3] border-t-transparent rounded-full animate-spin" />
-        <p className="text-white text-lg font-semibold animate-pulse">Menyiapkan Starbox...</p>
+      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
+        <p className="animate-pulse text-lg font-semibold text-white">Menyiapkan Starbox...</p>
       </main>
     );
   }
 
+  // ── Main UI
   return (
-    <main className="min-h-screen w-full flex flex-col items-center py-6 px-4 md:px-8 lg:px-12 relative overflow-x-hidden pt-4 md:pt-6">
-
-      <div className="relative z-10 w-full max-w-[1400px] flex flex-col items-center gap-8 pb-8">
+    <main className="relative flex min-h-screen w-full flex-col items-center overflow-x-hidden px-4 py-6 pt-4 md:px-8 md:pt-6 lg:px-12">
+      <div className="relative z-10 flex w-full max-w-[1400px] flex-col items-center gap-8 pb-8">
         {/* Header */}
-        <header className="w-full flex items-center justify-between mb-2">
-          <div className="bg-[#A6A6A6]/40 backdrop-blur-xl px-2 md:px-4 lg:px-6 py-1.5 rounded-lg font-semibold text-white text-sm md:text-base">
+        <header className="mb-2 flex w-full items-center justify-between">
+          <div className="rounded-lg bg-[#A6A6A6]/40 px-2 py-1.5 text-sm font-semibold text-white backdrop-blur-xl md:px-4 md:text-base lg:px-6">
             {code}
           </div>
 
-          {/* Icons Indicators */}
-          <div className="flex-1 flex justify-center gap-2 sm:gap-4 md:gap-6 px-4">
+          <div className="flex flex-1 justify-center gap-2 px-4 sm:gap-4 md:gap-6">
             {steps.map((step, index) => {
               const isActive = index === activeStepIndex;
-
               return (
                 <div key={step.id} className="relative flex flex-col items-center">
                   <div
                     className={cn(
-                      "relative h-5 w-5 md:h-6 md:w-6 transition-all duration-500 flex items-center justify-center",
-                      isActive ? "text-[#FFCC00]" : "text-white/40"
+                      "relative flex h-5 w-5 items-center justify-center transition-all duration-500 md:h-6 md:w-6",
+                      isActive ? "text-[#FFCC00]" : "text-white/40",
                     )}
                   >
                     <div
-                      className="w-[18px] h-[18px] md:w-[20px] md:h-[20px] bg-current"
+                      className="h-[18px] w-[18px] bg-current md:h-[20px] md:w-[20px]"
                       style={{
                         maskImage: `url(${step.icon})`,
                         WebkitMaskImage: `url(${step.icon})`,
@@ -204,40 +210,54 @@ export default function StarboxPage() {
             })}
           </div>
 
-          <MainButton variant="white" onClick={handleExit} className="px-2 md:px-4 lg:px-6 h-8 lg:h-9 text-sm md:text-base shrink-0">
+          <MainButton variant="white" onClick={handleExit} className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6">
             Keluar
           </MainButton>
         </header>
 
         {/* Title Section */}
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-white text-xl md:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-lg text-balance">
+          <h1 className="text-balance text-xl font-bold tracking-tight text-white drop-shadow-lg md:text-2xl lg:text-3xl">
             Takdir ada di tanganmu, pilih satu kekuatan!
           </h1>
 
-          {roomInfo?.max_player !== 1 && currentTurnIndex < players.length && (
-            <p className="mt-2 text-white/80 font-medium text-lg">
-              Giliran: <span className={players[currentTurnIndex]?.isMe ? "text-[#22C55E]" : "text-[#FFCB66]"}>
-                {players[currentTurnIndex]?.isMe ? "Kamu" : players[currentTurnIndex]?.name}
-              </span>
-              <span className="text-white/60 text-sm ml-2">(HP terendah memilih lebih awal)</span>
-            </p>
+          {roomInfo?.max_player !== 1 && (
+            <div className="mt-2 flex flex-col items-center gap-2">
+              {currentTurnIndex < players.length ? (
+                <p className="text-lg font-medium text-white/80">
+                  Giliran:{" "}
+                  <span className={players[currentTurnIndex]?.isMe ? "text-[#22C55E]" : "text-[#FFCB66]"}>
+                    {players[currentTurnIndex]?.isMe ? "Kamu" : players[currentTurnIndex]?.name}
+                  </span>
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white">
+                    ⏱ {turnCountdown}s
+                  </span>
+                  <span className="ml-2 text-sm text-white/60">(HP terendah memilih lebih awal)</span>
+                </p>
+              ) : (
+                <p className="text-lg font-medium text-[#22C55E]">Semua pemain telah memilih! Menyiapkan babak selanjutnya...</p>
+              )}
+
+              {iHavePicked && !allTurnsDone && <p className="text-sm font-medium text-white/50">Kamu sudah memilih. Menunggu pemain lain...</p>}
+            </div>
           )}
 
-          <p className="mt-2 text-white/60 font-semibold text-sm bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
+          <p className="mt-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/60">
             Sisa Item Keseluruhan: <span className="text-white">{remainingItems} Terakhir</span>
           </p>
         </div>
 
         {/* Ability Selection Grid */}
-        <div className={cn(
-          "flex flex-wrap justify-center items-center gap-3 lg:gap-4 w-full mx-auto transition-all",
-          roomInfo?.max_player !== 1 && !players[currentTurnIndex]?.isMe ? "pointer-events-none opacity-90" : ""
-        )}>
+        <div
+          className={cn(
+            "mx-auto flex w-full flex-wrap items-center justify-center gap-3 transition-all lg:gap-4",
+            !canPickAbility ? "pointer-events-none opacity-70" : "",
+          )}
+        >
           {abilities.map((ability) => {
             const isBeingPickedByBot = pickingAbilityId === ability.id;
             return (
-              <div key={ability.id} className="w-[160px] md:w-[180px] lg:w-[200px] shrink-0 relative transition-all duration-300">
+              <div key={ability.id} className="relative w-[160px] shrink-0 transition-all duration-300 md:w-[180px] lg:w-[200px]">
                 <AbilityCard
                   name={ability.name}
                   description={ability.description}
@@ -245,42 +265,41 @@ export default function StarboxPage() {
                   emptyImage={ability.emptyImage}
                   stock={ability.stock}
                   onClick={() => handleUserClickAbility(ability.id)}
-                  className={isBeingPickedByBot ? "scale-105 saturate-150 ring-2 ring-white rounded-lg" : ""}
+                  className={isBeingPickedByBot ? "scale-105 rounded-lg ring-2 ring-white saturate-150" : ""}
                 />
               </div>
             );
           })}
         </div>
 
-        {/* Player Grid Container (Hanya relevan/tampil bagus di mode multiplayer) */}
+        {/* Player Grid Container (Multiplayer only) */}
         {roomInfo?.max_player !== 1 && (
-          <div className="relative w-full mt-4 py-8 px-4 sm:px-8 lg:px-10 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border border-white/10 shadow-2xl overflow-visible">
-
+          <div className="relative mt-4 w-full overflow-visible rounded-2xl border border-white/10 bg-[#D9D9D9]/20 px-4 py-8 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
             {/* Turn Badge Overlay */}
-            {players[currentTurnIndex]?.isMe && (
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-full max-w-[400px] flex items-center justify-center z-30 px-4">
-                <div className="relative w-full h-auto flex items-center justify-center">
+            {isMyTurn && !iHavePicked ? (
+              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
+                <div className="relative flex h-auto w-full items-center justify-center">
                   <NextImage
                     src="/dashboard/trophy-badge.webp"
                     alt="Badge Background"
                     width={400}
                     height={70}
-                    className="object-contain -z-10 drop-shadow-xl block w-full h-full"
+                    className="-z-10 block h-full w-full object-contain drop-shadow-xl"
                     priority
                   />
                   <div className="absolute inset-0 flex items-center justify-center px-4 md:px-8">
-                    <span className="uppercase text-xs sm:text-sm md:text-base text-white drop-shadow-md font-bold text-center leading-tight">
+                    <span className="text-center text-xs font-bold uppercase leading-tight text-white drop-shadow-md sm:text-sm md:text-base">
                       Sekarang giliran kamu untuk memilih kekuatan!
                     </span>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-3 gap-y-12 md:gap-x-5 md:gap-y-16 items-start justify-items-center">
+            <div className="grid grid-cols-5 items-start justify-items-center gap-x-3 gap-y-12 md:grid-cols-8 md:gap-x-5 md:gap-y-16 lg:grid-cols-10">
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
-                const hasPicked = idx < currentTurnIndex;
+                const hasPicked = pickedPlayerIds.includes(player.id) || idx < currentTurnIndex;
 
                 return (
                   <div key={`${player.id}-${idx}`} className="w-full">
@@ -289,8 +308,8 @@ export default function StarboxPage() {
                       hideHealthBar={true}
                       highlight={player.isMe ? "self" : undefined}
                       hasPicked={hasPicked}
-                      isActiveTurn={isActiveTurn}
-                      progress={progress}
+                      isActiveTurn={isActiveTurn && !allTurnsDone}
+                      progress={isActiveTurn && !allTurnsDone ? progress : 0}
                       progressColor={player.isMe ? "bg-[#D46B1D]/80" : "bg-[#FDBB38]/80"}
                     />
                   </div>

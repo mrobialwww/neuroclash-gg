@@ -38,7 +38,7 @@ export const AbilityCard = ({
       )}
       onClick={!disableHover && stock > 0 ? onClick : undefined}
     >
-      <div className="relative w-full aspect-412/212 drop-shadow-2xl">
+      <div className="aspect-412/212 relative w-full drop-shadow-2xl">
         <Image
           src={displayImage}
           alt={name}
@@ -49,7 +49,7 @@ export const AbilityCard = ({
         />
 
         {/* Stock text in top right corner overlaying the ribbon */}
-        <div className="absolute top-[1.5%] right-[4%] z-10 pointer-events-none">
+        <div className="pointer-events-none absolute right-[4%] top-[1.5%] z-10">
           <div className="flex items-center justify-end">
             <span
               className={cn(

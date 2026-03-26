@@ -24,7 +24,8 @@ export interface UserGameHistoryWithStats {
 }
 
 // Cache untuk history data — berlaku untuk session
-let historyCache: Map<string, { data: HistoryItem[]; timestamp: number }> = new Map();
+let historyCache: Map<string, { data: HistoryItem[]; timestamp: number }> =
+  new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
 
 /**
@@ -63,7 +64,10 @@ function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
  * @param userId - ID user yang akan diquery
  * @returns Array dari history items
  */
-export async function getUserGameHistory(userId: string): Promise<HistoryItem[]> {
+export async function getUserGameHistory(
+  userId: string
+): Promise<HistoryItem[]> {
+  if (!userId) return [];
   try {
     // Cek cache
     const cached = historyCache.get(userId);
@@ -77,11 +81,13 @@ export async function getUserGameHistory(userId: string): Promise<HistoryItem[]>
     const url = new URL(
       `/api/user-game/history/${userId}`,
       typeof window === "undefined"
-        ? process.env.NEXTAUTH_URL || "http://localhost:3000"
+        ? process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         : window.location.origin
     );
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch history: ${response.statusText}`);
@@ -171,4 +177,3 @@ export function invalidateHistoryCache(userId?: string) {
   }
 }
 export type { HistoryItem };
-

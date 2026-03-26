@@ -26,6 +26,7 @@ export interface QuizLobbyState {
   error: string | null;
   currentUser: { id: string; username: string; avatar: string } | null;
   isMigrating: boolean;
+  starboxRedirect: boolean; // FOR TESTING — remove in production
 
   loadLobbyData: (roomId: string) => Promise<void>;
   decrementTimer: () => void;
@@ -53,6 +54,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   error: null,
   currentUser: null,
   isMigrating: false,
+  starboxRedirect: false, // FOR TESTING — remove in production
 
   setError: (msg: string) => set({ error: msg, isLoading: false }),
   setParticipants: (participants: LobbyPlayer[]) =>
@@ -112,9 +114,13 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
         try {
           // Fetch info User & Karakter secara paralel (tanpa cache agar avatar selalu fresh)
           const [userRes, charRes] = await Promise.all([
-            fetch(`/api/users/${raw.user_id}`, { cache: "no-store" }),
+            fetch(`/api/users/${raw.user_id}`, {
+              cache: "no-store",
+              credentials: "include",
+            }),
             fetch(`/api/user-character/${raw.user_id}?is_used=true`, {
               cache: "no-store",
+              credentials: "include",
             }),
           ]);
 
@@ -195,7 +201,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
       console.log(
         `[LobbyStore] 🔄 Room changed from ${currentRoomId} to ${roomId}`
       );
-      if (lobbyChannel && isSubscribed) {
+      if (lobbyChannel) {
         console.log(
           `[LobbyStore] Unsubscribing from old channel ${currentRoomId}`
         );
@@ -211,7 +217,11 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
     }
 
     // Jangan subscribe ulang jika sudah subscribe ke room yang sama
-    if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
+    if (
+      lobbyChannel &&
+      (isSubscribed || lobbyChannel.state === "joined") &&
+      currentRoomId === roomId
+    ) {
       console.log(
         `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
       );
@@ -222,15 +232,13 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
     currentRoomId = roomId;
     console.log(`[LobbyStore] 📍 Setting currentRoomId to: ${roomId}`);
 
-    // Jangan subscribe ulang jika sudah subscribe ke room yang sama
-    if (lobbyChannel && isSubscribed && currentRoomId === roomId) {
-      console.log(
-        `[LobbyStore] ⚠️ Already subscribed to room ${roomId}, skipping...`
-      );
-      return;
-    }
-
     const supabase = createClient();
+
+    // Clean up if channel exists but somehow not subscribed properly
+    if (lobbyChannel) {
+      supabase.removeChannel(lobbyChannel);
+      lobbyChannel = null;
+    }
     const channel = supabase.channel(`lobby:${roomId}`, {
       config: { presence: { key: currentUser.id } },
     });
@@ -297,6 +305,14 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           }
         }
       })
+      .on("broadcast", { event: "starbox_redirect" }, (payload: any) => {
+        // FOR TESTING — remove in production
+        console.log(
+          "[LobbyStore] 🎯 Received starbox_redirect broadcast",
+          payload
+        );
+        set({ starboxRedirect: true });
+      })
       .on(
         "postgres_changes",
         {
@@ -357,55 +373,73 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
             );
 
             if (typeof window !== "undefined" && currentUser?.id) {
-              const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
+              // FOR TESTING — remove in production (use only gameUrl)
+              const { starboxRedirect } = get();
+              const gameUrl = starboxRedirect
+                ? `/starbox?roomId=${roomId}&code=${roomData.room_code}&nextRound=1`
+                : `/game/${roomId}?code=${roomData.room_code}`;
               console.log(`[LobbyStore] 🚀 Redirecting to: ${gameUrl}`);
               window.location.href = gameUrl;
-            } else {
-              console.error(
-                `[LobbyStore] ❌ Cannot redirect: window or currentUser is undefined`
-              );
             }
           }
         }
-      )
-      .subscribe((status) => {
-        console.log("[Lobby] Channel subscription status:", status);
-
-        if (status === "SUBSCRIBED") {
-          isSubscribed = true;
-          console.log("[Lobby] ✅ Channel subscribed successfully");
-
-          // Track my presence setelah channel siap
-          if (myPlayerPayload) {
-            channel
-              .track(myPlayerPayload)
-              .then(() => {
-                console.log("[Lobby] ✅ Presence tracked successfully");
-              })
-              .catch((err) => {
-                console.error("[Lobby] ❌ Error tracking presence:", err);
-              });
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error("[Lobby] ❌ Channel error or timeout:", status);
-          isSubscribed = false;
-          lobbyChannel = null;
-
-          // Retry subscription after delay
-          setTimeout(() => {
-            console.log("[Lobby] 🔁 Retrying subscription...");
-            get().subscribeToPresence(roomId);
-          }, 3000);
-        } else if (status === "CLOSED") {
-          console.warn("[Lobby] ⚠️ Channel closed");
-          isSubscribed = false;
-          lobbyChannel = null;
-        } else {
-          console.log("[Lobby] Channel status:", status);
-        }
-      });
+      );
 
     lobbyChannel = channel;
+    channel.subscribe((status) => {
+      console.log("[Lobby] Channel subscription status:", status);
+
+      if (status === "SUBSCRIBED") {
+        isSubscribed = true;
+        console.log("[Lobby] ✅ Channel subscribed successfully");
+
+        // Track my presence setelah channel siap
+        if (myPlayerPayload) {
+          channel
+            .track(myPlayerPayload)
+            .then(() => {
+              console.log("[Lobby] ✅ Presence tracked successfully");
+            })
+            .catch((err) => {
+              console.error("[Lobby] ❌ Error tracking presence:", err);
+            });
+        }
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn(
+          `[Lobby] ❌ Sub ${roomId} ${status}. Cleaning up and Retrying in 3s...`
+        );
+        isSubscribed = false;
+
+        if (lobbyChannel) {
+          try {
+            supabase.removeChannel(lobbyChannel);
+          } catch (err) {
+            console.error("[Lobby] Cleanup error:", err);
+          }
+          lobbyChannel = null;
+        }
+
+        // Retry subscription after delay
+        setTimeout(async () => {
+          const currentStore = useQuizLobbyStore.getState();
+          // Cek status login jika timeout, kemungkinan token kadaluarsa
+          if (status === "TIMED_OUT") {
+            await supabase.auth.getSession();
+          }
+
+          if (currentStore.roomData?.game_room_id === roomId && !isSubscribed) {
+            console.log(`[Lobby] 🔁 Retrying sub for ${roomId}...`);
+            currentStore.subscribeToPresence(roomId);
+          }
+        }, 3000);
+      } else if (status === "CLOSED") {
+        console.warn("[Lobby] ⚠️ Channel closed");
+        isSubscribed = false;
+        lobbyChannel = null;
+      } else {
+        console.log(`[Lobby] Channel ${roomId} status:`, status);
+      }
+    });
   },
 
   unsubscribeFromPresence: () => {

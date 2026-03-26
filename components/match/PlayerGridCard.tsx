@@ -10,7 +10,7 @@ interface PlayerGridCardProps {
   player: Player;
   className?: string;
   hideHealthBar?: boolean;
-  highlight?: "self" | "host";
+  highlight?: "self" | "host" | "self-host";
   lobbyMode?: boolean;
   hasPicked?: boolean;
   isActiveTurn?: boolean;
@@ -37,7 +37,7 @@ export const PlayerGridCard = ({
   const glowEffect =
     isActiveTurn
       ? "shadow-[0_0_15px_rgba(255,204,0,0.8)]"
-      : highlight === "self"
+      : highlight === "self" || highlight === "self-host"
         ? "shadow-[0_0_15px_rgba(37,106,244,0.6)]"
         : highlight === "host"
           ? "shadow-[0_0_15px_rgba(255,0,9,0.6)]"
@@ -46,8 +46,8 @@ export const PlayerGridCard = ({
   // bg card: biru 256AF4/50 untuk Kamu, merah FF0009/50 untuk Host
   const cardBgColor =
     isActiveTurn
-      ? highlight === "self" ? "bg-[#D46B1D]/50" : "bg-[#FDBB38]/30"
-      : highlight === "self"
+      ? (highlight === "self" || highlight === "self-host") ? "bg-[#D46B1D]/50" : "bg-[#FDBB38]/30"
+      : highlight === "self" || highlight === "self-host"
         ? "bg-[#256AF4]/50"
         : highlight === "host"
           ? "bg-[#FF0009]/50"
@@ -78,8 +78,8 @@ export const PlayerGridCard = ({
       >
         <div className="relative w-[75%] h-[75%] flex items-center justify-center">
           <Image
-            src={player.image}
-            alt={player.character}
+            src={player.image || "/default/Slime.webp"}
+            alt={player.character || "Player"}
             fill
             sizes="(max-width: 768px) 64px, 80px"
             className="object-contain drop-shadow-md"
@@ -132,9 +132,9 @@ export const PlayerGridCard = ({
         <div className="flex flex-col items-center w-full">
           <h3 className="font-bold text-[11px] md:text-sm tracking-tight truncate w-full text-center text-white">
             {player.name}
-            {highlight === "self" && (
-              <span className="block text-[9px] md:text-[10px] text-white/70 font-medium">
-                (Kamu)
+            {highlight && (
+              <span className="block text-[9px] md:text-[10px] text-white/70 font-medium tracking-tight">
+                ({highlight === "self" ? "Kamu" : highlight === "host" ? "Host" : "Kamu/Host"})
               </span>
             )}
           </h3>

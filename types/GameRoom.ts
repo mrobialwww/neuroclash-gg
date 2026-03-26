@@ -11,7 +11,6 @@ export interface GameRoom {
   category: string;
   title: string | null;
   max_player: number;
-  total_question: number;
   total_round: number;
   difficulty: Difficulty;
   image_url: string;

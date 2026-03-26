@@ -1,7 +1,15 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 import { Player } from "@/lib/constants/players";
 import { gameService } from "@/services/gameService";
+import { createClient } from "@/lib/supabase/client";
+import { abilityRoomRepository } from "@/repository/abilityRoomRepository";
+import { abilityPlayerRepository } from "@/repository/abilityPlayerRepository";
+import { userClientService } from "@/services/auth/userClientService";
+
+const supabase = createClient();
+let stockChannel: ReturnType<typeof supabase.channel> | null = null;
 
 export interface Ability {
   id: string;
@@ -12,134 +20,572 @@ export interface Ability {
   emptyImage: string;
 }
 
-const INITIAL_ABILITIES: Ability[] = [
-  {
-    id: "1",
-    name: "KITAB PENGETAHUAN",
-    description: "Mendapatkan materi untuk menjawab soal berikutnya",
-    stock: 2,
-    image: "/ability-card/material-card.webp",
-    emptyImage: "/ability-card/material-card-empty.webp",
-  },
-  {
-    id: "2",
-    name: "SERANGAN TAJAM",
-    description: "Meningkatkan kekuatan serangan dasar sebesar +10.",
-    stock: 0,
-    image: "/ability-card/attack-card.webp",
-    emptyImage: "/ability-card/attack-card-empty.webp",
-  },
-  {
-    id: "3",
-    name: "RAMUAN PENYEMBUH",
-    description: "Memulihkan 20 poin HP secara instan",
-    stock: 2,
-    image: "/ability-card/heal-card.webp",
-    emptyImage: "/ability-card/heal-card-empty.webp",
-  },
-  {
-    id: "4",
-    name: "PERISAI KOKOH",
-    description: "Mendapatkan pertahanan sebesar 20 poin",
-    stock: 2,
-    image: "/ability-card/shield-card.webp",
-    emptyImage: "/ability-card/shield-card-empty.webp",
-  },
-  {
-    id: "5",
-    name: "PIALA KEJAYAAN",
-    description: "Menambah jumlah trophy yang diperoleh sebesar 5%",
-    stock: 2,
-    image: "/ability-card/trophy-buff-card.webp",
-    emptyImage: "/ability-card/trophy-buff-card-empty.webp",
-  },
-  {
-    id: "6",
-    name: "KANTONG HARTA",
-    description: "Menambah jumlah koin yang diperoleh sebesar 5%",
-    stock: 2,
-    image: "/ability-card/coin-buff-card.webp",
-    emptyImage: "/ability-card/coin-buff-card-empty.webp",
-  },
-];
+export interface AbilityPlayer {
+  ability_player_id: string;
+  game_room_id: string;
+  ability_id: number;
+  stock: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
 
-export interface StarboxState {
+export interface AbilityMaterial {
+  ability_materi_id: string;
+  title: string | null;
+  content: string | null;
+}
+
+export interface PickedAbility {
+  ability_player_id: string | null;
+  game_room_id: string;
+  ability_id: number;
+  stock: number;
+  user_id: string;
+  name: string;
+  description: string;
+  image: string;
+  empty_image: string;
+  ability_materials: AbilityMaterial | null;
+}
+
+/**
+ * State yang disimpan ke `sessionStorage` via middleware `persist`.
+ * sessionStorage dipilih agar otomatis hilang saat tab/browser ditutup.
+ */
+interface PersistedStarboxSlice {
+  /** roomId fase aktif — dipakai sebagai kunci Phase Checking */
+  roomPersistedId: string | null;
+  /** nextRound saat fase dimulai — dipakai sebagai kunci Phase Checking */
+  activeStarboxRound: string | null;
+  /** Index giliran saat ini — dipersist agar tidak reset saat refresh */
+  currentTurnIndex: number;
+  /** Ability yang dipilih di fase BERJALAN — direset saat masuk fase baru */
+  myPickedAbility: PickedAbility | null;
+  /**
+   * Inventori kumulatif semua ability yang pernah dipilih sepanjang game.
+   * Tidak direset antar fase, hanya dikosongkan saat game selesai via reset().
+   * Di-hydrate ulang dari DB setiap halaman dimuat untuk menjamin sinkronisasi.
+   */
+  myInventory: PickedAbility[];
+}
+
+export interface StarboxState extends PersistedStarboxSlice {
   roomInfo: GameRoomWithPlayerCount | null;
   players: Player[];
   abilities: Ability[];
-  currentTurnIndex: number;
+
   pickingAbilityId: string | null;
   isLoading: boolean;
+  isHost: boolean;
+  myPlayerId: string | null;
+  pickedPlayerIds: string[];
 
-  initGameData: (code: string, roomId: string) => Promise<void>;
-  selectAbility: (abilityId: string) => void;
-  nextTurn: () => void;
+  initGameData: (code: string, roomId: string, nextRound: string) => Promise<void>;
+  selectAbility: (roomId: string, abilityId: string, userId: string) => Promise<void>;
+  autoAssignRemaining: (roomId: string) => Promise<void>;
+  setupRealtimeSubscription: (roomId: string) => void;
+  useHeal: (roomId: string, userId: string) => Promise<void>;
+  useAttack: () => Promise<void>;
+  useDefend: () => Promise<void>;
+  refreshMyInventory: (roomId: string, userId: string) => Promise<void>;
+  cleanup: () => void;
   reset: () => void;
 }
 
-export const useStarboxStore = create<StarboxState>((set) => ({
-  roomInfo: null,
-  players: [],
-  abilities: INITIAL_ABILITIES,
-  currentTurnIndex: 0,
-  pickingAbilityId: null,
-  isLoading: true,
-
-  initGameData: async (code: string, roomId: string) => {
-    // Reset state before fetching
-    set({
-      isLoading: true,
+export const useStarboxStore = create<StarboxState>()(
+  persist(
+    (set, get) => ({
+      roomPersistedId: null,
+      activeStarboxRound: null,
       currentTurnIndex: 0,
-      abilities: INITIAL_ABILITIES,
+      myPickedAbility: null,
+      myInventory: [],
       roomInfo: null,
       players: [],
-    });
+      abilities: [],
 
-    try {
-      // 1. Service Orchestrator untuk memangkas Logika kompleks dari global state.
-      const roomConfig = await gameService.getGameRoomConfig(code, roomId);
-      if (!roomConfig) {
-        set({ isLoading: false });
-        return;
-      }
-      
-      const starboxPlayers = await gameService.loadStarboxPlayersTurnBased(roomConfig.max_player);
-
-      set({
-        roomInfo: roomConfig,
-        players: starboxPlayers,
-        isLoading: false,
-      });
-    } catch (e) {
-      console.error("Error initializing starbox game data:", e);
-      set({ isLoading: false });
-    }
-  },
-
-  selectAbility: (abilityId: string) => {
-    set((state) => ({
-      pickingAbilityId: abilityId,
-      abilities: state.abilities.map((a) =>
-        a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a
-      ),
-    }));
-  },
-
-  nextTurn: () => {
-    set((state) => ({
-      pickingAbilityId: null,
-      currentTurnIndex: state.currentTurnIndex + 1,
-    }));
-  },
-
-  reset: () => {
-    set({
-      roomInfo: null,
-      players: [],
-      abilities: INITIAL_ABILITIES,
-      currentTurnIndex: 0,
       pickingAbilityId: null,
       isLoading: true,
-    });
-  },
-}));
+      isHost: false,
+      myPlayerId: null,
+      pickedPlayerIds: [],
+
+      /**
+       * Entry point halaman Starbox. Dipanggil sekali saat komponen mount.
+       * Phase Checking:
+       *   - Fase BARU → reset turn, pilihan lama, pickedPlayerIds
+       *   - REFRESH (fase sama) → pertahankan currentTurnIndex & myPickedAbility
+       * Retry mechanism: non-host client akan polling hingga 5x (interval 1 detik)
+       * untuk menunggu host selesai inisialisasi stok ability di DB.
+       */
+      initGameData: async (code: string, roomId: string, nextRound: string) => {
+        const state = get();
+        const isNewPhase = state.roomPersistedId !== roomId || state.activeStarboxRound !== nextRound;
+
+        if (isNewPhase) {
+          set({
+            isLoading: true,
+            currentTurnIndex: 0,
+            myPickedAbility: null,
+            abilities: [],
+            roomInfo: null,
+            players: [],
+            pickedPlayerIds: [],
+            pickingAbilityId: null,
+            isHost: false,
+            myPlayerId: null,
+            roomPersistedId: roomId,
+            activeStarboxRound: nextRound,
+          });
+        } else {
+          set({
+            isLoading: true,
+            abilities: [],
+            roomInfo: null,
+            players: [],
+            pickedPlayerIds: [],
+            pickingAbilityId: null,
+          });
+        }
+
+        try {
+          const roomConfig = await gameService.getGameRoomConfig(code, roomId);
+          if (!roomConfig) {
+            set({ isLoading: false });
+            return;
+          }
+
+          // Cek apakah user adalah host room ini — host yang mengontrol restock ability.
+          const currentUser = await userClientService.getCurrentUserNavbarData();
+          const isHost = Boolean(currentUser && currentUser.id === roomConfig.user_id);
+
+          // Fetch semua peserta aktif di room. Fallback ke array kosong jika endpoint gagal
+          // (misal: network error), agar proses tidak berhenti total.
+          let activeParticipants: any[] = [];
+          try {
+            const res = await fetch(`/api/match/participants/${roomId}`, { cache: "no-store" });
+            if (res.ok) activeParticipants = (await res.json()).data || [];
+          } catch (err) {
+            console.error("Gagal get participants di starbox", err);
+          }
+
+          const totalPlayer = activeParticipants.length || 1;
+
+          // Urutan giliran Starbox = HP terendah memilih lebih dahulu (comeback mechanic).
+          // `isMe` ditandai di sini agar UI bisa membedakan kartu pemain sendiri.
+          activeParticipants = activeParticipants
+            .sort((a, b) => (a.health ?? 100) - (b.health ?? 100))
+            .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
+
+          // Host & fase baru → reset stok ke nilai awal (upsert semua ability_rooms).
+          // Host fase lama / non-host → hanya baca stok yang sudah ada di DB.
+          let abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, isHost && isNewPhase);
+
+          // Non-host bisa tiba sebelum host selesai insert, sehingga stok masih 0.
+          // Polling maks 5× (interval 1 s) sebelum menyerah dan lanjut dengan stok 0.
+          let totalStock = abilityRooms?.reduce((sum: number, r: any) => sum + (r.stock || 0), 0) || 0;
+          let retries = 5;
+          while (!isHost && totalStock === 0 && retries > 0) {
+            console.log(`[StarboxStore] Waiting for abilities... (${retries} retries left)`);
+            await new Promise((res) => setTimeout(res, 1000));
+            abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, false);
+            totalStock = abilityRooms?.reduce((sum: number, r: any) => sum + (r.stock || 0), 0) || 0;
+            retries--;
+          }
+
+          // Normalisasi shape DB (ability_rooms JOIN abilities) → shape Ability yang dipakai UI.
+          const mappedAbilities: Ability[] = (abilityRooms ?? []).map((row: any) => {
+            const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+            return {
+              id: String(row.ability_id),
+              name: detail?.name ?? "",
+              description: detail?.description ?? "",
+              stock: row.stock ?? 0,
+              image: detail?.image ?? "",
+              emptyImage: detail?.empty_image ?? "",
+            };
+          });
+
+          // Commit ke store — komponen langsung render ulang dengan data real.
+          // isLoading = false di sini mempersilakan UI Starbox tampil.
+          set({
+            roomInfo: roomConfig,
+            players: activeParticipants as any,
+            abilities: mappedAbilities,
+            isLoading: false,
+            isHost,
+            myPlayerId: currentUser?.id ?? null,
+          });
+
+          // myInventory perlu di-hydrate dari DB karena sessionStorage hanya menyimpan
+          // snapshot tanpa ability_materials (data materi quiz). DB selalu jadi source of truth.
+          if (currentUser?.id) {
+            try {
+              const raw = await abilityPlayerRepository.getMyAbilities(roomId, currentUser.id);
+              const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
+                const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+                // ability_materials dipakai oleh OverlayMaterialCard (ability_id === 1).
+                const material: AbilityMaterial | null = row.ability_materials ?? null;
+                return {
+                  ability_player_id: row.ability_player_id,
+                  game_room_id: row.game_room_id,
+                  ability_id: row.ability_id,
+                  stock: row.stock,
+                  user_id: row.user_id,
+                  name: detail?.name ?? "",
+                  description: detail?.description ?? "",
+                  image: detail?.image ?? "",
+                  empty_image: detail?.empty_image ?? "",
+                  ability_materials: material,
+                };
+              });
+              set({ myInventory: myInventoryFromDb });
+            } catch (err) {
+              // Jika fetch gagal, biarkan myInventory tetap dari sessionStorage (mungkin stale).
+              console.warn("[StarboxStore] Gagal hydrate myInventory dari DB, pakai sessionStorage:", err);
+            }
+          }
+
+          // Buka koneksi Realtime setelah semua data siap — hindari event masuk sebelum state ready.
+          get().setupRealtimeSubscription(roomId);
+        } catch (e: unknown) {
+          const err = e as { message?: string; details?: string };
+          console.error("Error initializing starbox game data:", err?.message || err?.details || JSON.stringify(e));
+          set({ isLoading: false });
+        }
+      },
+      /**
+       * Subscribe ke Supabase Realtime untuk memantau perubahan stok di `ability_rooms`.
+       * Ketika ada pemain pick ability → DB berubah → semua client menerima event ini
+       * → stok di-update & giliran dinaikkan.
+       */
+      setupRealtimeSubscription: (roomId: string) => {
+        if (stockChannel) supabase.removeChannel(stockChannel);
+
+        stockChannel = supabase
+          .channel(`starbox_room:${roomId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "ability_rooms",
+              filter: `game_room_id=eq.${roomId}`,
+            },
+            (payload) => {
+              console.log("[StarboxStore] Stock updated via realtime:", payload);
+              const updatedAbility = payload.new as any;
+
+              set((state) => {
+                // Jika pickingAbilityId !== null → ini adalah event dari pick kita sendiri.
+                // Kita sudah increment currentTurnIndex di selectAbility, jadi skip di sini.
+                // Jika null → ini pick dari pemain lain → increment giliran.
+                const isOwnPick = state.pickingAbilityId !== null;
+
+                return {
+                  abilities: state.abilities.map((ability) =>
+                    ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
+                  ),
+                  pickingAbilityId: null,
+                  currentTurnIndex: isOwnPick ? state.currentTurnIndex : state.currentTurnIndex + 1,
+                };
+              });
+            },
+          )
+          .subscribe();
+      },
+
+      /**
+       * Dipanggil saat user klik AbilityCard.
+       * - Mencegah double-pick via pickedPlayerIds
+       * - Optimistic update: stok, myPickedAbility, myInventory, pickedPlayerIds
+       * - Rollback jika RPC gagal (termasuk undo pickedPlayerIds)
+       */
+      selectAbility: async (roomId: string, abilityId: string, userId: string) => {
+        const state = get();
+        if (state.pickedPlayerIds.includes(userId) || state.pickingAbilityId) return;
+
+        const chosenAbility = state.abilities.find((a) => a.id === abilityId);
+
+        set((s) => ({
+          pickingAbilityId: abilityId,
+          abilities: s.abilities.map((a) => (a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a)),
+          pickedPlayerIds: [...s.pickedPlayerIds, userId],
+          // Increment giliran langsung di sisi picker.
+          // Sisi observer akan increment via Realtime handler.
+          currentTurnIndex: s.currentTurnIndex + 1,
+          myPickedAbility: chosenAbility
+            ? ({
+                ability_player_id: null,
+                game_room_id: roomId,
+                ability_id: Number(chosenAbility.id),
+                stock: 1,
+                user_id: userId,
+                name: chosenAbility.name,
+                description: chosenAbility.description,
+                image: chosenAbility.image,
+                empty_image: chosenAbility.emptyImage,
+                ability_materials: null,
+              } satisfies PickedAbility)
+            : null,
+          myInventory: chosenAbility
+            ? (() => {
+                const prev = s.myInventory;
+                const existingIdx = prev.findIndex((a) => a.ability_id === Number(chosenAbility.id));
+                if (existingIdx !== -1) {
+                  const updated = [...prev];
+                  updated[existingIdx] = { ...updated[existingIdx], stock: updated[existingIdx].stock + 1 };
+                  return updated;
+                }
+                return [
+                  ...prev,
+                  {
+                    ability_player_id: null,
+                    game_room_id: roomId,
+                    ability_id: Number(chosenAbility.id),
+                    stock: 1,
+                    user_id: userId,
+                    name: chosenAbility.name,
+                    description: chosenAbility.description,
+                    image: chosenAbility.image,
+                    empty_image: chosenAbility.emptyImage,
+                    ability_materials: null,
+                  } satisfies PickedAbility,
+                ];
+              })()
+            : s.myInventory,
+        }));
+
+        try {
+          const result = await abilityPlayerRepository.insertPlayerAbility(roomId, abilityId, userId);
+          // Isi ability_player_id dengan UUID asli dari DB jika RPC mengembalikannya
+          if (result && typeof result === "object" && "ability_player_id" in result) {
+            set((s) => ({
+              myPickedAbility: s.myPickedAbility ? { ...s.myPickedAbility, ability_player_id: (result as AbilityPlayer).ability_player_id } : null,
+            }));
+          }
+        } catch (error) {
+          console.error("Gagal memilih ability", error);
+          // Rollback semua perubahan optimistic
+          set((s) => ({
+            pickingAbilityId: null,
+            myPickedAbility: null,
+            pickedPlayerIds: s.pickedPlayerIds.filter((id) => id !== userId),
+            abilities: s.abilities.map((a) => (a.id === abilityId ? { ...a, stock: a.stock + 1 } : a)),
+            myInventory: (() => {
+              const prev = s.myInventory;
+              const idx = prev.findIndex((a) => a.ability_id === Number(abilityId));
+              if (idx === -1) return prev;
+              if (prev[idx].stock <= 1) return prev.filter((_, i) => i !== idx);
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], stock: updated[idx].stock - 1 };
+              return updated;
+            })(),
+          }));
+        }
+      },
+
+      /**
+       * Dipanggil oleh Host ketika waktu Starbox habis.
+       * Otomatis assign ability secara acak ke pemain yang belum memilih,
+       * menggunakan API /api/starbox/auto-assign untuk bypass RLS.
+       */
+      autoAssignRemaining: async (roomId: string) => {
+        const { players, abilities } = get();
+
+        // Selalu query DB, bukan pakai pickedPlayerIds dari Zustand state.
+        // State host bisa saja stale jika ada pick yang masuk lewat Realtime
+        // saat koneksi sedang tidak stabil. DB adalah sumber kebenaran tunggal.
+        let alreadyPickedIds: string[] = [];
+        try {
+          const { data } = await supabase.from("ability_players").select("user_id").eq("game_room_id", roomId);
+          alreadyPickedIds = (data ?? []).map((r: any) => r.user_id);
+          // Sinkronkan state lokal sekalian agar UI tidak tampil inkonsisten.
+          set({ pickedPlayerIds: alreadyPickedIds });
+        } catch (err) {
+          console.warn("[StarboxStore] Gagal ambil pickedPlayerIds dari DB, pakai state:", err);
+          alreadyPickedIds = get().pickedPlayerIds;
+        }
+
+        // Hitung pemain yang benar-benar belum memilih alias butuh di-assign.
+        const unpickedPlayerIds = players.map((p) => p.id).filter((id) => !alreadyPickedIds.includes(id));
+
+        // Tidak ada yang perlu di-assign — keluar lebih awal.
+        if (unpickedPlayerIds.length === 0) return;
+
+        const availableAbilities = abilities.filter((a) => a.stock > 0);
+        if (availableAbilities.length === 0) return;
+
+        // Bangun pool: setiap ability dimasukkan sebanyak stok yang tersisa.
+        // Contoh: ability A stok 3 → ["A","A","A"] + ability B stok 1 → ["B"].
+        const abilityPool: string[] = [];
+        for (const ability of availableAbilities) {
+          for (let i = 0; i < ability.stock; i++) {
+            abilityPool.push(ability.id);
+          }
+        }
+
+        // Fisher-Yates shuffle — distribusi acak yang adil tanpa bias.
+        for (let i = abilityPool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [abilityPool[i], abilityPool[j]] = [abilityPool[j], abilityPool[i]];
+        }
+
+        const assignments = [];
+        const updatedAbilities = [...abilities]; // Salinan agar mutasi tidak mempengaruhi state langsung.
+        const newPickedPlayerIds = [...alreadyPickedIds];
+
+        for (let i = 0; i < unpickedPlayerIds.length && i < abilityPool.length; i++) {
+          const playerId = unpickedPlayerIds[i];
+          const abilityId = abilityPool[i];
+
+          assignments.push({ playerId, abilityId });
+
+          // Kurangi stok di salinan lokal supaya assignment berikutnya
+          // tidak mengambil ability yang sama melampaui stok.
+          const abilityIndex = updatedAbilities.findIndex((a) => a.id === abilityId);
+          if (abilityIndex !== -1 && updatedAbilities[abilityIndex].stock > 0) {
+            updatedAbilities[abilityIndex] = {
+              ...updatedAbilities[abilityIndex],
+              stock: updatedAbilities[abilityIndex].stock - 1,
+            };
+          }
+          newPickedPlayerIds.push(playerId);
+        }
+
+        // Optimistic update — UI terasa responsif tanpa menunggu response API.
+        set({ abilities: updatedAbilities, pickedPlayerIds: newPickedPlayerIds });
+
+        // Kirim semua assignment sekaligus ke server. API /api/starbox/auto-assign
+        // dipakai karena RLS Supabase hanya mengizinkan user mengupdate row miliknya sendiri;
+        // server-side (service role) dapat insert untuk user lain.
+        try {
+          const response = await fetch("/api/starbox/auto-assign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomId, assignments }),
+          });
+
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || "Gagal auto-assign dari server");
+          }
+
+          // Partial failure: beberapa assignment berhasil, beberapa tidak.
+          // Log untuk diagnosis — tidak rollback karena mayoritas biasanya sukses.
+          const resData = await response.json();
+          if (!resData.success) {
+            console.error("Partial failure in auto-assign:", resData.failed);
+          }
+        } catch (error: any) {
+          console.error("Gagal bulk auto-assign ability:", error?.message || JSON.stringify(error));
+        }
+      },
+
+      /**
+       * Gunakan Ramuan Penyembuh (ability_id = 3): +20 HP, max 100.
+       * Update HP & stok lokal SETELAH RPC dikonfirmasi DB (konsisten dengan myInventory).
+       * Lawan melihat HP berubah via useMatchStore realtime listener (game_players).
+       */
+      useHeal: async (roomId: string, userId: string) => {
+        try {
+          await abilityPlayerRepository.userHealAbility(roomId, userId);
+          set((state) => ({
+            players: state.players.map((p) => (p.id === userId ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) } : p)),
+            myInventory: state.myInventory.map((a) => (a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a)).filter((a) => a.stock > 0),
+          }));
+        } catch (error) {
+          console.error("[StarboxStore] Gagal menggunakan Ramuan Penyembuh:", error);
+        }
+      },
+
+      useAttack: async () => {},
+      useDefend: async () => {},
+
+      /**
+       * Re-hydrate myInventory dari DB (termasuk ability_materials).
+       * Dipanggil dari game page agar material content tersedia saat klik buff.
+       */
+      refreshMyInventory: async (roomId: string, userId: string) => {
+        try {
+          // Query JOIN ke tabel `ability_players`, `abilities`, dan `ability_materials`.
+          // Dipisah dari initGameData agar bisa dipanggil kapan saja tanpa re-init penuh.
+          const raw = await abilityPlayerRepository.getMyAbilities(roomId, userId);
+
+          const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
+            const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+            // ability_materials hanya ada untuk ability_id === 1 (Kitab Pengetahuan).
+            // Null untuk ability lain — tidak perlu overlay materi.
+            const material: AbilityMaterial | null = row.ability_materials ?? null;
+            return {
+              ability_player_id: row.ability_player_id,
+              game_room_id: row.game_room_id,
+              ability_id: row.ability_id,
+              stock: row.stock,
+              user_id: row.user_id,
+              name: detail?.name ?? "",
+              description: detail?.description ?? "",
+              image: detail?.image ?? "",
+              empty_image: detail?.empty_image ?? "",
+              ability_materials: material,
+            };
+          });
+
+          // Override myInventory sepenuhnya — bukan merge — karena DB selalu lebih akurat
+          // dari sessionStorage yang mungkin menyimpan data sebelum RPC selesai.
+          set({ myInventory: myInventoryFromDb });
+        } catch (err) {
+          // Biarkan myInventory tidak berubah jika fetch gagal; tidak fatal untuk game.
+          console.warn("[StarboxStore] refreshMyInventory gagal:", err);
+        }
+      },
+
+      /** Putuskan koneksi Realtime + set isLoading agar halaman berikutnya mulai dari loading */
+      cleanup: () => {
+        if (stockChannel) {
+          supabase.removeChannel(stockChannel);
+          stockChannel = null;
+        }
+        // PENTING: Reset isLoading agar Starbox berikutnya tidak langsung trigger auto-assign sebelum initGameData sempat reset state.
+        set({ isLoading: true });
+      },
+
+      /** Bersihkan SEMUA state dan koneksi Realtime. Dipanggil saat game selesai. */
+      reset: () => {
+        if (stockChannel) {
+          supabase.removeChannel(stockChannel);
+          stockChannel = null;
+        }
+        set({
+          roomPersistedId: null,
+          activeStarboxRound: null,
+          roomInfo: null,
+          players: [],
+          abilities: [],
+
+          currentTurnIndex: 0,
+          myPickedAbility: null,
+          myInventory: [],
+          pickingAbilityId: null,
+          isLoading: true,
+          isHost: false,
+          myPlayerId: null,
+          pickedPlayerIds: [],
+        });
+      },
+    }),
+
+    {
+      name: "starbox-store",
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state): PersistedStarboxSlice => ({
+        currentTurnIndex: state.currentTurnIndex,
+        roomPersistedId: state.roomPersistedId,
+        activeStarboxRound: state.activeStarboxRound,
+        myPickedAbility: state.myPickedAbility,
+        myInventory: state.myInventory,
+      }),
+    },
+  ),
+);

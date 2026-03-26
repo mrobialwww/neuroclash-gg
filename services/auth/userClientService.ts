@@ -10,9 +10,13 @@ export const userClientService = {
       if (!user) return null;
 
       const [userRes, charRes] = await Promise.all([
-        fetch(`/api/users/${user.id}`, { cache: "no-store" }),
+        fetch(`/api/users/${user.id}`, {
+          cache: "no-store",
+          credentials: "include",
+        }),
         fetch(`/api/user-character/${user.id}?is_used=true`, {
           cache: "no-store",
+          credentials: "include",
         }),
       ]);
 
@@ -46,11 +50,16 @@ export const userClientService = {
   },
 
   async getUserMatchData(userId: string) {
+    if (!userId) return null;
     try {
       const [userRes, charRes] = await Promise.all([
-        fetch(`/api/users/${userId}`, { cache: "no-store" }),
+        fetch(`/api/users/${userId}`, {
+          cache: "no-store",
+          credentials: "include",
+        }),
         fetch(`/api/user-character/${userId}?is_used=true`, {
           cache: "no-store",
+          credentials: "include",
         }),
       ]);
 

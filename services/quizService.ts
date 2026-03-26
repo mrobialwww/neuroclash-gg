@@ -10,6 +10,8 @@ export interface QuizOption {
   label: string;
   /** teks jawaban */
   text: string;
+  /** apakah ini jawaban yang benar */
+  isCorrect: boolean;
 }
 
 export interface QuizQuestion {
@@ -42,6 +44,7 @@ export const quizService = {
       id: ans.answer_id,
       label: ans.key.toUpperCase(),
       text: ans.answer_text,
+      isCorrect: ans.is_correct,
     }));
 
     return {
@@ -133,6 +136,7 @@ export const quizService = {
     );
 
     const res = await fetch(`/api/game-rooms/${roomId}/duplicate`, {
+      credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ max_player: maxPlayer, is_solo: isSolo }),

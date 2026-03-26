@@ -12,7 +12,9 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     let buffer: Buffer;
-    let questionCount = 20;
+    let round = 0;
+    let maxPlayer = 0;
+    let difficulty;
     const contentType = req.headers.get("content-type") || "";
 
     // 1. Cek apakah request berupa form-data (File Fisik / URL via form)
@@ -20,8 +22,12 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const file = formData.get("pdf") as File | null;
       const url = formData.get("url") as string | null;
-      const qc = formData.get("questionCount") as string | null;
-      if (qc) questionCount = parseInt(qc, 10);
+      const rd = formData.get("round") as string | null;
+      const mp = formData.get("maxPlayer") as string | null;
+      const df = formData.get("difficulty") as string | null;
+      if (rd) round = parseInt(rd, 10);
+      if (mp) maxPlayer = parseInt(mp, 10);
+      if (df) difficulty = df;
 
       if (file && file.size > 0) {
         // Jika ada file fisik yang diunggah
@@ -34,17 +40,23 @@ export async function POST(req: Request) {
         const arrayBuffer = await response.arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       } else {
-        return NextResponse.json({ message: "Harap sertakan file 'pdf' atau teks 'url'." }, { status: 400 });
+        return NextResponse.json(
+          { message: "Harap sertakan file 'pdf' atau teks 'url'." },
+          { status: 400 }
+        );
       }
     }
     // 2. Cek apakah request berupa JSON (URL murni)
     else if (contentType.includes("application/json")) {
       const body = await req.json();
-      const { category, difficulty, questionCount: qc } = body;
-      if (qc) questionCount = parseInt(qc, 10);
+      const { category, difficulty, round: rd, maxPlayer: mp } = body;
+      if (rd) round = parseInt(rd, 10);
+      if (mp) maxPlayer = parseInt(mp, 10);
       const {
         data: { publicUrl: url },
-      } = supabase.storage.from("materials").getPublicUrl(`${category}/${difficulty}.pdf`);
+      } = supabase.storage
+        .from("materials")
+        .getPublicUrl(`${category}/${difficulty}.pdf`);
 
       if (url) {
         const response = await fetch(url);
@@ -52,12 +64,21 @@ export async function POST(req: Request) {
         const arrayBuffer = await response.arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       } else {
-        return NextResponse.json({ message: "URL tidak ditemukan dalam body JSON." }, { status: 400 });
+        return NextResponse.json(
+          { message: "URL tidak ditemukan dalam body JSON." },
+          { status: 400 }
+        );
       }
     }
     // 3. Format tidak didukung
     else {
-      return NextResponse.json({ message: "Format Content-Type tidak didukung. Gunakan form-data atau application/json." }, { status: 415 });
+      return NextResponse.json(
+        {
+          message:
+            "Format Content-Type tidak didukung. Gunakan form-data atau application/json.",
+        },
+        { status: 415 }
+      );
     }
 
     const generationConfig = {
@@ -68,16 +89,22 @@ export async function POST(req: Request) {
       responseMimeType: "application/json",
     };
 
-    const targetCount = questionCount + Math.ceil(questionCount / 10);
+    const targetCount = round + Math.ceil(round / 10);
+    const abilityMaterials = Math.round(0.2 * (maxPlayer + maxPlayer / 5));
 
     const result = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: [
-        `Buatkan ${targetCount} soal pilihan ganda dari dokumen PDF ini.
+        `Buatkan ${targetCount} ${
+          contentType.includes("multipart/form-data")
+            ? `dengan tingkat kesulitan ${difficulty}`
+            : ""
+        } soal pilihan ganda dari dokumen PDF ini.
+Buatkan juga materi bacaan singkat (masing-masing cukup 4-5 kalimat) sejumlah ${abilityMaterials} buah yang diambil dari intisari dokumen tersebut.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
-  "theme_materials": "tema materi dari dokumen, hanya berisi 1/2 kata saja",
+  "theme_materials": "tema materi dari dokumen. Jika cocok, gunakan salah satu dari enum ini persis: bahasaindonesia | bahasainggris | biologi | pancasila | pemrograman | sejarah. Tapi jika tidak ada yang cocok (misal matematika), tuliskan materinya (contoh: matematika).",
   "list_questions": [
     {
       "order": 1,
@@ -89,6 +116,12 @@ Format JSON yang harus dikembalikan:
         { "key": "D", "text": "pilihan D", "is_correct": false }
       ],
       "explanation": "penjelasan singkat mengapa jawaban tersebut benar"
+    }
+  ],
+  "ability_materials" : [
+    {
+      "title": "judul materi bacaan",
+      "text": "isi materi bacaan singkat 4-5 kalimat yang diambil dari intisari dokumen"
     }
   ]
 }
@@ -111,18 +144,89 @@ Pastikan:
 
     const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
-    const cleanedParsed = JSON.parse(rawText);
+
+    // Extract the first valid JSON object — Gemini occasionally appends
+    // trailing text after the closing brace, which breaks JSON.parse.
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error(
+        "[API Quiz] No JSON object found in Gemini response:",
+        cleaned.substring(0, 200)
+      );
+      return NextResponse.json(
+        { message: "Gemini tidak mengembalikan JSON yang valid." },
+        { status: 500 }
+      );
+    }
+    const cleanedParsed = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json(
       {
         message: "Berhasil diproses.",
         geminiFile: cleanedParsed,
       },
-      { status: 200 },
+      { status: 200 }
     );
-  } catch (error) {
-    console.error("Error API:", error);
-    console.log("Error API:", error);
-    return NextResponse.json({ message: "Terjadi kesalahan pada server saat memproses dokumen." }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[API Quiz] Error:", error);
+
+    // ── Parse Gemini / Google API errors ──────────────────────────────────
+    let geminiStatus: number | null = null;
+    let geminiCode: string | null = null;
+
+    try {
+      // GoogleGenAI wraps the raw response text in the error message
+      const raw = error instanceof Error ? error.message : String(error);
+      const jsonStart = raw.indexOf("{");
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(raw.slice(jsonStart));
+        geminiStatus = parsed?.error?.code ?? null;
+        geminiCode = parsed?.error?.status ?? null;
+      }
+    } catch {
+      /* not a JSON error, fall through */
+    }
+
+    if (geminiStatus === 503 || geminiCode === "UNAVAILABLE") {
+      return NextResponse.json(
+        {
+          message:
+            "Server AI sedang kelebihan beban (503 Unavailable). " +
+            "Model Gemini saat ini sedang ramai digunakan. " +
+            "Tunggu beberapa saat lalu coba lagi.",
+        },
+        { status: 503 }
+      );
+    }
+
+    if (geminiStatus === 429 || geminiCode === "RESOURCE_EXHAUSTED") {
+      return NextResponse.json(
+        {
+          message:
+            "Kuota API Gemini habis (429 Too Many Requests). " +
+            "Coba lagi dalam beberapa menit.",
+        },
+        { status: 429 }
+      );
+    }
+
+    if (geminiStatus === 400 || geminiCode === "INVALID_ARGUMENT") {
+      return NextResponse.json(
+        {
+          message:
+            "Dokumen tidak dapat dibaca oleh AI (400 Invalid Argument). " +
+            "Pastikan file PDF tidak rusak dan tidak terproteksi password.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────
+    const fallbackMsg =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan pada server saat memproses dokumen.";
+
+    return NextResponse.json({ message: fallbackMsg }, { status: 500 });
   }
 }

@@ -12,7 +12,7 @@ export const quizRepository = {
   ): Promise<Question | null> {
     const res = await fetch(
       `/api/quiz/questions/${gameRoomId}?question_order=${order}`,
-      { cache: "no-store" }
+      { cache: "no-store", credentials: "include" }
     );
 
     if (!res.ok) {
@@ -32,6 +32,7 @@ export const quizRepository = {
   async getAnswers(questionId: string): Promise<Answer[]> {
     const res = await fetch(`/api/quiz/questions/answers/${questionId}`, {
       cache: "no-store",
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -54,7 +55,10 @@ export const quizRepository = {
   async fetchDetailedRoom(
     roomId: string
   ): Promise<Record<string, unknown> | null> {
-    const res = await fetch(`/api/game-rooms/${roomId}`, { cache: "no-store" });
+    const res = await fetch(`/api/game-rooms/${roomId}`, {
+      cache: "no-store",
+      credentials: "include",
+    });
     if (!res.ok) {
       console.error("[QuizRepo] fetchDetailedRoom failed:", res.status);
       return null;
@@ -72,6 +76,7 @@ export const quizRepository = {
   async fetchParticipants(roomId: string): Promise<Record<string, unknown>[]> {
     const res = await fetch(`/api/user-game/participants/${roomId}`, {
       cache: "no-store",
+      credentials: "include",
     });
     if (!res.ok) return [];
     const result = await res.json();
@@ -90,6 +95,7 @@ export const quizRepository = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
+      credentials: "include",
     });
     if (!res.ok) {
       console.error("[QuizRepo] postJoinRoom failed:", res.status);
@@ -108,6 +114,7 @@ export const quizRepository = {
     try {
       const res = await fetch(`/api/user-game/leave/${userGameId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       return res.ok;
     } catch {
@@ -132,6 +139,7 @@ export const quizRepository = {
         answer_id: answerId,
         round_number: roundNumber,
       }),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -152,6 +160,7 @@ export const quizRepository = {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ new_host_id: newHostId }),
+        credentials: "include",
       });
       return res.ok;
     } catch {

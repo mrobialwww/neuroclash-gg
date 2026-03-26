@@ -28,11 +28,13 @@ export async function getAllCharacters(): Promise<UserCharacterWithDetails[]> {
     const url = new URL(
       `/api/characters`,
       typeof window === "undefined"
-        ? process.env.NEXTAUTH_URL || "http://localhost:3000"
+        ? process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         : window.location.origin
     );
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch all characters: ${response.statusText}`);
@@ -45,7 +47,10 @@ export async function getAllCharacters(): Promise<UserCharacterWithDetails[]> {
     characterCache = characters;
     cacheTimestamp = now;
 
-    console.log("[Cache] Character data cached until", new Date(now + CACHE_DURATION));
+    console.log(
+      "[Cache] Character data cached until",
+      new Date(now + CACHE_DURATION)
+    );
     return characters;
   } catch (error) {
     console.error("Error fetching all characters:", error);
@@ -79,11 +84,12 @@ export async function getUserCharacters(
   userId: string,
   isUsed?: boolean
 ): Promise<UserCharacterWithDetails[]> {
+  if (!userId) return [];
   try {
     const url = new URL(
       `/api/user-character/${userId}`,
       typeof window === "undefined"
-        ? process.env.NEXTAUTH_URL || "http://localhost:3000"
+        ? process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         : window.location.origin
     );
 
@@ -91,10 +97,14 @@ export async function getUserCharacters(
       url.searchParams.append("is_used", String(isUsed));
     }
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      credentials: "include",
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch user characters: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch user characters: ${response.statusText}`
+      );
     }
 
     const result = await response.json();
@@ -111,7 +121,9 @@ export async function getUserCharacters(
  * @param userId - ID user
  * @returns Character yang sedang digunakan
  */
-export async function getUsedCharacter(userId: string): Promise<UserCharacterWithDetails | null> {
+export async function getUsedCharacter(
+  userId: string
+): Promise<UserCharacterWithDetails | null> {
   try {
     const characters = await getUserCharacters(userId, true);
     return characters.length > 0 ? characters[0] : null;

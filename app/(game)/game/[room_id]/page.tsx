@@ -9,12 +9,9 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 
-import {
-  useMatchStore,
-  SECONDS_PER_ROUND,
-  STARBOX_INTERVAL,
-} from "@/store/useMatchStore";
+import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
+import { useStarboxStore } from "@/store/useStarboxStore";
 
 export default function GamePage() {
   const router = useRouter();
@@ -34,27 +31,43 @@ export default function GamePage() {
     currentQuestion,
     isLoadingQuestion,
     selectedAnswerId,
+    isSubmitting,
     isFinished,
     timeLeft,
     players,
     currentUser,
     currentBattleRoom,
     opponentIds,
+    firstAnswerPlayerId,
+    firstAnswerId,
     nextRoundUrl,
     error,
+    isWaitingForAllBattles,
+    lastAnswerCorrect,
+    correctAnswerId,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
     isOpponent,
+    canAnswer,
   } = useMatchStore();
+
+  const { myInventory, refreshMyInventory } = useStarboxStore();
 
   const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
   const isSolo = roomInfo?.max_player === 1;
 
-  // 1. Initialize Match Room Data
+  // 1. Initialize Match Room Data + hydrate inventory dari DB (termasuk ability_materials)
   useEffect(() => {
     initializeMatch(roomCodeQuery, gameRoomId, initialRound);
   }, [initializeMatch, roomCodeQuery, gameRoomId, initialRound]);
+
+  // 1b. Hydrate inventory dari DB agar ability_materials tersedia untuk OverlayMaterialCard
+  useEffect(() => {
+    if (currentUser?.id && gameRoomId) {
+      refreshMyInventory(gameRoomId, currentUser.id);
+    }
+  }, [currentUser?.id, gameRoomId, refreshMyInventory]);
 
   // Handle Error (Ongoing room or not found)
   useEffect(() => {
@@ -84,14 +97,14 @@ export default function GamePage() {
 
   // 2. Local Timer
   useEffect(() => {
-    if (isLoadingQuestion || isFinished || selectedAnswerId || error) return;
+    if (isLoadingQuestion || isFinished || error) return;
 
     const timer = setInterval(() => {
       decrementTimer();
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isLoadingQuestion, isFinished, selectedAnswerId, decrementTimer, error]);
+  }, [isLoadingQuestion, isFinished, decrementTimer, error, timeLeft]);
 
   // 3. Mapping Players for UI
   const { meCard, opponentCard, sortedForList } = useMemo(() => {
@@ -99,17 +112,8 @@ export default function GamePage() {
     const others = players.filter((p) => p.id !== currentUser?.id);
 
     // Gunakan opponentIds dari battle room untuk menentukan lawan
-    // Hanya player yang ada di battle room yang sama yang menjadi lawan
-    const battleOpponents = opponentIds
-      .map((oppId) => players.find((p) => p.id === oppId))
-      .filter((p): p is (typeof players)[0] => p !== undefined);
+    const battleOpponents = opponentIds.map((oppId) => players.find((p) => p.id === oppId)).filter((p): p is (typeof players)[0] => p !== undefined);
 
-    console.log(
-      `[GamePage] Current battle room opponents:`,
-      battleOpponents.map((p) => ({ id: p.id.substring(0, 8), name: p.name }))
-    );
-
-    // Identitas Lawan: Ambil lawan pertama dari battle room
     const enemyData = battleOpponents.length > 0 ? battleOpponents[0] : null;
 
     const mapToCard = (p: any) =>
@@ -124,9 +128,34 @@ export default function GamePage() {
           }
         : null;
 
+    // Prof. Bubu card untuk Solo mode (lawan)
+    const profBubuCard = isSolo
+      ? {
+          id: "prof-bubu",
+          name: "Prof. Bubu",
+          character: "Prof. Bubu",
+          image: "/mascot/mascot-match.webp",
+          health: 100,
+          maxHealth: 100,
+        }
+      : null;
+
+    // Solo fallback: jika players belum terisi, gunakan data currentUser
+    const soloMeCard =
+      isSolo && !meData && currentUser
+        ? {
+            id: currentUser.id,
+            name: currentUser.username,
+            character: currentUser.character,
+            image: currentUser.avatar || "/default/slime.webp",
+            health: 100,
+            maxHealth: 100,
+          }
+        : null;
+
     return {
-      meCard: mapToCard(meData),
-      opponentCard: mapToCard(enemyData),
+      meCard: mapToCard(meData) ?? soloMeCard,
+      opponentCard: isSolo ? profBubuCard : mapToCard(enemyData),
       sortedForList: players.map((p) => ({
         id: p.id,
         name: p.name,
@@ -138,7 +167,7 @@ export default function GamePage() {
         isOpponent: opponentIds.includes(p.id),
       })),
     };
-  }, [players, currentUser, opponentIds]);
+  }, [players, currentUser, opponentIds, isSolo]);
 
   // 4. Answer Action Dispatcher
   const onSelectAnswer = (answerId: string) => {
@@ -159,10 +188,21 @@ export default function GamePage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
-        <p className="animate-pulse text-lg font-semibold text-white">
-          Memuat Arena...
-        </p>
+        <p className="animate-pulse text-lg font-semibold text-white">Memuat Arena...</p>
       </main>
+    );
+  }
+
+  // Tampilan ketika Menunggu Semua Battle Room Selesai
+  if (isWaitingForAllBattles && !error) {
+    return (
+      <div className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14]/95 backdrop-blur-sm">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
+        <div className="space-y-2 text-center">
+          <p className="animate-pulse text-2xl font-bold text-white">Menunggu semua pertempuran selesai...</p>
+          <p className="text-white/60">Ronde {currentOrder} akan segera berakhir</p>
+        </div>
+      </div>
     );
   }
 
@@ -171,19 +211,9 @@ export default function GamePage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
         <p className="text-5xl">🏆</p>
-        <h1 className="text-center text-3xl font-extrabold text-white">
-          Quiz Selesai!
-        </h1>
-        <p className="text-center text-lg text-white/60">
-          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1}{" "}
-          soal.
-        </p>
-        <MainButton
-          variant="green"
-          hasShadow
-          className="rounded-xl px-10 py-4 text-lg font-bold"
-          onClick={() => router.push("/dashboard")}
-        >
+        <h1 className="text-center text-3xl font-extrabold text-white">Quiz Selesai!</h1>
+        <p className="text-center text-lg text-white/60">Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.</p>
+        <MainButton variant="green" hasShadow className="rounded-xl px-10 py-4 text-lg font-bold" onClick={() => router.push("/dashboard")}>
           Kembali ke Dashboard
         </MainButton>
       </main>
@@ -204,14 +234,11 @@ export default function GamePage() {
             duration={SECONDS_PER_ROUND}
             timeLeft={timeLeft}
             activeStepIndex={activeStepIndex}
+            isSolo={isSolo}
           />
         </div>
 
-        <MainButton
-          variant="white"
-          className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6"
-          onClick={handleExit}
-        >
+        <MainButton variant="white" className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6" onClick={handleExit}>
           Keluar
         </MainButton>
       </header>
@@ -226,34 +253,30 @@ export default function GamePage() {
       <div className="flex w-full flex-1 items-start justify-center">
         <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
           {/* My Player Card / Kiri */}
-          <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
-            <div className="hidden max-h-[320px] overflow-hidden lg:block">
-              <BuffList className="h-full" />
+          <div className="order-1 flex h-full flex-col justify-end gap-4 self-stretch lg:order-1">
+            <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
+              <div className="absolute inset-0">
+                <BuffList buffs={myInventory} className="h-full" />
+              </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none">
-              {meCard && (
-                <PlayerCard
-                  player={meCard as any}
-                  isMe={true}
-                  className="w-full"
-                />
-              )}
+            <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
+              {meCard ? <PlayerCard player={meCard as any} isMe={true} className="w-full" /> : <div className="h-[90px] w-full" />}
             </div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
-          <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
-            <div className="hidden max-h-[320px] overflow-hidden lg:block">
-              <PlayerList players={sortedForList as any} className="h-full" />
+          <div className="order-2 flex h-full flex-col items-end justify-end gap-4 self-stretch lg:order-3 lg:items-stretch">
+            <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
+              <div className="absolute inset-0">
+                {/* Always pass empty array for players in Solo to trigger the empty state text */}
+                <PlayerList players={isSolo ? [] : (sortedForList as any)} className="h-full" />
+              </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none">
-              {opponentCard && (
-                <PlayerCard
-                  player={opponentCard as any}
-                  isMe={false}
-                  hideHealthBar={isSolo}
-                  className="w-full"
-                />
+            <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
+              {opponentCard ? (
+                <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" />
+              ) : (
+                <div className="h-[90px] w-full" />
               )}
             </div>
           </div>
@@ -261,26 +284,35 @@ export default function GamePage() {
           {/* Kolom Tengah Utama — Area Pertanyaan */}
           <div className="isolate order-3 col-span-2 mt-2 flex flex-col lg:order-2 lg:col-span-1 lg:mt-0">
             {currentQuestion && (
-              <QuestionCard
-                question={currentQuestion.question_text}
-                options={currentQuestion.options}
-                onSelect={onSelectAnswer}
-                selectedId={selectedAnswerId}
-                className="h-auto w-full"
-              />
+              <>
+                {firstAnswerPlayerId && (
+                  <div className="mb-4 text-center font-semibold text-yellow-400">
+                    {players.find((p) => p.id === firstAnswerPlayerId)?.name} menjawab pertama!
+                  </div>
+                )}
+                <QuestionCard
+                  question={currentQuestion.question_text}
+                  options={currentQuestion.options}
+                  onSelect={onSelectAnswer}
+                  selectedId={selectedAnswerId}
+                  disabled={canAnswer() === false}
+                  canAnswer={canAnswer}
+                  firstAnswerId={firstAnswerId}
+                  correctAnswerId={correctAnswerId}
+                  lastAnswerCorrect={lastAnswerCorrect}
+                  className="h-auto w-full"
+                />
+              </>
             )}
           </div>
 
           {/* Mobile Layout */}
           <div className="order-4 col-span-1 lg:hidden">
-            <BuffList className="h-[200px] w-full sm:h-[240px]" />
+            <BuffList buffs={myInventory} className="h-[200px] w-full sm:h-[240px]" />
           </div>
 
           <div className="order-5 col-span-1 lg:hidden">
-            <PlayerList
-              players={sortedForList as any}
-              className="h-[200px] w-full sm:h-[240px]"
-            />
+            <PlayerList players={sortedForList as any} className="h-[200px] w-full sm:h-[240px]" />
           </div>
         </div>
       </div>

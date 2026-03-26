@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { LobbyRoom } from "@/components/quiz/Lobby";
 import { useQuizLobbyStore } from "@/store/useQuizLobbyStore";
 import { quizRepository } from "@/repository/quizRepository";
+import { createClient } from "@/lib/supabase/client";
 
 export default function QuizLobbyPage() {
   const router = useRouter();
@@ -106,6 +107,7 @@ export default function QuizLobbyPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game_room_id: room_id }),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -113,11 +115,52 @@ export default function QuizLobbyPage() {
         throw new Error(error.error || "Gagal memulai pertandingan");
       }
 
-      // 2. Redirect ke halaman game
+      // // 2. Redirect ke halaman game
       router.push(`/game/${room_id}?code=${roomData.room_code}`);
+
+      // ====== Testinggg starbox ygy jgn dihapus
+      // router.push(`/starbox?roomId=${room_id}&code=${roomData.room_code}&nextRound=1`);
     } catch (err) {
       console.error("Gagal memulai pertandingan:", err);
       alert(err instanceof Error ? err.message : "Gagal memulai pertandingan");
+      setIsStarting(false);
+    }
+  };
+
+  // FOR TESTING — remove in production
+  const handleStartStarbox = async () => {
+    if (!roomData) return;
+    setIsStarting(true);
+
+    try {
+      // 1. Broadcast ke semua player di lobby agar redirect ke starbox
+      const supabase = createClient();
+      const lobbyChannel = supabase.channel(`lobby:${room_id}`);
+      await lobbyChannel.subscribe();
+      await lobbyChannel.send({
+        type: "broadcast",
+        event: "starbox_redirect",
+        payload: { roomId: room_id, code: roomData.room_code },
+      });
+      supabase.removeChannel(lobbyChannel);
+
+      // 2. Call API untuk start match (sama seperti handleStart)
+      const res = await fetch("/api/match/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_room_id: room_id }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Gagal memulai pertandingan");
+      }
+
+      // 3. Redirect host langsung ke starbox
+      router.push(`/starbox?roomId=${room_id}&code=${roomData.room_code}&nextRound=1`);
+    } catch (err) {
+      console.error("Gagal memulai starbox test:", err);
+      alert(err instanceof Error ? err.message : "Gagal memulai starbox test");
       setIsStarting(false);
     }
   };
@@ -161,6 +204,7 @@ export default function QuizLobbyPage() {
         isSolo={isSolo}
         isHost={isHost}
         onStart={handleStart}
+        onStartStarbox={handleStartStarbox} // FOR TESTING — remove in production
         isLoading={isStarting}
         isLeaving={isLeaving}
         onLeave={handleLeave}

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export interface BattleRoom {
   battle_room_id: string;
@@ -45,11 +45,25 @@ export const battleRoomService = {
    * Check apakah semua kombinasi lawan sudah terpenuhi
    * Untuk n players, total kombinasi = n * (n-1) / 2
    * Contoh: 4 players = 6 kombinasi, 5 players = 10 kombinasi
+   *
+   * SPECIAL RULE: Jika hanya tersisa 2-3 players, jangan reset
+   * Biarkan mereka terus bertemu (request dari user)
    */
   allOpponentsAssigned(gameId: string, alivePlayerIds: string[]): boolean {
     const cache = this.playerOpponentsCache.get(gameId) || [];
 
     if (cache.length === 0) return false;
+
+    const alivePlayerCount = alivePlayerIds.length;
+
+    // SPECIAL RULE: Jika hanya 2-3 players, jangan reset
+    // Biarkan mereka terus bertemu meskipun semua kombinasi sudah habis
+    if (alivePlayerCount <= 3) {
+      console.log(
+        `[BattleRoomService] ⚠️ Only ${alivePlayerCount} players alive - NO RESET`
+      );
+      return false;
+    }
 
     // Hitung total kombinasi yang mungkin: n * (n-1) / 2
     const totalPossibleCombos =
@@ -77,6 +91,7 @@ export const battleRoomService = {
 
   /**
    * Reset opponent history ketika semua kombinasi sudah habis
+   * Tidak akan dipanggil jika hanya 2-3 players yang hidup
    */
   resetOpponentHistory(gameId: string) {
     console.log(
@@ -84,6 +99,9 @@ export const battleRoomService = {
     );
     console.log(`[BattleRoomService] ⚠️ ALL COMBINATIONS COMPLETED`);
     console.log(`[BattleRoomService] 🔄 RESETTING opponent history`);
+    console.log(
+      `[BattleRoomService] Note: Only for 4+ players (2-3 players keep meeting)`
+    );
     console.log(
       `[BattleRoomService] ==================================================`
     );
@@ -186,50 +204,84 @@ export const battleRoomService = {
       }
 
       // Cari lawan yang belum pernah bertemu
+      let opponentId: string | null = null;
+
       for (let i = 0; i < shuffled.length; i++) {
-        const opponentId = shuffled[i];
+        const potentialOpponentId = shuffled[i];
 
         // Skip jika:
         // - Sama dengan sendiri
         // - Sudah dipakai
-        // - Sudah pernah bertemu sebelumnya
         if (
-          opponentId === playerId ||
-          usedPlayers.has(opponentId) ||
-          hasMet(playerId, opponentId)
+          potentialOpponentId === playerId ||
+          usedPlayers.has(potentialOpponentId)
         ) {
           continue;
         }
 
-        // Found opponent!
+        // Jika sudah pernah bertemu, coba cari lawan lain dulu
+        if (hasMet(playerId, potentialOpponentId)) {
+          continue;
+        }
+
+        // Found perfect opponent (belum pernah bertemu)!
+        opponentId = potentialOpponentId;
+        break;
+      }
+
+      // Fallback: Jika tidak dapat menemukan lawan yang belum pernah bertemu,
+      // gunakan lawan manapun yang tersedia
+      if (!opponentId) {
         console.log(
-          `[BattleRoomService] Room ${roomId}: ${playerId.substring(
+          `[BattleRoomService] ⚠️ No unmet opponent found for ${playerId.substring(
             0,
             8
-          )} vs ${opponentId.substring(0, 8)}`
+          )}, using fallback`
         );
+        for (let i = 0; i < shuffled.length; i++) {
+          const fallbackOpponentId = shuffled[i];
+          if (
+            fallbackOpponentId !== playerId &&
+            !usedPlayers.has(fallbackOpponentId)
+          ) {
+            opponentId = fallbackOpponentId;
+            break;
+          }
+        }
+      }
 
-        pairings.push({
-          player1_id: playerId,
-          player2_id: opponentId,
-          player3_id: undefined,
-        });
-
-        // Mark sebagai used
-        usedPlayers.add(playerId);
-        usedPlayers.add(opponentId);
-
-        // Track opponents
-        this.addOpponent(gameId, playerId, opponentId);
-        this.addOpponent(gameId, opponentId, playerId);
-
-        return true;
+      if (!opponentId) {
+        console.log(
+          `[BattleRoomService] No opponent found for ${playerId.substring(
+            0,
+            8
+          )}`
+        );
+        return false;
       }
 
       console.log(
-        `[BattleRoomService] No opponent found for ${playerId.substring(0, 8)}`
+        `[BattleRoomService] Room ${roomId}: ${playerId.substring(
+          0,
+          8
+        )} vs ${opponentId.substring(0, 8)}`
       );
-      return false;
+
+      pairings.push({
+        player1_id: playerId,
+        player2_id: opponentId,
+        player3_id: undefined,
+      });
+
+      // Mark sebagai used
+      usedPlayers.add(playerId);
+      usedPlayers.add(opponentId);
+
+      // Track opponents
+      this.addOpponent(gameId, playerId, opponentId);
+      this.addOpponent(gameId, opponentId, playerId);
+
+      return true;
     };
 
     // Assign players ke rooms
@@ -376,27 +428,60 @@ export const battleRoomService = {
       `[BattleRoomService] ==================================================`
     );
 
-    // 0. Reset opponent cache setiap round
-    this.resetOpponentCache(gameId);
+    // Validate inputs
+    if (!questions || questions.length === 0) {
+      console.error(
+        `[BattleRoomService] ERROR: No questions provided for round ${roundNumber}`
+      );
+      throw new Error(`No questions provided for round ${roundNumber}`);
+    }
 
-    // 1. Hapus battle rooms yang sudah ada untuk round ini
+    // 1. Delete existing battle rooms for this round before creating new ones (IDEMPOTENT)
+    // This ensures idempotency: if multiple clients call this simultaneously, only one will succeed
     console.log(
-      `[BattleRoomService] Cleaning up existing battle rooms for round ${roundNumber}`
+      `[BattleRoomService] Deleting existing battle rooms for round ${roundNumber} (idempotent)`
     );
-    const { error: deleteError } = await supabase
+
+    // Check if there are any existing battle rooms first
+    const { data: existingBattleRoomsBeforeDelete } = await supabase
+      .from("battle_rooms")
+      .select("battle_room_id")
+      .eq("game_room_id", gameId)
+      .eq("round_number", roundNumber);
+
+    console.log(
+      `[BattleRoomService] Found ${
+        existingBattleRoomsBeforeDelete?.length || 0
+      } existing battle rooms before delete`
+    );
+
+    const { error: idempotentDeleteError } = await supabase
       .from("battle_rooms")
       .delete()
       .eq("game_room_id", gameId)
       .eq("round_number", roundNumber);
 
-    if (deleteError) {
-      console.warn(
-        "[BattleRoomService] Warning deleting old battle rooms:",
-        deleteError
+    if (idempotentDeleteError) {
+      console.error(
+        "[BattleRoomService] Warning deleting existing battle rooms:",
+        idempotentDeleteError
+      );
+      // Continue anyway, try to insert
+    } else {
+      console.log(
+        `[BattleRoomService] ✅ Successfully deleted existing battle rooms`
       );
     }
 
-    // 2. Fetch alive players from game_players
+    // 2. Reset opponent cache hanya saat first round (round 1)
+    if (roundNumber === 1) {
+      this.resetOpponentCache(gameId);
+      console.log(
+        `[BattleRoomService] Round 1 - Reset opponent cache for fresh start`
+      );
+    }
+
+    // 3. Fetch alive players from game_players
     const { data: players, error: playersError } = await supabase
       .from("game_players")
       .select("user_id, health, status")
@@ -411,7 +496,7 @@ export const battleRoomService = {
       throw playersError;
     }
 
-    // 3. Filter only alive players
+    // 4. Filter only alive players
     const alivePlayers = (players || []).filter(
       (p: PlayerWithHealth) => p.health > 0 && p.status === "alive"
     );
@@ -433,15 +518,16 @@ export const battleRoomService = {
       return [];
     }
 
-    // 4. Generate round-robin pairings
+    // 5. Generate round-robin pairings
     const pairings = this.generateRoundRobinPairings(
       alivePlayers.map((p) => p.user_id),
       gameId
     );
 
-    // 5. Create battle rooms with assigned questions
+    // 6. Create battle rooms with assigned questions
     const battleRooms: BattleRoom[] = [];
     let questionIndex = 0;
+    let hasDuplicateError = false;
 
     for (const pairing of pairings) {
       const question = questions[questionIndex % questions.length];
@@ -475,18 +561,66 @@ export const battleRoomService = {
           insertError
         );
         console.error("[BattleRoomService] Battle room data:", battleRoomData);
-        throw insertError;
+        console.error("[BattleRoomService] Error code:", insertError.code);
+        console.error(
+          "[BattleRoomService] Error message:",
+          insertError.message
+        );
+        console.error(
+          "[BattleRoomService] Error details:",
+          insertError.details
+        );
+
+        // Check for duplicate key error (23505 = unique_violation)
+        if (insertError.code === "23505") {
+          console.warn(
+            `[BattleRoomService] ⚠️ DUPLICATE KEY ERROR detected - Battle rooms already exist for round ${roundNumber}`
+          );
+          hasDuplicateError = true;
+          break; // Exit loop, fetch all existing battle rooms
+        }
+
+        throw new Error(
+          `Failed to insert battle room: ${insertError.message} (code: ${insertError.code})`
+        );
       }
 
       battleRooms.push(battleRoom);
       questionIndex++;
     }
 
+    // If we encountered a duplicate key error, fetch all existing battle rooms for this round
+    if (hasDuplicateError) {
+      console.warn(
+        `[BattleRoomService] ⚠️ Duplicate key error encountered, fetching all existing battle rooms for round ${roundNumber}...`
+      );
+      const { data: allBattleRooms } = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber);
+
+      if (allBattleRooms && allBattleRooms.length > 0) {
+        console.log(
+          `[BattleRoomService] ✅ Found ${allBattleRooms.length} existing battle rooms in round ${roundNumber}`
+        );
+        return allBattleRooms;
+      }
+
+      // If we can't find any existing battle rooms, something's wrong
+      console.error(
+        `[BattleRoomService] ❌ Duplicate key error but couldn't find any existing battle rooms for round ${roundNumber}!`
+      );
+      throw new Error(
+        `Duplicate key error but couldn't find any existing battle rooms for game ${gameId}, round ${roundNumber}`
+      );
+    }
+
     console.log(
       `[BattleRoomService] Successfully created ${battleRooms.length} battle rooms`
     );
 
-    // 6. Verifikasi di database
+    // 7. Verifikasi di database
     const { data: verifyData } = await supabase
       .from("battle_rooms")
       .select("player1_id, player2_id, player3_id")
@@ -525,20 +659,63 @@ export const battleRoomService = {
     userId: string,
     roundNumber: number
   ): Promise<BattleRoom | null> {
+    console.log(
+      `[BattleRoomService] Getting battle room for user ${userId.substring(
+        0,
+        8
+      )} in game ${gameId.substring(0, 8)}, round ${roundNumber}`
+    );
+
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("battle_rooms")
-      .select("*")
-      .eq("game_room_id", gameId)
-      .eq("round_number", roundNumber)
-      .or(
-        `player1_id.eq.${userId},player2_id.eq.${userId},player3_id.eq.${userId}`
-      )
-      .maybeSingle();
+    // Fix: Try multiple approaches to find the battle room
+    // Approach 1: Use .or() with proper syntax
+    let data, error;
+    try {
+      const result = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber)
+        .or(
+          `player1_id.eq.${userId},player2_id.eq.${userId},player3_id.eq.${userId}`
+        )
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } catch (err) {
+      console.error("[BattleRoomService] Error in OR query:", err);
+      data = null;
+      error = err as any;
+    }
+
+    // Approach 2: If OR query fails, fetch all and filter client-side
+    if (!data || error) {
+      console.warn(
+        `[BattleRoomService] OR query failed, trying fetch-all approach...`
+      );
+      const allResult = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber);
+
+      const allRooms = allResult.data || [];
+      data =
+        allRooms.find(
+          (br) =>
+            br.player1_id === userId ||
+            br.player2_id === userId ||
+            br.player3_id === userId
+        ) || null;
+      error = null;
+    }
 
     if (error && error.code !== "PGRST116") {
       console.error("[BattleRoomService] Error fetching battle room:", error);
+      console.error("[BattleRoomService] Error code:", error.code);
+      console.error("[BattleRoomService] Error message:", error.message);
+      console.error("[BattleRoomService] Error details:", error.details);
     }
 
     if (!data) {
@@ -547,6 +724,63 @@ export const battleRoomService = {
           0,
           8
         )} in round ${roundNumber}`
+      );
+
+      // Try fetching all battle rooms for this round to debug
+      const { data: allRooms } = await supabase
+        .from("battle_rooms")
+        .select("battle_room_id, player1_id, player2_id, player3_id, status")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber);
+
+      console.log(
+        `[BattleRoomService] All battle rooms for round ${roundNumber}:`,
+        allRooms?.map((br) => ({
+          id: br.battle_room_id.substring(0, 8),
+          p1: br.player1_id.substring(0, 8),
+          p2: br.player2_id.substring(0, 8),
+          p3: br.player3_id?.substring(0, 8),
+          status: br.status,
+        }))
+      );
+
+      // Check if userId is in any of the battle rooms
+      const userIdInRooms = allRooms?.some(
+        (br) =>
+          br.player1_id === userId ||
+          br.player2_id === userId ||
+          br.player3_id === userId
+      );
+      console.log(
+        `[BattleRoomService] User ${userId.substring(
+          0,
+          8
+        )} found in any battle room: ${userIdInRooms}`
+      );
+
+      // If user is NOT in any battle room, this is a BUG
+      if (!userIdInRooms && allRooms && allRooms.length > 0) {
+        console.error(
+          `[BattleRoomService] ❌ BUG DETECTED: User ${userId.substring(
+            0,
+            8
+          )} is NOT in any battle room for round ${roundNumber}!`
+        );
+        console.error(
+          `[BattleRoomService] All player IDs in round ${roundNumber}:`,
+          allRooms.flatMap((br) => [
+            br.player1_id.substring(0, 8),
+            br.player2_id.substring(0, 8),
+            br.player3_id?.substring(0, 8) || null,
+          ])
+        );
+      }
+    } else {
+      console.log(
+        `[BattleRoomService] Found battle room: ${data.battle_room_id.substring(
+          0,
+          8
+        )} for user ${userId.substring(0, 8)}`
       );
     }
 
@@ -560,13 +794,31 @@ export const battleRoomService = {
     gameId: string,
     roundNumber: number
   ): Promise<boolean> {
+    console.log(
+      `[BattleRoomService] Checking if all battles finished for game ${gameId}, round ${roundNumber}`
+    );
+
     const battleRooms = await this.getBattleRoomsForRound(gameId, roundNumber);
 
-    if (battleRooms.length === 0) return true;
+    console.log(`[BattleRoomService] Found ${battleRooms.length} battle rooms`);
+    console.log(
+      `[BattleRoomService] Battle room statuses:`,
+      battleRooms.map((br) => ({
+        id: br.battle_room_id.substring(0, 8),
+        status: br.status,
+      }))
+    );
+
+    if (battleRooms.length === 0) {
+      console.log("[BattleRoomService] No battle rooms found, returning true");
+      return true;
+    }
 
     const allFinished = battleRooms.every(
       (br) => br.status === "finished" || br.status === "timeout"
     );
+
+    console.log(`[BattleRoomService] All battles finished: ${allFinished}`);
 
     return allFinished;
   },
@@ -602,20 +854,42 @@ export const battleRoomService = {
     battleRoomId: string,
     status: "waiting" | "ongoing" | "finished" | "timeout"
   ): Promise<void> {
+    console.log(
+      `[BattleRoomService] Updating battle room ${battleRoomId.substring(
+        0,
+        8
+      )} status to ${status}`
+    );
+
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from("battle_rooms")
       .update({
         status,
         updated_at: new Date().toISOString(),
       })
-      .eq("battle_room_id", battleRoomId);
+      .eq("battle_room_id", battleRoomId)
+      .select()
+      .single();
 
     if (error) {
       console.error("[BattleRoomService] Error updating battle room:", error);
       throw error;
     }
+
+    console.log(
+      `[BattleRoomService] Battle room ${battleRoomId.substring(
+        0,
+        8
+      )} updated to ${status}`
+    );
+    console.log(
+      `[BattleRoomService] Updated battle room data:`,
+      data
+        ? { id: data.battle_room_id.substring(0, 8), status: data.status }
+        : null
+    );
   },
 
   /**
