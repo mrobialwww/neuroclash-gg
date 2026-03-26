@@ -6,7 +6,7 @@ interface LeaderboardBadgeProps {
 
 export function LeaderboardBadge({ title }: LeaderboardBadgeProps) {
   return (
-    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-full max-w-[400px] flex items-center justify-center z-20 px-4">
+    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-full max-w-[320px] md:max-w-[400px] flex items-center justify-center z-20 px-4">
       <div className="relative w-full h-auto flex items-center justify-center">
         <Image
           src="/dashboard/trophy-badge.webp"

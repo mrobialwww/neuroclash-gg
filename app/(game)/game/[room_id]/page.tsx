@@ -42,6 +42,8 @@ export default function GamePage() {
     nextRoundUrl,
     error,
     isWaitingForAllBattles,
+    lastAnswerCorrect,
+    correctAnswerId,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
@@ -123,9 +125,21 @@ export default function GamePage() {
           }
         : null;
 
+    // Prof. Bubu card untuk Solo mode
+    const profBubuCard = isSolo
+      ? {
+          id: "prof-bubu",
+          name: "Prof. Bubu",
+          character: "Prof. Bubu",
+          image: "/mascot/mascot-match.webp",
+          health: 100,
+          maxHealth: 100,
+        }
+      : null;
+
     return {
       meCard: mapToCard(meData),
-      opponentCard: mapToCard(enemyData),
+      opponentCard: isSolo ? profBubuCard : mapToCard(enemyData),
       sortedForList: players.map((p) => ({
         id: p.id,
         name: p.name,
@@ -137,7 +151,7 @@ export default function GamePage() {
         isOpponent: opponentIds.includes(p.id),
       })),
     };
-  }, [players, currentUser, opponentIds]);
+  }, [players, currentUser, opponentIds, isSolo]);
 
   // 4. Answer Action Dispatcher
   const onSelectAnswer = (answerId: string) => {
@@ -221,20 +235,27 @@ export default function GamePage() {
       <div className="flex w-full flex-1 items-start justify-center">
         <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
           {/* My Player Card / Kiri */}
-          <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
-            <div className="hidden max-h-[320px] overflow-hidden lg:block">
-              <BuffList className="h-full" />
+          <div className="order-1 flex flex-col justify-end self-stretch lg:order-1 h-full gap-4">
+            <div className="hidden flex-1 overflow-hidden lg:block relative min-h-[160px]">
+              <div className="absolute inset-0">
+                <BuffList className="h-full" />
+              </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none">{meCard && <PlayerCard player={meCard as any} isMe={true} className="w-full" />}</div>
+            <div className="w-full max-w-[320px] lg:max-w-none shrink-0">
+              {meCard ? <PlayerCard player={meCard as any} isMe={true} className="w-full" /> : <div className="h-[90px] w-full" />}
+            </div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
-          <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
-            <div className="hidden max-h-[320px] overflow-hidden lg:block">
-              <PlayerList players={sortedForList as any} className="h-full" />
+          <div className="order-2 flex flex-col items-end justify-end self-stretch lg:order-3 lg:items-stretch h-full gap-4">
+            <div className="hidden flex-1 overflow-hidden lg:block relative min-h-[160px]">
+              <div className="absolute inset-0">
+                {/* Always pass empty array for players in Solo to trigger the empty state text */}
+                <PlayerList players={isSolo ? [] : (sortedForList as any)} className="h-full" />
+              </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none">
-              {opponentCard && <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" />}
+            <div className="w-full max-w-[320px] lg:max-w-none shrink-0">
+              {opponentCard ? <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" /> : <div className="h-[90px] w-full" />}
             </div>
           </div>
 
@@ -247,7 +268,7 @@ export default function GamePage() {
                     {players.find((p) => p.id === firstAnswerPlayerId)?.name} menjawab pertama!
                   </div>
                 )}
-                <QuestionCard
+                              <QuestionCard
                   question={currentQuestion.question_text}
                   options={currentQuestion.options}
                   onSelect={onSelectAnswer}
@@ -255,6 +276,8 @@ export default function GamePage() {
                   disabled={canAnswer() === false}
                   canAnswer={canAnswer}
                   firstAnswerId={firstAnswerId}
+                  correctAnswerId={correctAnswerId}
+                  lastAnswerCorrect={lastAnswerCorrect}
                   className="h-auto w-full"
                 />
               </>

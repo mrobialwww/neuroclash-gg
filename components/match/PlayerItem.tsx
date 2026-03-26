@@ -29,7 +29,7 @@ export const PlayerItem = ({ player, className }: PlayerItemProps) => {
         player.isMe
           ? "bg-linear-to-r from-[#E6AA00]/0 to-[#E6AA00] px-1"
           : "bg-transparent",
-        player.isOpponent && "border-2 border-yellow-500",
+        player.isOpponent && "bg-linear-to-r from-[#B40000]/0 to-[#B40000] px-1",
         className
       )}
     >
