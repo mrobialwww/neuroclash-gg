@@ -175,7 +175,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
             <div className="flex items-center gap-2 text-[#555555]">
               <Flag size={20} className="text-[#256AF4]" />
               <span className="text-base font-bold">
-                {room.total_question} Ronde
+                {room.total_round} Ronde
               </span>
             </div>
           </div>

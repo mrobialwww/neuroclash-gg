@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { PlayerMatchState } from "@/types/quiz";
 import { gamePlayerRepository } from "./gamePlayerRepository";
 

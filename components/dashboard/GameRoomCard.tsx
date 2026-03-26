@@ -36,7 +36,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
       <div
         className={cn(
           "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-gray-50 bg-white p-5 pb-6 shadow-[0_4px_25px_rgba(0,0,0,0.05)] transition-all hover:shadow-[0_8px_35px_rgba(0,0,0,0.08)]",
-          className,
+          className
         )}
         onClick={handleClick}
       >
@@ -78,16 +78,14 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
             <div className="flex flex-col items-center">
               <Flag size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
               <span className="text-sm font-extrabold text-[#555555]">
-                {room.total_question}
+                {room.total_round}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {open && (
-        <OverlayJoinCard room={room} onClose={() => setOpen(false)} />
-      )}
+      {open && <OverlayJoinCard room={room} onClose={() => setOpen(false)} />}
     </>
   );
 }

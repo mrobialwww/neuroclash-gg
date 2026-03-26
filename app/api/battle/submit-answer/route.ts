@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`[BattleAnswer] Calling processAnswer...`);
+
     const result = await roundManagementService.processAnswer(
       user_id,
       answer_id,
@@ -71,10 +73,41 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[BattleAnswer] FINAL ERROR:", error);
+    console.error(
+      "[BattleAnswer] =================================================="
+    );
+    console.error("[BattleAnswer] ❌ FINAL ERROR:");
+    console.error(
+      "[BattleAnswer] =================================================="
+    );
+    console.error("[BattleAnswer] Error:", error);
+    console.error(
+      "[BattleAnswer] Error message:",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.error(
+      "[BattleAnswer] Error name:",
+      error instanceof Error ? error.name : "Unknown"
+    );
+    console.error(
+      "[BattleAnswer] Error code:",
+      (error as any)?.code || "No code"
+    );
+    if (error instanceof Error && error.stack) {
+      console.error("[BattleAnswer] Stack trace:");
+      console.error(error.stack);
+    }
+    console.error(
+      "[BattleAnswer] =================================================="
+    );
+
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal Server Error",
+        debug: {
+          name: error instanceof Error ? error.name : "Unknown",
+          code: (error as any)?.code || "No code",
+        },
       },
       { status: 500 }
     );

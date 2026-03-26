@@ -64,7 +64,7 @@ export const matchService = {
     ).createClient();
     const { data: questionData } = await supabase
       .from("questions")
-      .select("game_room_id, question_order, game_rooms(total_question)")
+      .select("game_room_id, question_order, game_rooms(total_round)")
       .eq("question_id", question_id)
       .single();
 
@@ -72,8 +72,7 @@ export const matchService = {
 
     const roomId = questionData.game_room_id;
     const currentOrder = questionData.question_order;
-    const totalQuestions =
-      (questionData.game_rooms as any).total_question || 20;
+    const totalQuestions = (questionData.game_rooms as any).total_round || 20;
 
     // 3. Simpan jawaban ke user_answers (Repo) dengan game_room_id dan round_number
     await matchRepository.submitAnswer(userId, answerId, roomId, roundNumber);

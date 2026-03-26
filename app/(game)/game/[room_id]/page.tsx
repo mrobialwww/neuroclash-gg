@@ -45,6 +45,7 @@ export default function GamePage() {
     firstAnswerId,
     nextRoundUrl,
     error,
+    isWaitingForAllBattles,
     initializeMatch,
     handleSelectAnswer,
     decrementTimer,
@@ -167,6 +168,23 @@ export default function GamePage() {
           Memuat Arena...
         </p>
       </main>
+    );
+  }
+
+  // Tampilan ketika Menunggu Semua Battle Room Selesai
+  if (isWaitingForAllBattles && !error) {
+    return (
+      <div className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14]/95 backdrop-blur-sm">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
+        <div className="space-y-2 text-center">
+          <p className="animate-pulse text-2xl font-bold text-white">
+            Menunggu semua pertempuran selesai...
+          </p>
+          <p className="text-white/60">
+            Ronde {currentOrder} akan segera berakhir
+          </p>
+        </div>
+      </div>
     );
   }
 
