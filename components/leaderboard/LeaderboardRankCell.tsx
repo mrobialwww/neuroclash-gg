@@ -46,7 +46,7 @@ export function LeaderboardRankCell({ position }: LeaderboardRankCellProps) {
   }
 
   return (
-    <span className="text-white font-semibold text-lg md:text-xl leading-none">
+    <span className="text-white font-medium text-lg md:text-xl leading-none">
       {position}
     </span>
   );

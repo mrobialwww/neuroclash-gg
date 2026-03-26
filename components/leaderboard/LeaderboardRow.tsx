@@ -41,7 +41,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
 
   return (
     <div
-      className={`grid items-center gap-2 sm:gap-4 px-4 md:px-6 py-1 transition-all duration-200 grid-cols-[80px_1fr_120px_80px] md:grid-cols-[120px_1fr_180px_120px] ${isMe ? "border border-white relative z-10" : "border-[0.5px] border-white/50"}`}
+      className={`grid grid-cols-[80px_minmax(160px,1fr)_140px_140px] items-center gap-4 md:gap-8 px-6 py-1 transition-all duration-200 rounded-lg ${isMe ? "border border-white relative z-10" : ""}`}
       style={rowStyle}
     >
       {/* Position */}
@@ -57,7 +57,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
       <div className="flex items-center gap-3 md:gap-4 min-w-0">
         <LeaderboardAvatar imageUrl={entry.character_image} baseCharacter={entry.base_character} />
         <span
-          className={`font-semibold text-md md:text-lg truncate ${isMe ? "text-[#FDA928]" : "text-white"}`}
+          className={`font-medium text-md md:text-lg truncate ${isMe ? "text-[#FDA928]" : "text-white"}`}
         >
           {entry.username}
         </span>
@@ -76,7 +76,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
                 className="object-contain drop-shadow-md"
               />
             </div>
-            <span className="text-[#BDCDFF] font-semibold text-md md:text-lg whitespace-nowrap">
+            <span className="text-[#BDCDFF] font-medium text-md md:text-lg whitespace-nowrap">
               {entry.rank.name}
             </span>
           </>
@@ -96,7 +96,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
             className="object-contain"
           />
         </div>
-        <span className="text-[#FDA928] font-semibold text-md md:text-lg tabular-nums">
+        <span className="text-[#FDA928] font-medium text-md md:text-lg tabular-nums">
           {entry.total_trophy.toLocaleString("id-ID")}
         </span>
       </div>

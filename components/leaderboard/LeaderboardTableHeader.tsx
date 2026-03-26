@@ -11,13 +11,12 @@ export function LeaderboardTableHeader({ columns }: LeaderboardTableHeaderProps)
 
   return (
     <div
-      className="grid items-center gap-2 sm:gap-4 px-4 sm:px-6 py-2 grid-cols-[80px_1fr_120px_80px] md:grid-cols-[120px_1fr_180px_120px] border-[0.5px] border-white/50 mb-2"
-      style={{ background: "#D9D9D933" }}
+      className="grid grid-cols-[80px_minmax(160px,1fr)_140px_140px] items-center gap-4 px-6 py-3 mb-2 rounded-lg bg-[#323C6D]"
     >
       {columns.map((col, i) => (
         <span
           key={i}
-          className="text-white text-md md:text-lg font-semibold tracking-wider text-center"
+          className="text-white text-sm md:text-base font-bold tracking-wide text-center"
         >
           {col.label}
         </span>
