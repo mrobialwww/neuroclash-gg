@@ -102,47 +102,45 @@ export default function GamePage() {
     const others = players.filter((p) => p.id !== currentUser?.id);
 
     // Gunakan opponentIds dari battle room untuk menentukan lawan
-    const battleOpponents = opponentIds
-      .map((oppId) => players.find((p) => p.id === oppId))
-      .filter((p): p is (typeof players)[0] => p !== undefined);
+    const battleOpponents = opponentIds.map((oppId) => players.find((p) => p.id === oppId)).filter((p): p is (typeof players)[0] => p !== undefined);
 
     const enemyData = battleOpponents.length > 0 ? battleOpponents[0] : null;
 
     const mapToCard = (p: any) =>
       p
         ? {
-          id: p.id,
-          name: p.name,
-          character: p.character || "Slime",
-          image: p.avatar,
-          health: p.health,
-          maxHealth: 100,
-        }
+            id: p.id,
+            name: p.name,
+            character: p.character || "Slime",
+            image: p.avatar,
+            health: p.health,
+            maxHealth: 100,
+          }
         : null;
 
     // Prof. Bubu card untuk Solo mode (lawan)
     const profBubuCard = isSolo
       ? {
-        id: "prof-bubu",
-        name: "Prof. Bubu",
-        character: "Prof. Bubu",
-        image: "/mascot/mascot-match.webp",
-        health: 100,
-        maxHealth: 100,
-      }
+          id: "prof-bubu",
+          name: "Prof. Bubu",
+          character: "Prof. Bubu",
+          image: "/mascot/mascot-match.webp",
+          health: 100,
+          maxHealth: 100,
+        }
       : null;
 
     // Solo fallback: jika players belum terisi, gunakan data currentUser
     const soloMeCard =
       isSolo && !meData && currentUser
         ? {
-          id: currentUser.id,
-          name: currentUser.username,
-          character: currentUser.character,
-          image: currentUser.avatar || "/default/slime.webp",
-          health: 100,
-          maxHealth: 100,
-        }
+            id: currentUser.id,
+            name: currentUser.username,
+            character: currentUser.character,
+            image: currentUser.avatar || "/default/slime.webp",
+            health: 100,
+            maxHealth: 100,
+          }
         : null;
 
     return {
@@ -191,12 +189,8 @@ export default function GamePage() {
       <div className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14]/95 backdrop-blur-sm">
         <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
         <div className="space-y-2 text-center">
-          <p className="animate-pulse text-2xl font-bold text-white">
-            Menunggu semua pertempuran selesai...
-          </p>
-          <p className="text-white/60">
-            Ronde {currentOrder} akan segera berakhir
-          </p>
+          <p className="animate-pulse text-2xl font-bold text-white">Menunggu semua pertempuran selesai...</p>
+          <p className="text-white/60">Ronde {currentOrder} akan segera berakhir</p>
         </div>
       </div>
     );
@@ -225,7 +219,13 @@ export default function GamePage() {
         </div>
 
         <div className="block flex-1 px-2 md:px-4 lg:px-10">
-          <MatchProgressBar key={`round-${currentOrder}`} duration={SECONDS_PER_ROUND} timeLeft={timeLeft} activeStepIndex={activeStepIndex} isSolo={isSolo} />
+          <MatchProgressBar
+            key={`round-${currentOrder}`}
+            duration={SECONDS_PER_ROUND}
+            timeLeft={timeLeft}
+            activeStepIndex={activeStepIndex}
+            isSolo={isSolo}
+          />
         </div>
 
         <MainButton variant="white" className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6" onClick={handleExit}>
@@ -243,27 +243,31 @@ export default function GamePage() {
       <div className="flex w-full flex-1 items-start justify-center">
         <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
           {/* My Player Card / Kiri */}
-          <div className="order-1 flex flex-col justify-end self-stretch lg:order-1 h-full gap-4">
-            <div className="hidden flex-1 overflow-hidden lg:block relative min-h-[160px]">
+          <div className="order-1 flex h-full flex-col justify-end gap-4 self-stretch lg:order-1">
+            <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
                 <BuffList className="h-full" />
               </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none shrink-0">
+            <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
               {meCard ? <PlayerCard player={meCard as any} isMe={true} className="w-full" /> : <div className="h-[90px] w-full" />}
             </div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
-          <div className="order-2 flex flex-col items-end justify-end self-stretch lg:order-3 lg:items-stretch h-full gap-4">
-            <div className="hidden flex-1 overflow-hidden lg:block relative min-h-[160px]">
+          <div className="order-2 flex h-full flex-col items-end justify-end gap-4 self-stretch lg:order-3 lg:items-stretch">
+            <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
                 {/* Always pass empty array for players in Solo to trigger the empty state text */}
                 <PlayerList players={isSolo ? [] : (sortedForList as any)} className="h-full" />
               </div>
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none shrink-0">
-              {opponentCard ? <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" /> : <div className="h-[90px] w-full" />}
+            <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
+              {opponentCard ? (
+                <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" />
+              ) : (
+                <div className="h-[90px] w-full" />
+              )}
             </div>
           </div>
 

@@ -11,8 +11,6 @@ import { userClientService } from "@/services/auth/userClientService";
 const supabase = createClient();
 let stockChannel: ReturnType<typeof supabase.channel> | null = null;
 
-// ─── Type Definitions ────────────────────────────────────────────────────────
-
 export interface Ability {
   id: string;
   name: string;
@@ -44,8 +42,6 @@ export interface PickedAbility {
   empty_image: string;
 }
 
-// ─── Persisted Slice ─────────────────────────────────────────────────────────
-
 /**
  * State yang disimpan ke `sessionStorage` via middleware `persist`.
  * sessionStorage dipilih agar otomatis hilang saat tab/browser ditutup.
@@ -67,18 +63,15 @@ interface PersistedStarboxSlice {
   myInventory: PickedAbility[];
 }
 
-// ─── Full State ───────────────────────────────────────────────────────────────
-
 export interface StarboxState extends PersistedStarboxSlice {
   roomInfo: GameRoomWithPlayerCount | null;
   players: Player[];
   abilities: Ability[];
-  serverStartTime: number | null;
+
   pickingAbilityId: string | null;
   isLoading: boolean;
   isHost: boolean;
   myPlayerId: string | null;
-  /** ID pemain yang sudah memilih ability di fase ini */
   pickedPlayerIds: string[];
 
   initGameData: (code: string, roomId: string, nextRound: string) => Promise<void>;
@@ -93,32 +86,24 @@ export interface StarboxState extends PersistedStarboxSlice {
   reset: () => void;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
-
 export const useStarboxStore = create<StarboxState>()(
   persist(
     (set, get) => ({
-      // ── Initial values: persisted ──────────────────────────────────────────
       roomPersistedId: null,
       activeStarboxRound: null,
       currentTurnIndex: 0,
       myPickedAbility: null,
       myInventory: [],
-
-      // ── Initial values: non-persisted ─────────────────────────────────────
       roomInfo: null,
       players: [],
       abilities: [],
-      serverStartTime: null,
+
       pickingAbilityId: null,
       isLoading: true,
       isHost: false,
       myPlayerId: null,
       pickedPlayerIds: [],
 
-      // ══════════════════════════════════════════════════════════════════════
-      // initGameData
-      // ──────────────────────────────────────────────────────────────────────
       /**
        * Entry point halaman Starbox. Dipanggil sekali saat komponen mount.
        *
@@ -131,8 +116,7 @@ export const useStarboxStore = create<StarboxState>()(
        */
       initGameData: async (code: string, roomId: string, nextRound: string) => {
         const state = get();
-        const isNewPhase =
-          state.roomPersistedId !== roomId || state.activeStarboxRound !== nextRound;
+        const isNewPhase = state.roomPersistedId !== roomId || state.activeStarboxRound !== nextRound;
 
         if (isNewPhase) {
           set({
@@ -140,7 +124,6 @@ export const useStarboxStore = create<StarboxState>()(
             currentTurnIndex: 0,
             myPickedAbility: null,
             abilities: [],
-            serverStartTime: null,
             roomInfo: null,
             players: [],
             pickedPlayerIds: [],
@@ -155,7 +138,6 @@ export const useStarboxStore = create<StarboxState>()(
           set({
             isLoading: true,
             abilities: [],
-            serverStartTime: null,
             roomInfo: null,
             players: [],
             pickedPlayerIds: [],
@@ -189,11 +171,7 @@ export const useStarboxStore = create<StarboxState>()(
             .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
 
           // Init stok: hanya Host & fase baru yang boleh reset stok ke nilai awal
-          let abilityRooms = await abilityRoomRepository.initialAbilites(
-            roomId,
-            totalPlayer,
-            isHost && isNewPhase,
-          );
+          let abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, isHost && isNewPhase);
 
           // Retry untuk non-host: tunggu host selesai upsert/restock
           let totalStock = abilityRooms?.reduce((sum: number, r: any) => sum + (r.stock || 0), 0) || 0;
@@ -218,17 +196,10 @@ export const useStarboxStore = create<StarboxState>()(
             };
           });
 
-          // Ambil timestamp server terbaru sebagai anchor waktu
-          const serverStartTimeMs =
-            abilityRooms && abilityRooms.length > 0
-              ? Math.max(...abilityRooms.map((r: any) => new Date(r.updated_at).getTime()))
-              : Date.now();
-
           set({
             roomInfo: roomConfig,
             players: activeParticipants as any,
             abilities: mappedAbilities,
-            serverStartTime: serverStartTimeMs,
             isLoading: false,
             isHost,
             myPlayerId: currentUser?.id ?? null,
@@ -265,10 +236,6 @@ export const useStarboxStore = create<StarboxState>()(
           set({ isLoading: false });
         }
       },
-
-      // ══════════════════════════════════════════════════════════════════════
-      // setupRealtimeSubscription
-      // ──────────────────────────────────────────────────────────────────────
       /**
        * Subscribe ke Supabase Realtime untuk memantau perubahan stok di `ability_rooms`.
        * Ketika ada pemain pick ability → DB berubah → semua client menerima event ini
@@ -294,9 +261,7 @@ export const useStarboxStore = create<StarboxState>()(
               set((state) => ({
                 // Ganti stok dengan nilai terkonfirmasi dari DB
                 abilities: state.abilities.map((ability) =>
-                  ability.id === String(updatedAbility.ability_id)
-                    ? { ...ability, stock: updatedAbility.stock }
-                    : ability,
+                  ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
                 ),
                 pickingAbilityId: null,
                 currentTurnIndex: state.currentTurnIndex + 1,
@@ -306,9 +271,6 @@ export const useStarboxStore = create<StarboxState>()(
           .subscribe();
       },
 
-      // ══════════════════════════════════════════════════════════════════════
-      // selectAbility
-      // ──────────────────────────────────────────────────────────────────────
       /**
        * Dipanggil saat user klik AbilityCard.
        * - Mencegah double-pick via pickedPlayerIds
@@ -324,9 +286,7 @@ export const useStarboxStore = create<StarboxState>()(
 
         set((s) => ({
           pickingAbilityId: abilityId,
-          abilities: s.abilities.map((a) =>
-            a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a,
-          ),
+          abilities: s.abilities.map((a) => (a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a)),
           pickedPlayerIds: [...s.pickedPlayerIds, userId],
           myPickedAbility: chosenAbility
             ? ({
@@ -373,9 +333,7 @@ export const useStarboxStore = create<StarboxState>()(
           // Isi ability_player_id dengan UUID asli dari DB jika RPC mengembalikannya
           if (result && typeof result === "object" && "ability_player_id" in result) {
             set((s) => ({
-              myPickedAbility: s.myPickedAbility
-                ? { ...s.myPickedAbility, ability_player_id: (result as AbilityPlayer).ability_player_id }
-                : null,
+              myPickedAbility: s.myPickedAbility ? { ...s.myPickedAbility, ability_player_id: (result as AbilityPlayer).ability_player_id } : null,
             }));
           }
         } catch (error) {
@@ -399,9 +357,6 @@ export const useStarboxStore = create<StarboxState>()(
         }
       },
 
-      // ══════════════════════════════════════════════════════════════════════
-      // autoAssignRemaining
-      // ──────────────────────────────────────────────────────────────────────
       /**
        * Dipanggil oleh Host ketika waktu Starbox habis.
        * Otomatis assign ability secara acak ke pemain yang belum memilih,
@@ -410,9 +365,7 @@ export const useStarboxStore = create<StarboxState>()(
       autoAssignRemaining: async (roomId: string) => {
         const { players, pickedPlayerIds, abilities } = get();
 
-        const unpickedPlayerIds = players
-          .map((p) => p.id)
-          .filter((id) => !pickedPlayerIds.includes(id));
+        const unpickedPlayerIds = players.map((p) => p.id).filter((id) => !pickedPlayerIds.includes(id));
 
         if (unpickedPlayerIds.length === 0) return;
 
@@ -477,10 +430,6 @@ export const useStarboxStore = create<StarboxState>()(
         }
       },
 
-      // ══════════════════════════════════════════════════════════════════════
-      // Ability Usage Actions
-      // ──────────────────────────────────────────────────────────────────────
-
       /**
        * Gunakan Ramuan Penyembuh (ability_id = 3): +20 HP, max 100.
        * Update HP & stok lokal SETELAH RPC dikonfirmasi DB (konsisten dengan myInventory).
@@ -490,12 +439,8 @@ export const useStarboxStore = create<StarboxState>()(
         try {
           await abilityPlayerRepository.userHealAbility(roomId, userId);
           set((state) => ({
-            players: state.players.map((p) =>
-              p.id === userId ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) } : p,
-            ),
-            myInventory: state.myInventory
-              .map((a) => (a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a))
-              .filter((a) => a.stock > 0),
+            players: state.players.map((p) => (p.id === userId ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) } : p)),
+            myInventory: state.myInventory.map((a) => (a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a)).filter((a) => a.stock > 0),
           }));
         } catch (error) {
           console.error("[StarboxStore] Gagal menggunakan Ramuan Penyembuh:", error);
@@ -505,10 +450,6 @@ export const useStarboxStore = create<StarboxState>()(
       useMateri: async () => {},
       useAttack: async () => {},
       useDefend: async () => {},
-
-      // ══════════════════════════════════════════════════════════════════════
-      // cleanup & reset
-      // ──────────────────────────────────────────────────────────────────────
 
       /** Putuskan koneksi Realtime tanpa mereset state (untuk unmount komponen) */
       cleanup: () => {
@@ -530,7 +471,7 @@ export const useStarboxStore = create<StarboxState>()(
           roomInfo: null,
           players: [],
           abilities: [],
-          serverStartTime: null,
+
           currentTurnIndex: 0,
           myPickedAbility: null,
           myInventory: [],
@@ -543,7 +484,6 @@ export const useStarboxStore = create<StarboxState>()(
       },
     }),
 
-    // ─── Persist Config ───────────────────────────────────────────────────────
     {
       name: "starbox-store",
       storage: createJSONStorage(() => sessionStorage),

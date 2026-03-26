@@ -65,7 +65,7 @@ export const abilityPlayerRepository = {
    * Hapus SEMUA ability seluruh pemain dalam satu room.
    * Dipanggil saat game selesai untuk membersihkan data.
    */
-  async deletePlayers(roomId: string) {
+  async deletePlayersAbilities(roomId: string) {
     const supabase = createClient();
 
     const { error } = await supabase.from("ability_players").delete().eq("game_room_id", roomId);

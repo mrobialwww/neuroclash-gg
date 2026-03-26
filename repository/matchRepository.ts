@@ -97,7 +97,7 @@ export const matchRepository = {
    * Terdapat pengecekan apakah user memiliki ability boost coin/trophy
    */
   async playerElimination(roomId: string, userId: string, totalTrophy: number, totalCoin: number, placement: number) {
-    const supabase = await createClient();
+    const supabase = createClient();
     const abilities = await abilityPlayerRepository.getMyAbilities(roomId, userId);
 
     // Cek apakah user memiliki ability "PIALA KEJAYAAN"

@@ -29,20 +29,23 @@ const MOCK_BUFFS: Buff[] = [
 const MOCK_MATERIAL_CONTENT: Record<string, { materialName: string; content: string }> = {
   "Materi A": {
     materialName: "Sistem Pencernaan Manusia",
-    content: "Sistem pencernaan manusia adalah rangkaian organ yang bekerja sama untuk memecah makanan menjadi nutrisi yang bisa diserap tubuh dan membuang sisa-sisanya.\n\nProses dimulai di mulut. Makanan dikunyah dan dicampur dengan air liur yang mengandung enzim amilase untuk memecah karbohidrat.\n\nSelanjutnya makanan melewati kerongkongan menuju lambung. Di lambung, asam klorida dan enzim pepsin memecah protein menjadi peptida yang lebih kecil.\n\nDi usus halus, nutrisi seperti karbohidrat, protein, lemak, vitamin, dan mineral diserap ke dalam darah. Dinding usus halus dilengkapi vili dan mikrovili yang memperluas area penyerapan.\n\nAkhirnya, usus besar menyerap air dan membentuk feses. Feses lalu dikeluarkan melalui anus. Seluruh proses ini memakan waktu 24 hingga 72 jam dan sangat penting untuk memberikan energi bagi tubuh.",
+    content:
+      "Sistem pencernaan manusia adalah rangkaian organ yang bekerja sama untuk memecah makanan menjadi nutrisi yang bisa diserap tubuh dan membuang sisa-sisanya.\n\nProses dimulai di mulut. Makanan dikunyah dan dicampur dengan air liur yang mengandung enzim amilase untuk memecah karbohidrat.\n\nSelanjutnya makanan melewati kerongkongan menuju lambung. Di lambung, asam klorida dan enzim pepsin memecah protein menjadi peptida yang lebih kecil.\n\nDi usus halus, nutrisi seperti karbohidrat, protein, lemak, vitamin, dan mineral diserap ke dalam darah. Dinding usus halus dilengkapi vili dan mikrovili yang memperluas area penyerapan.\n\nAkhirnya, usus besar menyerap air dan membentuk feses. Feses lalu dikeluarkan melalui anus. Seluruh proses ini memakan waktu 24 hingga 72 jam dan sangat penting untuk memberikan energi bagi tubuh.",
   },
   "Materi B": {
     materialName: "Sistem Pernapasan",
-    content: "Sistem pernapasan manusia berfungsi untuk mengambil oksigen (O2) dari udara dan membuang karbon dioksida (CO2).\n\nUrutan organ pernapasan: Hidung -> Faring -> Laring -> Trakea -> Bronkus -> Bronkiolus -> Alveolus.\n\nDi Alveolus terjadi pertukaran gas secara difusi antara udara dan darah.",
+    content:
+      "Sistem pernapasan manusia berfungsi untuk mengambil oksigen (O2) dari udara dan membuang karbon dioksida (CO2).\n\nUrutan organ pernapasan: Hidung -> Faring -> Laring -> Trakea -> Bronkus -> Bronkiolus -> Alveolus.\n\nDi Alveolus terjadi pertukaran gas secara difusi antara udara dan darah.",
   },
   "Materi C": {
     materialName: "Sistem Peredaran Darah",
-    content: "Sistem peredaran darah terdiri dari Jantung, Pembuluh Darah, dan Darah.\n\nJantung berfungsi memompa darah ke seluruh tubuh. Darah mengangkut oksigen, nutrisi, dan hormon ke sel-sel tubuh.",
+    content:
+      "Sistem peredaran darah terdiri dari Jantung, Pembuluh Darah, dan Darah.\n\nJantung berfungsi memompa darah ke seluruh tubuh. Darah mengangkut oksigen, nutrisi, dan hormon ke sel-sel tubuh.",
   },
 };
 
 const MOCK_ABILITIES: Record<string, any> = {
-  "Attack": {
+  Attack: {
     id: "a1",
     name: "Serangan Tajam",
     description: "Meningkatkan kekuatan serangan dasar sebesar +10.",
@@ -50,7 +53,7 @@ const MOCK_ABILITIES: Record<string, any> = {
     emptyImage: "/ability-card/attack-card-empty.webp",
     stock: 2,
   },
-  "Shield": {
+  Shield: {
     id: "a2",
     name: "Perisai Kokoh",
     description: "Menahan 50% damage yang diterima pada babak berikutnya.",
@@ -58,7 +61,7 @@ const MOCK_ABILITIES: Record<string, any> = {
     emptyImage: "/ability-card/shield-card-empty.webp",
     stock: 1,
   },
-  "Heal": {
+  Heal: {
     id: "a3",
     name: "Ramuan Pemulih",
     description: "Memulihkan 20 HP secara instan.",
@@ -108,44 +111,31 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
     <>
       <div
         className={cn(
-          "relative w-full p-2 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border-2 border-white/10 shadow-2xl flex flex-col items-center",
-          className
+          "relative flex w-full flex-col items-center rounded-2xl border-2 border-white/10 bg-[#D9D9D9]/20 p-2 shadow-2xl backdrop-blur-md",
+          className,
         )}
       >
         {/* Header Badge */}
-        <div className="relative w-full max-w-[180px] h-[35px] md:h-[40px] shrink-0 flex items-center justify-center mb-3">
-          <Image
-            src="/match/match-badge.webp"
-            alt="Badge"
-            fill
-            sizes="(max-width: 768px) 180px, 200px"
-            className="object-contain"
-            priority
-          />
-          <h2 className="relative z-10 text-white font-semibold text-[10px] xs:text-xs md:text-base tracking-tight mt-0.5">
-            Materi & Kekuatan
-          </h2>
+        <div className="relative mb-3 flex h-[35px] w-full max-w-[180px] shrink-0 items-center justify-center md:h-[40px]">
+          <Image src="/match/match-badge.webp" alt="Badge" fill sizes="(max-width: 768px) 180px, 200px" className="object-contain" priority />
+          <h2 className="xs:text-xs relative z-10 mt-0.5 text-[10px] font-semibold tracking-tight text-white md:text-base">Materi & Kekuatan</h2>
         </div>
 
         {/* Buff Grid Container */}
-        <div className="w-full flex-1 overflow-y-auto scrollbar-hide pb-2 flex flex-col">
+        <div className="scrollbar-hide flex w-full flex-1 flex-col overflow-y-auto pb-2">
           {buffs.length === 0 ? (
             <div className="flex flex-1 items-center justify-center p-4 text-center text-sm font-medium text-white/50">
               Belum ada materi dan kekuatan yang kamu dapat
             </div>
           ) : (
             <div
-              className="grid gap-x-2 gap-y-1 mx-auto w-full"
+              className="mx-auto grid w-full gap-x-2 gap-y-1"
               style={{
                 gridTemplateColumns: "repeat(auto-fit, minmax(65px, 1fr))",
               }}
             >
               {buffs.map((buff) => (
-                <BuffItem
-                  key={buff.id}
-                  buff={buff}
-                  onClick={() => handleBuffClick(buff)}
-                />
+                <BuffItem key={buff.id} buff={buff} onClick={() => handleBuffClick(buff)} />
               ))}
             </div>
           )}
@@ -156,12 +146,8 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
         isOpen={!!selectedMaterial}
         onClose={() => setSelectedMaterial(null)}
         title={selectedMaterial?.name || ""}
-        materialName={
-          selectedMaterial ? MOCK_MATERIAL_CONTENT[selectedMaterial.name]?.materialName : ""
-        }
-        content={
-          selectedMaterial ? MOCK_MATERIAL_CONTENT[selectedMaterial.name]?.content : ""
-        }
+        materialName={selectedMaterial ? MOCK_MATERIAL_CONTENT[selectedMaterial.name]?.materialName : ""}
+        content={selectedMaterial ? MOCK_MATERIAL_CONTENT[selectedMaterial.name]?.content : ""}
       />
 
       <OverlayAbilityCard
