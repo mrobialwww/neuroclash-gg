@@ -441,6 +441,20 @@ export const battleRoomService = {
     console.log(
       `[BattleRoomService] Deleting existing battle rooms for round ${roundNumber} (idempotent)`
     );
+
+    // Check if there are any existing battle rooms first
+    const { data: existingBattleRoomsBeforeDelete } = await supabase
+      .from("battle_rooms")
+      .select("battle_room_id")
+      .eq("game_room_id", gameId)
+      .eq("round_number", roundNumber);
+
+    console.log(
+      `[BattleRoomService] Found ${
+        existingBattleRoomsBeforeDelete?.length || 0
+      } existing battle rooms before delete`
+    );
+
     const { error: idempotentDeleteError } = await supabase
       .from("battle_rooms")
       .delete()
@@ -453,6 +467,10 @@ export const battleRoomService = {
         idempotentDeleteError
       );
       // Continue anyway, try to insert
+    } else {
+      console.log(
+        `[BattleRoomService] ✅ Successfully deleted existing battle rooms`
+      );
     }
 
     // 2. Reset opponent cache hanya saat first round (round 1)
@@ -509,6 +527,7 @@ export const battleRoomService = {
     // 6. Create battle rooms with assigned questions
     const battleRooms: BattleRoom[] = [];
     let questionIndex = 0;
+    let hasDuplicateError = false;
 
     for (const pairing of pairings) {
       const question = questions[questionIndex % questions.length];
@@ -555,39 +574,10 @@ export const battleRoomService = {
         // Check for duplicate key error (23505 = unique_violation)
         if (insertError.code === "23505") {
           console.warn(
-            `[BattleRoomService] ⚠️ DUPLICATE KEY ERROR - Battle room already exists for round ${roundNumber}, fetching existing one...`
+            `[BattleRoomService] ⚠️ DUPLICATE KEY ERROR detected - Battle rooms already exist for round ${roundNumber}`
           );
-
-          // Try to fetch the existing battle room
-          const { data: existingRoom } = await supabase
-            .from("battle_rooms")
-            .select("*")
-            .eq("game_room_id", gameId)
-            .eq("round_number", roundNumber)
-            .or(
-              `player1_id.eq.${pairing.player1_id},player2_id.eq.${pairing.player2_id}`
-            )
-            .maybeSingle();
-
-          if (existingRoom) {
-            console.log(
-              `[BattleRoomService] ✅ Found existing battle room: ${existingRoom.battle_room_id.substring(
-                0,
-                8
-              )}`
-            );
-            battleRooms.push(existingRoom);
-            questionIndex++;
-            continue;
-          }
-
-          // If we can't find the existing room, something's wrong
-          console.error(
-            `[BattleRoomService] ❌ Duplicate key error but couldn't find existing room!`
-          );
-          throw new Error(
-            `Duplicate key error but couldn't find existing battle room for game ${gameId}, round ${roundNumber}`
-          );
+          hasDuplicateError = true;
+          break; // Exit loop, fetch all existing battle rooms
         }
 
         throw new Error(
@@ -597,6 +587,33 @@ export const battleRoomService = {
 
       battleRooms.push(battleRoom);
       questionIndex++;
+    }
+
+    // If we encountered a duplicate key error, fetch all existing battle rooms for this round
+    if (hasDuplicateError) {
+      console.warn(
+        `[BattleRoomService] ⚠️ Duplicate key error encountered, fetching all existing battle rooms for round ${roundNumber}...`
+      );
+      const { data: allBattleRooms } = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber);
+
+      if (allBattleRooms && allBattleRooms.length > 0) {
+        console.log(
+          `[BattleRoomService] ✅ Found ${allBattleRooms.length} existing battle rooms in round ${roundNumber}`
+        );
+        return allBattleRooms;
+      }
+
+      // If we can't find any existing battle rooms, something's wrong
+      console.error(
+        `[BattleRoomService] ❌ Duplicate key error but couldn't find any existing battle rooms for round ${roundNumber}!`
+      );
+      throw new Error(
+        `Duplicate key error but couldn't find any existing battle rooms for game ${gameId}, round ${roundNumber}`
+      );
     }
 
     console.log(
@@ -651,16 +668,48 @@ export const battleRoomService = {
 
     const supabase = await createClient();
 
-    // Try using .in() instead of .or()
-    const { data, error } = await supabase
-      .from("battle_rooms")
-      .select("*")
-      .eq("game_room_id", gameId)
-      .eq("round_number", roundNumber)
-      .or(
-        `player1_id.eq.${userId},player2_id.eq.${userId},player3_id.eq.${userId}`
-      )
-      .maybeSingle();
+    // Fix: Try multiple approaches to find the battle room
+    // Approach 1: Use .or() with proper syntax
+    let data, error;
+    try {
+      const result = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber)
+        .or(
+          `player1_id.eq.${userId},player2_id.eq.${userId},player3_id.eq.${userId}`
+        )
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } catch (err) {
+      console.error("[BattleRoomService] Error in OR query:", err);
+      data = null;
+      error = err as any;
+    }
+
+    // Approach 2: If OR query fails, fetch all and filter client-side
+    if (!data || error) {
+      console.warn(
+        `[BattleRoomService] OR query failed, trying fetch-all approach...`
+      );
+      const allResult = await supabase
+        .from("battle_rooms")
+        .select("*")
+        .eq("game_room_id", gameId)
+        .eq("round_number", roundNumber);
+
+      const allRooms = allResult.data || [];
+      data =
+        allRooms.find(
+          (br) =>
+            br.player1_id === userId ||
+            br.player2_id === userId ||
+            br.player3_id === userId
+        ) || null;
+      error = null;
+    }
 
     if (error && error.code !== "PGRST116") {
       console.error("[BattleRoomService] Error fetching battle room:", error);
@@ -680,7 +729,7 @@ export const battleRoomService = {
       // Try fetching all battle rooms for this round to debug
       const { data: allRooms } = await supabase
         .from("battle_rooms")
-        .select("battle_room_id, player1_id, player2_id, player3_id")
+        .select("battle_room_id, player1_id, player2_id, player3_id, status")
         .eq("game_room_id", gameId)
         .eq("round_number", roundNumber);
 
@@ -691,8 +740,41 @@ export const battleRoomService = {
           p1: br.player1_id.substring(0, 8),
           p2: br.player2_id.substring(0, 8),
           p3: br.player3_id?.substring(0, 8),
+          status: br.status,
         }))
       );
+
+      // Check if userId is in any of the battle rooms
+      const userIdInRooms = allRooms?.some(
+        (br) =>
+          br.player1_id === userId ||
+          br.player2_id === userId ||
+          br.player3_id === userId
+      );
+      console.log(
+        `[BattleRoomService] User ${userId.substring(
+          0,
+          8
+        )} found in any battle room: ${userIdInRooms}`
+      );
+
+      // If user is NOT in any battle room, this is a BUG
+      if (!userIdInRooms && allRooms && allRooms.length > 0) {
+        console.error(
+          `[BattleRoomService] ❌ BUG DETECTED: User ${userId.substring(
+            0,
+            8
+          )} is NOT in any battle room for round ${roundNumber}!`
+        );
+        console.error(
+          `[BattleRoomService] All player IDs in round ${roundNumber}:`,
+          allRooms.flatMap((br) => [
+            br.player1_id.substring(0, 8),
+            br.player2_id.substring(0, 8),
+            br.player3_id?.substring(0, 8) || null,
+          ])
+        );
+      }
     } else {
       console.log(
         `[BattleRoomService] Found battle room: ${data.battle_room_id.substring(
