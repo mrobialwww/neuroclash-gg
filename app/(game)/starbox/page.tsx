@@ -44,7 +44,7 @@ export default function StarboxPage() {
   };
 
   // 2. Timer Mechanism
-  const PICK_TIMEOUT_SEC = 30;
+  const PICK_TIMEOUT_SEC = 3;
 
   // Timer state – direset tiap giliran berganti
   const [timeLeft, setTimeLeft] = React.useState(PICK_TIMEOUT_SEC);

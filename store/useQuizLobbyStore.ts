@@ -309,10 +309,10 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
             console.log(`[LobbyStore] ==================================================`);
 
             if (typeof window !== "undefined" && currentUser?.id) {
-              // const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
+              const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
 
               // ====== Testinggg starbox ygy jgn dihapus
-              const gameUrl = `/starbox?roomId=${roomId}&code=${roomData.room_code}&nextRound=1`;
+              // const gameUrl = `/starbox?roomId=${roomId}&code=${roomData.room_code}&nextRound=1`;
               console.log(`[LobbyStore] 🚀 Redirecting to: ${gameUrl}`);
               window.location.href = gameUrl;
             } else {
