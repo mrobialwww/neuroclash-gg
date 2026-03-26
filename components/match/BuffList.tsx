@@ -85,10 +85,11 @@ const MOCK_ABILITIES: Record<string, any> = {
 };
 
 interface BuffListProps {
+  buffs?: Buff[];
   className?: string;
 }
 
-export const BuffList = ({ className }: BuffListProps) => {
+export const BuffList = ({ buffs = [], className }: BuffListProps) => {
   const [selectedMaterial, setSelectedMaterial] = React.useState<Buff | null>(null);
   const [selectedAbility, setSelectedAbility] = React.useState<any>(null);
 
@@ -127,21 +128,27 @@ export const BuffList = ({ className }: BuffListProps) => {
         </div>
 
         {/* Buff Grid Container */}
-        <div className="w-full flex-1 overflow-y-auto scrollbar-hide pb-2">
-          <div
-            className="grid gap-x-2 gap-y-1"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(65px, 1fr))",
-            }}
-          >
-            {MOCK_BUFFS.map((buff) => (
-              <BuffItem
-                key={buff.id}
-                buff={buff}
-                onClick={() => handleBuffClick(buff)}
-              />
-            ))}
-          </div>
+        <div className="w-full flex-1 overflow-y-auto scrollbar-hide pb-2 flex flex-col">
+          {buffs.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center p-4 text-center text-sm font-medium text-white/50">
+              Belum ada materi dan kekuatan yang kamu dapat
+            </div>
+          ) : (
+            <div
+              className="grid gap-x-2 gap-y-1 mx-auto w-full"
+              style={{
+                gridTemplateColumns: "repeat(auto-fit, minmax(65px, 1fr))",
+              }}
+            >
+              {buffs.map((buff) => (
+                <BuffItem
+                  key={buff.id}
+                  buff={buff}
+                  onClick={() => handleBuffClick(buff)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

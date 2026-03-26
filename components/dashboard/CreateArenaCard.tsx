@@ -153,9 +153,43 @@ export function CreateArenaCard() {
       if (aiStatusInterval) clearInterval(aiStatusInterval);
 
       if (!response.ok) {
-        throw new Error(
-          result.message ?? "Gagal meng-generate soal menggunakan AI."
-        );
+        // Build a specific title based on HTTP status
+        const statusCode = response.status;
+        let toastTitle = "Pembuatan Gagal";
+        if (statusCode === 503) toastTitle = "AI Kelebihan Beban";
+        else if (statusCode === 429) toastTitle = "Kuota AI Habis";
+        else if (statusCode === 400) toastTitle = "File Tidak Dapat Dibaca";
+
+        const errMsg: string =
+          result?.message ?? "Gagal meng-generate soal menggunakan AI.";
+
+        // For retriable errors keep the modal open, only show toast
+        const isRetriable = statusCode === 503 || statusCode === 429;
+        if (isRetriable) {
+          setIsLoading(false);
+          setLoadingText("Memproses...");
+        } else {
+          setModalOpen(false);
+        }
+
+        setToastData({
+          isOpen: true,
+          title: toastTitle,
+          message: errMsg,
+          isFailed: true,
+          primaryButtonText: "Tutup",
+          onPrimaryClick: () =>
+            setToastData((prev) => ({ ...prev, isOpen: false })),
+          secondaryButtonText: isRetriable ? "Coba Lagi" : undefined,
+          onSecondaryClick: isRetriable
+            ? () => {
+              setToastData((prev) => ({ ...prev, isOpen: false }));
+              // re-submit with same data automatically
+              handleSubmitArena(data);
+            }
+            : undefined,
+        });
+        return;
       }
 
       // ── Step 3: Simpan ke DB (/api/game-rooms) ───────────────────────
@@ -202,12 +236,12 @@ export function CreateArenaCard() {
             <div className="space-y-2 rounded-xl border border-blue-500/20 bg-[#0b0d1e] p-4">
               <div className="flex items-center justify-between text-xs md:text-sm">
                 <span className="text-white/50">Materi</span>
-                <span className="ml-2 truncate font-mono text-[10px] font-semibold capitalize text-white md:text-xs">
+                <span className="text-white font-semibold capitalize font-mono text-xs md:text-sm truncate ml-2">
                   {gameRoom.category === "bahasaindonesia"
                     ? "Bahasa Indonesia"
                     : gameRoom.category === "bahasainggris"
-                    ? "Bahasa Inggris"
-                    : gameRoom.category}
+                      ? "Bahasa Inggris"
+                      : gameRoom.category}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs md:text-sm">
@@ -222,7 +256,7 @@ export function CreateArenaCard() {
                   {gameRoom.max_player} Player
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-white/5 pt-1 text-xs md:text-sm">
+              <div className="flex justify-between items-center text-xs md:text-sm">
                 <span className="text-white/50">Kesulitan</span>
                 <span className="rounded bg-blue-600/30 px-2 py-0.5 text-[10px] font-bold capitalize text-blue-300 md:text-xs">
                   {gameRoom.difficulty}

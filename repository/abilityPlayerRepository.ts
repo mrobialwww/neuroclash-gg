@@ -11,7 +11,7 @@ export const abilityPlayerRepository = {
 
     const { data, error } = await supabase.rpc("increment_ability", {
       p_game_room_id: gameRoomId,
-      p_ability_id: abilityId,
+      p_ability_id: Number(abilityId),
       p_user_id: userId,
     });
 

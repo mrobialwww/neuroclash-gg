@@ -27,6 +27,8 @@ export interface LobbyRoomProps {
   isHost?: boolean;
   /** Called when solo user or host clicks "Mulai" */
   onStart?: () => void;
+  /** FOR TESTING — remove in production */
+  onStartStarbox?: () => void;
   /** Loading state for start button */
   isLoading?: boolean;
   /** Is the user leaving? */
@@ -44,6 +46,7 @@ export function LobbyRoom({
   isSolo = false,
   isHost = false,
   onStart,
+  onStartStarbox, // FOR TESTING — remove in production
   isLoading = false,
   isLeaving = false,
   onLeave,
@@ -60,8 +63,8 @@ export function LobbyRoom({
   // 2. Sorting Players: Me first, then Host, then others
   const sortedPlayers = [...players].sort((a, b) => {
     // Current user data is used to identify "Me"
-    const isAMe = a.name === currentUserData?.username;
-    const isBMe = b.name === currentUserData?.username;
+    const isAMe = String(a.id) === currentUserData?.id;
+    const isBMe = String(b.id) === currentUserData?.id;
     if (isAMe) return -1;
     if (isBMe) return 1;
 
@@ -152,11 +155,11 @@ export function LobbyRoom({
           <div className="w-full py-3 md:py-4 px-2 sm:px-4 rounded-2xl bg-[#D9D9D9]/10 backdrop-blur-md border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
             {/* Auto-fill grid: kolom dihitung otomatis dari lebar container */}
             <div
-              className="grid gap-x-1 gap-y-2"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))" }}
+              className="grid gap-x-3 gap-y-6"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(105px, 1fr))" }}
             >
               {sortedPlayers.map((player) => {
-                const isMe = player.name === currentUserData?.username;
+                const isMe = String(player.id) === currentUserData?.id;
                 const isHost = String(player.id) === hostId;
 
                 return (
@@ -164,7 +167,7 @@ export function LobbyRoom({
                     <PlayerGridCard
                       player={player}
                       hideHealthBar={true}
-                      highlight={isMe ? "self" : isHost ? "host" : undefined}
+                      highlight={isMe && isHost ? "self-host" : isMe ? "self" : isHost ? "host" : undefined}
                       lobbyMode
                     />
                   </div>
@@ -226,6 +229,20 @@ export function LobbyRoom({
               Menunggu Host...
             </MainButton>
           )}
+
+          {/* FOR TESTING — remove in production */}
+          {isHost && !isSolo && onStartStarbox && (
+            <MainButton
+              variant="blue"
+              hasShadow
+              className="w-full text-lg font-bold py-5 rounded-xl mt-3"
+              onClick={onStartStarbox}
+              disabled={isLoading || players.length < 2}
+            >
+              {isLoading ? "Memuat..." : "Tes Starbox"}
+            </MainButton>
+          )}
+          {/* END FOR TESTING */}
         </div>
       </div>
     </main>

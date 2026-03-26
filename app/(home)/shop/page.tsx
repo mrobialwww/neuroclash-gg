@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ShopClient from "@/components/shop/ShopCLient";
+import ShopClient from "@/components/shop/ShopClient";
 import { useRouter } from "next/navigation";
 
 export default function ShopPage() {

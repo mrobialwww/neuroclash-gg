@@ -26,7 +26,7 @@ export interface MatchState {
   isFinished: boolean;
   timeLeft: number;
   players: PlayerMatchState[];
-  currentUser: { id: string; username: string; avatar: string } | null;
+  currentUser: { id: string; username: string; avatar: string; character: string } | null;
   currentBattleRoom: BattleRoom | null;
   opponentIds: string[];
   firstAnswerPlayerId: string | null;
@@ -36,6 +36,8 @@ export interface MatchState {
   isWaitingForAllBattles: boolean;
   isAdvancingRound: boolean;
   isSyncingPlayers: boolean;
+  lastAnswerCorrect: boolean | null;
+  correctAnswerId: string | null;
   initializeMatch: (
     roomCode: string,
     gameRoomId: string,
@@ -77,6 +79,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   isWaitingForAllBattles: false,
   isAdvancingRound: false,
   isSyncingPlayers: false,
+  lastAnswerCorrect: null,
+  correctAnswerId: null,
 
   isOpponent: (playerId: string) => {
     return get().opponentIds.includes(playerId);
@@ -84,6 +88,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   canAnswer: () => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
+
+    // Solo mode: only needs currentUser and no previous answer
+    if (isSolo) {
+      return !!(
+        state.currentUser &&
+        !state.selectedAnswerId &&
+        !state.isSubmitting
+      );
+    }
 
     // Cannot answer if:
     // 1. No current user
@@ -357,6 +371,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       firstAnswerPlayerId: null,
       timeLeft: SECONDS_PER_ROUND,
       nextRoundUrl: null,
+      lastAnswerCorrect: null,
+      correctAnswerId: null,
     });
 
     const question = await quizService.getQuestionWithAnswers(roomId, order);
@@ -376,6 +392,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   advanceRound: async () => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
 
     console.log(
       `[MatchStore] advanceRound called - current: ${state.currentOrder}, selectedAnswerId: ${state.selectedAnswerId}`
@@ -390,7 +407,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       return;
     }
 
-    if (state.currentOrder % STARBOX_INTERVAL === 0) {
+    // Solo mode: skip Starbox, always advance directly
+    if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
       console.log(`[MatchStore] Starbox round!`);
       set({
         nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
@@ -420,7 +438,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       timeLeft: SECONDS_PER_ROUND,
     });
 
-    // Start next round and generate battle rooms
+    if (isSolo) {
+      // ── SOLO MODE: Skip battle room generation, just load question ──
+      console.log(
+        `[MatchStore] Solo mode - loading question ${nextOrder} directly`
+      );
+      await get().loadQuestion(state.gameRoomId, nextOrder);
+      return;
+    }
+
+    // ── MULTIPLAYER MODE: Start next round and generate battle rooms ──
     try {
       console.log(`[MatchStore] Starting round ${nextOrder}...`);
       const res = await fetch("/api/match/start-round", {
@@ -500,8 +527,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       return;
     }
 
-    // Check if this is a Starbox round
-    if (state.currentOrder % STARBOX_INTERVAL === 0) {
+    // Check if this is a Starbox round (multiplayer only)
+    const isSolo = state.roomInfo?.max_player === 1;
+    if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
       console.log(`[MatchStore] Starbox round!`);
       set({
         nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
@@ -587,17 +615,69 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   handleSelectAnswer: async (userId, answerId) => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
 
     console.log(
       `[MatchStore] handleSelectAnswer called: userId=${userId.substring(
         0,
         8
-      )}, answerId=${answerId.substring(0, 8)}`
+      )}, answerId=${answerId.substring(0, 8)}, isSolo=${isSolo}`
     );
 
-    // Cek apakah user di battle room
+    if (state.selectedAnswerId || state.isSubmitting) return;
+
+    set({ selectedAnswerId: answerId, isSubmitting: true });
+
+    // ── SOLO MODE ──
+    if (isSolo) {
+      try {
+        const res = await fetch("/api/solo/submit-answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            answer_id: answerId,
+            game_room_id: state.gameRoomId,
+            round_number: state.currentOrder,
+          }),
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          console.log("[MatchStore] Solo answer result:", result);
+
+          // Find the correct answer id from current question options
+          const correctOpt = state.currentQuestion?.options.find(
+            (o) => o.isCorrect
+          );
+          set({
+            lastAnswerCorrect: result.is_correct ?? false,
+            correctAnswerId: correctOpt?.id ?? null,
+            isSubmitting: false,
+          });
+
+          // Solo mode: show feedback briefly, then advance immediately
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await get().advanceRound();
+        } else {
+          console.error(
+            "[MatchStore] Solo answer submit failed",
+            await res.text()
+          );
+          set({ isSubmitting: false });
+        }
+      } catch (e) {
+        console.error("[MatchStore] Failed to submit solo answer:", e);
+        set({ isSubmitting: false });
+      }
+      return;
+    }
+
+    // ── MULTIPLAYER MODE ──
     if (!state.currentBattleRoom) {
       console.error("[MatchStore] User not in any battle room");
+      set({ isSubmitting: false });
       return;
     }
 
@@ -608,15 +688,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       `[MatchStore] first_answer_user_id: ${state.currentBattleRoom.first_answer_user_id}`
     );
 
-    // Cek apakah sudah ada yang menjawab
     if (state.currentBattleRoom.first_answer_user_id) {
       console.log("[MatchStore] Someone already answered in this battle room");
+      set({ isSubmitting: false });
       return;
     }
-
-    if (state.selectedAnswerId || state.isSubmitting) return;
-
-    set({ selectedAnswerId: answerId, isSubmitting: true });
 
     try {
       // Submit answer to battle API
@@ -674,10 +750,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       gameRoomId,
       currentOrder,
       isAdvancingRound,
+      roomInfo,
     } = get();
 
-    // Timer should keep running even after someone answers
-    // Round will auto-advance when battle room status becomes 'finished'
+    const isSolo = roomInfo?.max_player === 1;
+
     if (isLoadingQuestion || isFinished) return;
 
     // Prevent calling waitForAllBattlesAndAdvance multiple times
@@ -691,7 +768,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     if (timeLeft <= 1) {
       console.log(`[MatchStore] Timer expired for round ${currentOrder}`);
 
-      // Check if anyone answered in this battle room
+      set({ timeLeft: 0 });
+
+      // ── SOLO MODE: skip battle/polling, advance directly ──
+      if (isSolo) {
+        console.log(`[MatchStore] Solo mode - advancing round directly`);
+        await get().advanceRound();
+        return;
+      }
+
+      // ── MULTIPLAYER MODE: apply timeout damage then poll ──
       if (currentBattleRoom && !currentBattleRoom.first_answer_user_id) {
         // No one answered - handle timeout damage
         console.log(
@@ -728,10 +814,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
       }
 
-      // Stop timer
-      set({ timeLeft: 0 });
-
-      // Wait for all battles to finish and then advance
       console.log(
         `[MatchStore] Timer expired, waiting for all battles to finish...`
       );
@@ -767,6 +849,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       isWaitingForAllBattles: false,
       isAdvancingRound: false,
       isSyncingPlayers: false,
+      lastAnswerCorrect: null,
+      correctAnswerId: null,
     });
   },
 }));

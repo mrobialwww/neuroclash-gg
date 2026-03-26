@@ -168,8 +168,14 @@ export const gameRoomRepository = {
       .single();
 
     if (error) {
-      console.error("[GameRoomRepo] createRoom error:", JSON.stringify(error, null, 2));
-      console.error("[GameRoomRepo] Params that caused error:", JSON.stringify(params, null, 2));
+      console.error(
+        "[GameRoomRepo] createRoom error:",
+        JSON.stringify(error, null, 2)
+      );
+      console.error(
+        "[GameRoomRepo] Params that caused error:",
+        JSON.stringify(params, null, 2)
+      );
       return null;
     }
 
@@ -259,7 +265,7 @@ export const gameRoomRepository = {
             .insert({
               question_id: newQ.question_id,
               answer_text: answer.answer_text,
-              is_correct: answer.is_correct,
+              is_correct: answer.is_correct === true,
               key: answer.key,
             })
             .select()
