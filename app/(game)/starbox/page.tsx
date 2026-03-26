@@ -26,28 +26,46 @@ export default function StarboxPage() {
   const code = searchParams.get("code") ?? "---";
   const nextRound = searchParams.get("nextRound") ?? "6";
 
-  const { roomInfo, players, abilities, currentTurnIndex, pickingAbilityId, isLoading, initGameData, selectAbility } = useStarboxStore();
+  const { roomInfo, players, abilities, currentTurnIndex, pickingAbilityId, isLoading, initGameData, selectAbility, reset } = useStarboxStore();
 
   // 1. Initial Data Fetching
+  // nextRound dipakai sebagai kunci fase Starbox (Strategi 3 – Phase Checking)
   useEffect(() => {
-    initGameData(code, roomId);
-  }, [code, roomId, initGameData]);
+    initGameData(code, roomId, nextRound);
+  }, [code, roomId, nextRound, initGameData]);
 
   const handleNextRound = useCallback(() => {
     router.push(`/game/${roomId}?code=${code}&nextRound=${nextRound}`);
   }, [router, roomId, code, nextRound]);
 
   const handleExit = () => {
+    reset();
     router.push("/dashboard");
   };
 
   // 2. Timer Mechanism
-  const PICK_TIMEOUT_SEC = 3;
+  const PICK_TIMEOUT_SEC = 30;
 
   // Timer state – direset tiap giliran berganti
   const [timeLeft, setTimeLeft] = React.useState(PICK_TIMEOUT_SEC);
 
   const isMyTurn = roomInfo?.max_player !== 1 && currentTurnIndex < players.length && !!players[currentTurnIndex]?.isMe;
+
+  /**
+   * Strategi 4 – Auto-transition Multiplayer:
+   * Saat semua pemain sudah pick (currentTurnIndex >= players.length),
+   * redirect otomatis ke ronde berikutnya setelah jeda 1,5 detik.
+   */
+  useEffect(() => {
+    if (roomInfo?.max_player === 1) return; // Solo mode tidak butuh auto-redirect
+    if (players.length === 0) return;
+    if (currentTurnIndex < players.length) return;
+
+    const timer = setTimeout(() => {
+      handleNextRound();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [currentTurnIndex, players.length, roomInfo?.max_player, handleNextRound]);
 
   // Reset timer setiap giliran berganti (currentTurnIndex berubah)
   useEffect(() => {

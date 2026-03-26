@@ -102,10 +102,10 @@ export default function QuizLobbyPage() {
       }
 
       // // 2. Redirect ke halaman game
-      router.push(`/game/${room_id}?code=${roomData.room_code}`);
+      // router.push(`/game/${room_id}?code=${roomData.room_code}`);
 
       // ====== Testinggg starbox ygy jgn dihapus
-      // router.push(`/starbox?roomId=${room_id}&code=${roomData.room_code}&nextRound=1`);
+      router.push(`/starbox?roomId=${room_id}&code=${roomData.room_code}&nextRound=1`);
     } catch (err) {
       console.error("Gagal memulai pertandingan:", err);
       alert(err instanceof Error ? err.message : "Gagal memulai pertandingan");
