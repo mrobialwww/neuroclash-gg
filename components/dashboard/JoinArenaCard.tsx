@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { TextFieldWithButton } from "@/components/common/TextFieldWithButton";
-import { ToastFailed } from "@/components/common/ToastFailed";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 
@@ -82,10 +82,10 @@ export function JoinArenaCard({
 
               {/* Konten Teks */}
               <div className="absolute inset-0 flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-6">
-                <span className="uppercase text-xs sm:text-md tracking-wide text-[#FFDFB3] drop-shadow-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="uppercase text-sm sm:text-md tracking-wide text-[#FFDFB3] drop-shadow-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
                   {rankName}
                 </span>
-                <span className="text-white/80 text-xs sm:text-sm">|</span>
+                <span className="text-white/80 text-sm sm:text-md">|</span>
                 <div className="flex items-center gap-1 sm:gap-1.5 text-[#FFD700]">
                   <div className="relative mb-0.5 h-3 w-3 sm:h-4 sm:w-4 shrink-0">
                     <Image
@@ -96,7 +96,7 @@ export function JoinArenaCard({
                       className="object-contain"
                     />
                   </div>
-                  <span className="leading-none text-xs sm:text-md drop-shadow-sm font-bold tracking-wide mb-0.5 whitespace-nowrap">
+                  <span className="leading-none text-sm sm:text-md drop-shadow-sm font-bold tracking-wide mb-0.5 whitespace-nowrap">
                     {rankScore}
                   </span>
                 </div>
@@ -122,7 +122,7 @@ export function JoinArenaCard({
         />
       )}
 
-      <ToastFailed
+      <ToastOverlay
         isOpen={toastData.isOpen}
         code={toastData.code}
         onClose={() => setToastData((prev) => ({ ...prev, isOpen: false }))}

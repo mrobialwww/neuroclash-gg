@@ -39,6 +39,26 @@ export const gameRoomRepository = {
   },
 
   /**
+   * Fetch all game rooms created by a specific user.
+   */
+  async getUserRooms(userId: string): Promise<GameRoomWithPlayerCount[]> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("game_rooms")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[GameRoomRepo] Error fetching user rooms:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+  },
+
+  /**
    * Fetch a single game room by its code.
    * Digunakan oleh Server Components — query Supabase langsung.
    * Client Components menggunakan GET /api/game-rooms/code/[room_code] secara langsung.
@@ -148,12 +168,8 @@ export const gameRoomRepository = {
       .single();
 
     if (error) {
-      console.error("[GameRoomRepo] createRoom error:", error);
-      console.error("[GameRoomRepo] Error code:", error.code);
-      console.error("[GameRoomRepo] Error message:", error.message);
-      console.error("[GameRoomRepo] Error details:", error.details);
-      console.error("[GameRoomRepo] Error hint:", error.hint);
-      console.error("[GameRoomRepo] Params:", params);
+      console.error("[GameRoomRepo] createRoom error:", JSON.stringify(error, null, 2));
+      console.error("[GameRoomRepo] Params that caused error:", JSON.stringify(params, null, 2));
       return null;
     }
 
@@ -284,5 +300,32 @@ export const gameRoomRepository = {
       questionsInserted: questionsInserted,
       answersInserted: answersInserted,
     };
+  },
+
+  /**
+   * Insert ability materials untuk room baru.
+   */
+  async insertAbilityMaterials(
+    gameRoomId: string,
+    materials: any[]
+  ): Promise<number> {
+    const supabase = await createClient();
+    let insertedCount = 0;
+
+    for (const ability of materials) {
+      const { data } = await supabase
+        .from("ability_materials")
+        .insert({
+          game_room_id: gameRoomId,
+          title: ability.title,
+          content: ability.text ?? ability.content,
+        })
+        .select()
+        .single();
+
+      if (data) insertedCount++;
+    }
+
+    return insertedCount;
   },
 };

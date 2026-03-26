@@ -9,11 +9,7 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 
-import {
-  useMatchStore,
-  SECONDS_PER_ROUND,
-  STARBOX_INTERVAL,
-} from "@/store/useMatchStore";
+import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
 
 export default function GamePage() {
@@ -105,13 +101,11 @@ export default function GamePage() {
 
     // Gunakan opponentIds dari battle room untuk menentukan lawan
     // Hanya player yang ada di battle room yang sama yang menjadi lawan
-    const battleOpponents = opponentIds
-      .map((oppId) => players.find((p) => p.id === oppId))
-      .filter((p): p is (typeof players)[0] => p !== undefined);
+    const battleOpponents = opponentIds.map((oppId) => players.find((p) => p.id === oppId)).filter((p): p is (typeof players)[0] => p !== undefined);
 
     console.log(
       `[GamePage] Current battle room opponents:`,
-      battleOpponents.map((p) => ({ id: p.id.substring(0, 8), name: p.name }))
+      battleOpponents.map((p) => ({ id: p.id.substring(0, 8), name: p.name })),
     );
 
     // Identitas Lawan: Ambil lawan pertama dari battle room
@@ -164,9 +158,7 @@ export default function GamePage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
-        <p className="animate-pulse text-lg font-semibold text-white">
-          Memuat Arena...
-        </p>
+        <p className="animate-pulse text-lg font-semibold text-white">Memuat Arena...</p>
       </main>
     );
   }
@@ -193,19 +185,9 @@ export default function GamePage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
         <p className="text-5xl">🏆</p>
-        <h1 className="text-center text-3xl font-extrabold text-white">
-          Quiz Selesai!
-        </h1>
-        <p className="text-center text-lg text-white/60">
-          Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1}{" "}
-          soal.
-        </p>
-        <MainButton
-          variant="green"
-          hasShadow
-          className="rounded-xl px-10 py-4 text-lg font-bold"
-          onClick={() => router.push("/dashboard")}
-        >
+        <h1 className="text-center text-3xl font-extrabold text-white">Quiz Selesai!</h1>
+        <p className="text-center text-lg text-white/60">Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.</p>
+        <MainButton variant="green" hasShadow className="rounded-xl px-10 py-4 text-lg font-bold" onClick={() => router.push("/dashboard")}>
           Kembali ke Dashboard
         </MainButton>
       </main>
@@ -221,19 +203,10 @@ export default function GamePage() {
         </div>
 
         <div className="block flex-1 px-2 md:px-4 lg:px-10">
-          <MatchProgressBar
-            key={`round-${currentOrder}`}
-            duration={SECONDS_PER_ROUND}
-            timeLeft={timeLeft}
-            activeStepIndex={activeStepIndex}
-          />
+          <MatchProgressBar key={`round-${currentOrder}`} duration={SECONDS_PER_ROUND} timeLeft={timeLeft} activeStepIndex={activeStepIndex} />
         </div>
 
-        <MainButton
-          variant="white"
-          className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6"
-          onClick={handleExit}
-        >
+        <MainButton variant="white" className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6" onClick={handleExit}>
           Keluar
         </MainButton>
       </header>
@@ -252,15 +225,7 @@ export default function GamePage() {
             <div className="hidden max-h-[320px] overflow-hidden lg:block">
               <BuffList className="h-full" />
             </div>
-            <div className="w-full max-w-[320px] lg:max-w-none">
-              {meCard && (
-                <PlayerCard
-                  player={meCard as any}
-                  isMe={true}
-                  className="w-full"
-                />
-              )}
-            </div>
+            <div className="w-full max-w-[320px] lg:max-w-none">{meCard && <PlayerCard player={meCard as any} isMe={true} className="w-full" />}</div>
           </div>
 
           {/* Opponent Player Card / Kanan */}
@@ -269,14 +234,7 @@ export default function GamePage() {
               <PlayerList players={sortedForList as any} className="h-full" />
             </div>
             <div className="w-full max-w-[320px] lg:max-w-none">
-              {opponentCard && (
-                <PlayerCard
-                  player={opponentCard as any}
-                  isMe={false}
-                  hideHealthBar={isSolo}
-                  className="w-full"
-                />
-              )}
+              {opponentCard && <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" />}
             </div>
           </div>
 
@@ -286,8 +244,7 @@ export default function GamePage() {
               <>
                 {firstAnswerPlayerId && (
                   <div className="mb-4 text-center font-semibold text-yellow-400">
-                    {players.find((p) => p.id === firstAnswerPlayerId)?.name}{" "}
-                    menjawab pertama!
+                    {players.find((p) => p.id === firstAnswerPlayerId)?.name} menjawab pertama!
                   </div>
                 )}
                 <QuestionCard
@@ -310,10 +267,7 @@ export default function GamePage() {
           </div>
 
           <div className="order-5 col-span-1 lg:hidden">
-            <PlayerList
-              players={sortedForList as any}
-              className="h-[200px] w-full sm:h-[240px]"
-            />
+            <PlayerList players={sortedForList as any} className="h-[200px] w-full sm:h-[240px]" />
           </div>
         </div>
       </div>

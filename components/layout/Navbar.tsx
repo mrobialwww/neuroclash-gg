@@ -8,6 +8,7 @@ import { Menu, X, LogOut, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "../common/Searchbar";
 import axios from "axios";
+import { useUserStore } from "@/store/useUserStore";
 
 interface NavbarProps {
   initialData?: {
@@ -23,6 +24,25 @@ export function Navbar({ initialData }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const {
+    coins: storeCoins,
+    avatar: storeAvatar,
+    username: storeUsername,
+    isInitialized,
+    setUserData,
+  } = useUserStore();
+
+  // Sinkronisasi data awal dari server ke global store
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      setUserData({
+        username: initialData.username,
+        coins: initialData.coins,
+        avatar: initialData.avatar,
+      });
+    }
+  }, [initialData, isInitialized, setUserData]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -53,11 +73,11 @@ export function Navbar({ initialData }: NavbarProps) {
     }
   };
 
-  // Gunakan data dari server, fallback jika data tidak tersedia
-  const user = initialData || {
-    username: "Guest",
-    coins: 0,
-    avatar: "/default/Slime.webp",
+  // Gunakan data dari global store, fallback seperlunya
+  const user = {
+    username: storeUsername,
+    coins: storeCoins,
+    avatar: storeAvatar,
   };
 
   const navLinks = [
@@ -147,7 +167,7 @@ export function Navbar({ initialData }: NavbarProps) {
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in zoom-in-95 duration-200 z-100">
                 <div className="px-4 py-3 border-b border-gray-50 mb-1">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Akun Anda</p>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Akun Anda</p>
                   <p className="text-sm font-bold text-gray-800 truncate">{user.username}</p>
                 </div>
 
@@ -183,7 +203,7 @@ export function Navbar({ initialData }: NavbarProps) {
               />
             </div>
             <span className="text-[#AD8A00] font-bold text-sm md:text-base tracking-tight">
-              {user.coins}
+              {user.coins.toLocaleString("id-ID")}
             </span>
           </div>
 

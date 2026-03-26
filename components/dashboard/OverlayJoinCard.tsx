@@ -13,7 +13,7 @@ import {
   getBannerColor,
 } from "@/lib/constants/overlay-theme";
 import { quizService } from "@/services/quizService";
-import { ToastFailed } from "@/components/common/ToastFailed";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 
 interface OverlayJoinCardProps {
   room: GameRoomWithPlayerCount;
@@ -226,7 +226,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
         </div>
       </div>
 
-      <ToastFailed
+      <ToastOverlay
         isOpen={errorConfig.isOpen}
         onClose={() => setErrorConfig((prev) => ({ ...prev, isOpen: false }))}
         title={errorConfig.title}
