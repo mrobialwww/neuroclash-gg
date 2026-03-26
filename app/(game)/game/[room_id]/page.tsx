@@ -11,6 +11,7 @@ import { PlayerCard } from "@/components/match/PlayerCard";
 
 import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
+import { useStarboxStore } from "@/store/useStarboxStore";
 
 export default function GamePage() {
   const router = useRouter();
@@ -51,13 +52,22 @@ export default function GamePage() {
     canAnswer,
   } = useMatchStore();
 
+  const { myInventory, refreshMyInventory } = useStarboxStore();
+
   const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
   const isSolo = roomInfo?.max_player === 1;
 
-  // 1. Initialize Match Room Data
+  // 1. Initialize Match Room Data + hydrate inventory dari DB (termasuk ability_materials)
   useEffect(() => {
     initializeMatch(roomCodeQuery, gameRoomId, initialRound);
   }, [initializeMatch, roomCodeQuery, gameRoomId, initialRound]);
+
+  // 1b. Hydrate inventory dari DB agar ability_materials tersedia untuk OverlayMaterialCard
+  useEffect(() => {
+    if (currentUser?.id && gameRoomId) {
+      refreshMyInventory(gameRoomId, currentUser.id);
+    }
+  }, [currentUser?.id, gameRoomId, refreshMyInventory]);
 
   // Handle Error (Ongoing room or not found)
   useEffect(() => {
@@ -246,7 +256,7 @@ export default function GamePage() {
           <div className="order-1 flex h-full flex-col justify-end gap-4 self-stretch lg:order-1">
             <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
-                <BuffList className="h-full" />
+                <BuffList buffs={myInventory} className="h-full" />
               </div>
             </div>
             <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
@@ -298,7 +308,7 @@ export default function GamePage() {
 
           {/* Mobile Layout */}
           <div className="order-4 col-span-1 lg:hidden">
-            <BuffList className="h-[200px] w-full sm:h-[240px]" />
+            <BuffList buffs={myInventory} className="h-[200px] w-full sm:h-[240px]" />
           </div>
 
           <div className="order-5 col-span-1 lg:hidden">

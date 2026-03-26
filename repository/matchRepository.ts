@@ -16,7 +16,7 @@ export const matchRepository = {
    * Simpan jawaban user ke tabel user_answers.
    */
   async submitAnswer(userId: string, answerId: string, roomId: string, roundNumber: number) {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("user_answers")
@@ -48,7 +48,7 @@ export const matchRepository = {
    * Mendapatkan detail jawaban (apakah benar) dari answerId.
    */
   async getAnswerDetail(answerId: string) {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase.from("answers").select("is_correct, question_id").eq("answer_id", answerId).single();
 
     if (error) {
@@ -63,7 +63,7 @@ export const matchRepository = {
    * Berguna untuk menentukan siapa yang tercepat.
    */
   async getQuestionAnswers(questionId: string) {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("user_answers")
       .select("user_id, created_at, answer_id, answers(is_correct)")

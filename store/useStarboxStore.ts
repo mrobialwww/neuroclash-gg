@@ -30,6 +30,12 @@ export interface AbilityPlayer {
   updated_at: string;
 }
 
+export interface AbilityMaterial {
+  ability_materi_id: string;
+  title: string | null;
+  content: string | null;
+}
+
 export interface PickedAbility {
   ability_player_id: string | null;
   game_room_id: string;
@@ -40,6 +46,7 @@ export interface PickedAbility {
   description: string;
   image: string;
   empty_image: string;
+  ability_materials: AbilityMaterial | null;
 }
 
 /**
@@ -79,9 +86,9 @@ export interface StarboxState extends PersistedStarboxSlice {
   autoAssignRemaining: (roomId: string) => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
   useHeal: (roomId: string, userId: string) => Promise<void>;
-  useMateri: () => Promise<void>;
   useAttack: () => Promise<void>;
   useDefend: () => Promise<void>;
+  refreshMyInventory: (roomId: string, userId: string) => Promise<void>;
   cleanup: () => void;
   reset: () => void;
 }
@@ -106,11 +113,9 @@ export const useStarboxStore = create<StarboxState>()(
 
       /**
        * Entry point halaman Starbox. Dipanggil sekali saat komponen mount.
-       *
        * Phase Checking:
        *   - Fase BARU → reset turn, pilihan lama, pickedPlayerIds
        *   - REFRESH (fase sama) → pertahankan currentTurnIndex & myPickedAbility
-       *
        * Retry mechanism: non-host client akan polling hingga 5x (interval 1 detik)
        * untuk menunggu host selesai inisialisasi stok ability di DB.
        */
@@ -134,7 +139,6 @@ export const useStarboxStore = create<StarboxState>()(
             activeStarboxRound: nextRound,
           });
         } else {
-          // Refresh: jangan sentuh currentTurnIndex, myPickedAbility, myInventory
           set({
             isLoading: true,
             abilities: [],
@@ -211,6 +215,7 @@ export const useStarboxStore = create<StarboxState>()(
               const raw = await abilityPlayerRepository.getMyAbilities(roomId, currentUser.id);
               const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
                 const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+                const material: AbilityMaterial | null = row.ability_materials ?? null;
                 return {
                   ability_player_id: row.ability_player_id,
                   game_room_id: row.game_room_id,
@@ -221,6 +226,7 @@ export const useStarboxStore = create<StarboxState>()(
                   description: detail?.description ?? "",
                   image: detail?.image ?? "",
                   empty_image: detail?.empty_image ?? "",
+                  ability_materials: material,
                 };
               });
               set({ myInventory: myInventoryFromDb });
@@ -258,14 +264,20 @@ export const useStarboxStore = create<StarboxState>()(
               console.log("[StarboxStore] Stock updated via realtime:", payload);
               const updatedAbility = payload.new as any;
 
-              set((state) => ({
-                // Ganti stok dengan nilai terkonfirmasi dari DB
-                abilities: state.abilities.map((ability) =>
-                  ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
-                ),
-                pickingAbilityId: null,
-                currentTurnIndex: state.currentTurnIndex + 1,
-              }));
+              set((state) => {
+                // Jika pickingAbilityId !== null → ini adalah event dari pick kita sendiri.
+                // Kita sudah increment currentTurnIndex di selectAbility, jadi skip di sini.
+                // Jika null → ini pick dari pemain lain → increment giliran.
+                const isOwnPick = state.pickingAbilityId !== null;
+
+                return {
+                  abilities: state.abilities.map((ability) =>
+                    ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
+                  ),
+                  pickingAbilityId: null,
+                  currentTurnIndex: isOwnPick ? state.currentTurnIndex : state.currentTurnIndex + 1,
+                };
+              });
             },
           )
           .subscribe();
@@ -279,7 +291,6 @@ export const useStarboxStore = create<StarboxState>()(
        */
       selectAbility: async (roomId: string, abilityId: string, userId: string) => {
         const state = get();
-        // Cegah double-pick
         if (state.pickedPlayerIds.includes(userId) || state.pickingAbilityId) return;
 
         const chosenAbility = state.abilities.find((a) => a.id === abilityId);
@@ -288,6 +299,9 @@ export const useStarboxStore = create<StarboxState>()(
           pickingAbilityId: abilityId,
           abilities: s.abilities.map((a) => (a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a)),
           pickedPlayerIds: [...s.pickedPlayerIds, userId],
+          // Increment giliran langsung di sisi picker.
+          // Sisi observer akan increment via Realtime handler.
+          currentTurnIndex: s.currentTurnIndex + 1,
           myPickedAbility: chosenAbility
             ? ({
                 ability_player_id: null,
@@ -299,6 +313,7 @@ export const useStarboxStore = create<StarboxState>()(
                 description: chosenAbility.description,
                 image: chosenAbility.image,
                 empty_image: chosenAbility.emptyImage,
+                ability_materials: null,
               } satisfies PickedAbility)
             : null,
           myInventory: chosenAbility
@@ -322,6 +337,7 @@ export const useStarboxStore = create<StarboxState>()(
                     description: chosenAbility.description,
                     image: chosenAbility.image,
                     empty_image: chosenAbility.emptyImage,
+                    ability_materials: null,
                   } satisfies PickedAbility,
                 ];
               })()
@@ -363,9 +379,23 @@ export const useStarboxStore = create<StarboxState>()(
        * menggunakan API /api/starbox/auto-assign untuk bypass RLS.
        */
       autoAssignRemaining: async (roomId: string) => {
-        const { players, pickedPlayerIds, abilities } = get();
+        const { players, abilities } = get();
 
-        const unpickedPlayerIds = players.map((p) => p.id).filter((id) => !pickedPlayerIds.includes(id));
+        // Ambil data real dari DB — jangan pakai pickedPlayerIds dari state
+        // karena observer mungkin tidak sinkron dengan siapa yang sudah memilih.
+        let alreadyPickedIds: string[] = [];
+        try {
+          const supabase = createClient();
+          const { data } = await supabase.from("ability_players").select("user_id").eq("game_room_id", roomId);
+          alreadyPickedIds = (data ?? []).map((r: any) => r.user_id);
+          // Update state lokal juga
+          set({ pickedPlayerIds: alreadyPickedIds });
+        } catch (err) {
+          console.warn("[StarboxStore] Gagal ambil pickedPlayerIds dari DB, pakai state:", err);
+          alreadyPickedIds = get().pickedPlayerIds;
+        }
+
+        const unpickedPlayerIds = players.map((p) => p.id).filter((id) => !alreadyPickedIds.includes(id));
 
         if (unpickedPlayerIds.length === 0) return;
 
@@ -388,7 +418,7 @@ export const useStarboxStore = create<StarboxState>()(
 
         const assignments = [];
         const updatedAbilities = [...abilities];
-        const newPickedPlayerIds = [...pickedPlayerIds];
+        const newPickedPlayerIds = [...alreadyPickedIds];
 
         for (let i = 0; i < unpickedPlayerIds.length && i < abilityPool.length; i++) {
           const playerId = unpickedPlayerIds[i];
@@ -447,16 +477,51 @@ export const useStarboxStore = create<StarboxState>()(
         }
       },
 
-      useMateri: async () => {},
       useAttack: async () => {},
       useDefend: async () => {},
 
-      /** Putuskan koneksi Realtime tanpa mereset state (untuk unmount komponen) */
+      /**
+       * Re-hydrate myInventory dari DB (termasuk ability_materials).
+       * Dipanggil dari game page agar material content tersedia saat klik buff.
+       */
+      refreshMyInventory: async (roomId: string, userId: string) => {
+        try {
+          console.log("[StarboxStore] refreshMyInventory CALLED:", { roomId, userId });
+          const raw = await abilityPlayerRepository.getMyAbilities(roomId, userId);
+          console.log("[StarboxStore] getMyAbilities RAW result:", JSON.stringify(raw, null, 2));
+
+          const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
+            const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+            const material: AbilityMaterial | null = row.ability_materials ?? null;
+            console.log(`[StarboxStore] ability_id=${row.ability_id}, material=`, material);
+            return {
+              ability_player_id: row.ability_player_id,
+              game_room_id: row.game_room_id,
+              ability_id: row.ability_id,
+              stock: row.stock,
+              user_id: row.user_id,
+              name: detail?.name ?? "",
+              description: detail?.description ?? "",
+              image: detail?.image ?? "",
+              empty_image: detail?.empty_image ?? "",
+              ability_materials: material,
+            };
+          });
+          console.log("[StarboxStore] refreshMyInventory SET:", myInventoryFromDb.length, "items");
+          set({ myInventory: myInventoryFromDb });
+        } catch (err) {
+          console.warn("[StarboxStore] refreshMyInventory gagal:", err);
+        }
+      },
+
+      /** Putuskan koneksi Realtime + set isLoading agar halaman berikutnya mulai dari loading */
       cleanup: () => {
         if (stockChannel) {
           supabase.removeChannel(stockChannel);
           stockChannel = null;
         }
+        // PENTING: Reset isLoading agar Starbox berikutnya tidak langsung trigger auto-assign sebelum initGameData sempat reset state.
+        set({ isLoading: true });
       },
 
       /** Bersihkan SEMUA state dan koneksi Realtime. Dipanggil saat game selesai. */

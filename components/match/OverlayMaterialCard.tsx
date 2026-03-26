@@ -15,18 +15,11 @@ interface OverlayMaterialCardProps {
   className?: string;
 }
 
-export const OverlayMaterialCard = ({
-  title,
-  materialName,
-  content,
-  isOpen,
-  onClose,
-  className,
-}: OverlayMaterialCardProps) => {
+export const OverlayMaterialCard = ({ title, materialName, content, isOpen, onClose, className }: OverlayMaterialCardProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+        <div className="z-100 fixed inset-0 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -41,28 +34,24 @@ export const OverlayMaterialCard = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={cn(
-              "relative w-full max-w-2xl flex flex-col items-center gap-6 z-10",
-              className
-            )}
+            className={cn("relative z-10 flex w-full max-w-2xl flex-col items-center gap-6", className)}
           >
             {/* The Main Card */}
-            <div className="relative w-full bg-black/50 backdrop-blur-xl border border-[#FDA928] rounded-[32px] p-6 pt-10 shadow-2xl overflow-visible">
-
+            <div className="relative w-full overflow-visible rounded-[32px] border border-[#FDA928] bg-black/50 p-6 pt-10 shadow-2xl backdrop-blur-xl">
               {/* Badge Title */}
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-full max-w-[320px] flex items-center justify-center z-20 px-4">
-                <div className="relative w-full h-auto flex items-center justify-center">
+              <div className="absolute -top-5 left-1/2 z-20 flex w-full max-w-[320px] -translate-x-1/2 items-center justify-center px-4">
+                <div className="relative flex h-auto w-full items-center justify-center">
                   <Image
                     src="/dashboard/trophy-badge.webp"
                     alt="Rank Badge Background"
                     width={320}
                     height={60}
-                    className="object-contain -z-10 drop-shadow-sm block w-full h-full"
+                    className="-z-10 block h-full w-full object-contain drop-shadow-sm"
                     sizes="(max-width: 320px) 100vw, 320px"
                     priority
                   />
                   <div className="absolute inset-0 flex items-center justify-center px-3 sm:px-6">
-                    <span className="uppercase text-md md:text-lg text-white drop-shadow-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                    <span className="text-md overflow-hidden text-ellipsis whitespace-nowrap font-semibold uppercase text-white drop-shadow-sm md:text-lg">
                       {title}
                     </span>
                   </div>
@@ -70,19 +59,15 @@ export const OverlayMaterialCard = ({
               </div>
 
               {/* Internal Content Container */}
-              <div className="flex flex-col gap-4 mt-2">
+              <div className="mt-2 flex flex-col gap-4">
                 {/* Material Name Box */}
-                <div className="w-full bg-[#D9D9D9]/10 backdrop-blur-md border border-white/10 rounded-xl p-4">
-                  <h3 className="text-white font-bold text-base md:text-lg">
-                    {materialName}
-                  </h3>
+                <div className="w-full rounded-xl border border-white/10 bg-[#D9D9D9]/10 p-4 backdrop-blur-md">
+                  <h3 className="text-base font-bold text-white md:text-lg">{materialName}</h3>
                 </div>
 
                 {/* Content Box */}
-                <div className="w-full bg-[#D9D9D9]/10 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
-                  <div className="text-white/90 text-sm md:text-base leading-relaxed space-y-4 whitespace-pre-wrap">
-                    {content}
-                  </div>
+                <div className="scrollbar-hide max-h-[60vh] w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#D9D9D9]/10 p-6 backdrop-blur-md md:p-8">
+                  <div className="space-y-4 whitespace-pre-wrap text-sm leading-relaxed text-white/90 md:text-base">{content}</div>
                 </div>
               </div>
             </div>

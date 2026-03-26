@@ -6,35 +6,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AbilityCard } from "./AbilityCard";
 import { MainButton } from "../common/MainButton";
 import { CloseButton } from "./CloseButton";
-
-interface Ability {
-  id: string;
-  name: string;
-  image: string;
-  emptyImage: string;
-  description: string;
-  stock: number;
-}
+import { PickedAbility } from "@/store/useStarboxStore";
 
 interface OverlayAbilityCardProps {
-  ability: Ability | null;
+  ability: PickedAbility | null;
   isOpen: boolean;
   onClose: () => void;
-  onUse: (abilityId: string) => void;
+  onUse: (abilityId: number) => void;
   className?: string;
 }
 
-export const OverlayAbilityCard = ({
-  ability,
-  isOpen,
-  onClose,
-  onUse,
-  className,
-}: OverlayAbilityCardProps) => {
+export const OverlayAbilityCard = ({ ability, isOpen, onClose, onUse, className }: OverlayAbilityCardProps) => {
   return (
     <AnimatePresence>
       {isOpen && ability && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+        <div className="z-100 fixed inset-0 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -49,17 +35,14 @@ export const OverlayAbilityCard = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={cn(
-              "relative w-full max-w-[400px] flex flex-col items-center gap-6 z-10",
-              className
-            )}
+            className={cn("relative z-10 flex w-full max-w-[400px] flex-col items-center gap-6", className)}
           >
             {/* Ability Card (Large) */}
             <div className="w-full">
               <AbilityCard
                 name={ability.name}
                 image={ability.image}
-                emptyImage={ability.emptyImage}
+                emptyImage={ability.empty_image}
                 description={ability.description}
                 stock={ability.stock}
                 isLarge
@@ -69,23 +52,25 @@ export const OverlayAbilityCard = ({
             </div>
 
             {/* Helper Text */}
-            <p className="text-white text-sm md:text-md font-medium text-center drop-shadow-md px-4">
+            <p className="md:text-md px-4 text-center text-sm font-medium text-white drop-shadow-md">
               Kekuatan akan otomatis digunakan pada babak berikutnya
             </p>
 
             {/* Use Button */}
-            <MainButton
-              variant="blue"
-              size="default"
-              hasShadow
-              className="w-full max-w-xs rounded-full h-10 md:h-12 text-lg md:text-xl"
-              onClick={() => {
-                onUse(ability.id);
-                onClose();
-              }}
-            >
-              Gunakan
-            </MainButton>
+            {ability.ability_id !== 5 && ability.ability_id !== 6 && (
+              <MainButton
+                variant="blue"
+                size="default"
+                hasShadow
+                className="h-10 w-full max-w-xs rounded-full text-lg md:h-12 md:text-xl"
+                onClick={() => {
+                  onUse(ability.ability_id);
+                  onClose();
+                }}
+              >
+                Gunakan
+              </MainButton>
+            )}
 
             {/* Close Button below */}
             <CloseButton onClick={onClose} />
