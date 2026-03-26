@@ -296,3 +296,7 @@ export default function StarboxPage() {
     </main>
   );
 }
+function nextTurn() {
+  throw new Error("Function not implemented.");
+}
+
