@@ -29,15 +29,13 @@ export default function ShowroomView({
 
   // Get all unique owned base characters
   const ownedBases = useMemo(() => {
-    return allCharacters.filter(
-      (c) => c.skin_level === "default" && c.owned
-    );
+    return allCharacters.filter((c) => c.skin_level === "default" && c.owned);
   }, [allCharacters]);
 
   // Sync initial selection
   useEffect(() => {
     if (ownedBases.length > 0 && !selectedBase) {
-      const equipped = allCharacters.find(c => (c as any).is_used && c.owned);
+      const equipped = allCharacters.find((c) => (c as any).is_used && c.owned);
       if (equipped) {
         setSelectedBase(equipped.base_character);
         setSelectedCharId(equipped.character_id);
@@ -66,6 +64,7 @@ export default function ShowroomView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ character_id: selectedCharId }),
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Gagal mengenakan karakter");
@@ -87,39 +86,39 @@ export default function ShowroomView({
   const isCurrentUsed = (selectedItem as any)?.is_used || false;
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100dvh-122px)] md:h-[calc(100dvh-72px)] relative w-full overflow-hidden overscroll-none animate-in fade-in duration-500">
-
+    <div className="animate-in fade-in relative flex h-[calc(100dvh-122px)] w-full flex-col overflow-hidden overscroll-none duration-500 md:h-[calc(100dvh-72px)] md:flex-row">
       {/* Center: Hero Showroom */}
-      <div className="flex-1 relative flex flex-col items-center justify-start p-4 pt-6 md:pr-68">
-
+      <div className="md:pr-68 relative flex flex-1 flex-col items-center justify-start p-4 pt-6">
         {/* Name Display */}
-        <div className="md:mt-8 z-20">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] tracking-wide text-center">
-            {selectedItem?.skin_name || selectedItem?.base_character || "Memuat..."}
+        <div className="z-20 md:mt-8">
+          <h1 className="text-center text-2xl font-bold tracking-wide text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] md:text-3xl lg:text-4xl">
+            {selectedItem?.skin_name ||
+              selectedItem?.base_character ||
+              "Memuat..."}
           </h1>
         </div>
 
         {/* Character Stage */}
-        <div className="relative w-full max-w-[300px] md:max-w-[360px] lg:max-w-[440px] aspect-square flex items-center justify-center">
+        <div className="relative flex aspect-square w-full max-w-[300px] items-center justify-center md:max-w-[360px] lg:max-w-[440px]">
           {/* Pedestal Layer (Bottom) */}
-          <div className="absolute inset-x-0 bottom-[5%] h-1/2 w-full z-0">
+          <div className="absolute inset-x-0 bottom-[5%] z-0 h-1/2 w-full">
             <Image
               src="/shop/showroom.webp"
               alt="Pedestal"
               fill
-              className="object-contain object-bottom drop-shadow-2xl scale-180"
+              className="scale-180 object-contain object-bottom drop-shadow-2xl"
               priority
             />
           </div>
 
           {/* Character Layer (Top) */}
-          <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center z-10 transition-transform duration-500">
+          <div className="absolute inset-x-0 bottom-0 top-0 z-10 flex items-center justify-center transition-transform duration-500">
             {selectedItem?.image_url && (
               <Image
                 src={selectedItem.image_url}
                 alt={selectedItem.skin_name || selectedItem.base_character}
                 fill
-                className="object-contain filter drop-shadow-[0_20px_40px_rgba(255,255,255,0.3)] animate-float scale-80"
+                className="animate-float scale-80 object-contain drop-shadow-[0_20px_40px_rgba(255,255,255,0.3)] filter"
                 priority
               />
             )}
@@ -142,7 +141,6 @@ export default function ShowroomView({
         handleEquip={handleEquip}
         onPurchaseClick={onPurchaseClick}
       />
-
     </div>
   );
 }

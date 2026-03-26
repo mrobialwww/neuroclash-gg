@@ -123,6 +123,7 @@ export function CreateArenaCard() {
         response = await fetch("/api/quiz", {
           method: "POST",
           body: formData,
+          credentials: "include",
         });
       } else if (data.materiId) {
         // Materi default → application/json
@@ -137,9 +138,12 @@ export function CreateArenaCard() {
             user_id: user.id,
             room_visibility: data.room_visibility,
           }),
+          credentials: "include",
         });
       } else {
-        setErrorMsg("Pilih salah satu materi atau upload file PDF terlebih dahulu.");
+        setErrorMsg(
+          "Pilih salah satu materi atau upload file PDF terlebih dahulu."
+        );
         setIsLoading(false);
         return;
       }
@@ -149,7 +153,9 @@ export function CreateArenaCard() {
       if (aiStatusInterval) clearInterval(aiStatusInterval);
 
       if (!response.ok) {
-        throw new Error(result.message ?? "Gagal meng-generate soal menggunakan AI.");
+        throw new Error(
+          result.message ?? "Gagal meng-generate soal menggunakan AI."
+        );
       }
 
       // ── Step 3: Simpan ke DB (/api/game-rooms) ───────────────────────
@@ -167,11 +173,14 @@ export function CreateArenaCard() {
           room_visibility: data.room_visibility,
           questions: result.geminiFile ? result.geminiFile : result,
         }),
+        credentials: "include",
       });
 
       const createRoomResult = await createRoomRes.json();
       if (!createRoomRes.ok) {
-        throw new Error(createRoomResult.error ?? "Gagal menyimpan Game Room ke database.");
+        throw new Error(
+          createRoomResult.error ?? "Gagal menyimpan Game Room ke database."
+        );
       }
 
       const gameRoom = createRoomResult.data[0];
@@ -182,32 +191,40 @@ export function CreateArenaCard() {
         isOpen: true,
         title: "Arena Siap!",
         message: (
-          <div className="flex flex-col gap-3 text-left w-full mt-2">
-            <p className="text-white/80 text-sm md:text-base leading-snug">
-              Quiz <span className="text-blue-400 font-bold">"{gameRoom.title}"</span> berhasil diracik oleh AI.
+          <div className="mt-2 flex w-full flex-col gap-3 text-left">
+            <p className="text-sm leading-snug text-white/80 md:text-base">
+              Quiz{" "}
+              <span className="font-bold text-blue-400">
+                "{gameRoom.title}"
+              </span>{" "}
+              berhasil diracik oleh AI.
             </p>
-            <div className="bg-[#0b0d1e] border border-blue-500/20 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between items-center text-xs md:text-sm">
+            <div className="space-y-2 rounded-xl border border-blue-500/20 bg-[#0b0d1e] p-4">
+              <div className="flex items-center justify-between text-xs md:text-sm">
                 <span className="text-white/50">Materi</span>
                 <span className="text-white font-semibold capitalize font-mono text-xs md:text-sm truncate ml-2">
                   {gameRoom.category === "bahasaindonesia"
                     ? "Bahasa Indonesia"
                     : gameRoom.category === "bahasainggris"
-                      ? "Bahasa Inggris"
-                      : gameRoom.category}
+                    ? "Bahasa Inggris"
+                    : gameRoom.category}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs md:text-sm">
+                <span className="text-white/50">Total Soal</span>
+                <span className="font-semibold text-white">
+                  {gameRoom.total_round} Soal
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs md:text-sm">
+                <span className="text-white/50">Pemain Max</span>
+                <span className="font-semibold text-white">
+                  {gameRoom.max_player} Player
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs md:text-sm">
-                <span className="text-white/50">Total Soal</span>
-                <span className="text-white font-semibold">{gameRoom.total_round} Soal</span>
-              </div>
-              <div className="flex justify-between items-center text-xs md:text-sm">
-                <span className="text-white/50">Pemain Max</span>
-                <span className="text-white font-semibold">{gameRoom.max_player} Player</span>
-              </div>
-              <div className="flex justify-between items-center text-xs md:text-sm">
                 <span className="text-white/50">Kesulitan</span>
-                <span className="font-bold capitalize bg-blue-600/30 px-2 py-0.5 rounded text-[10px] md:text-xs text-blue-300">
+                <span className="rounded bg-blue-600/30 px-2 py-0.5 text-[10px] font-bold capitalize text-blue-300 md:text-xs">
                   {gameRoom.difficulty}
                 </span>
               </div>
@@ -227,15 +244,17 @@ export function CreateArenaCard() {
       setToastData({
         isOpen: true,
         title: "Pembuatan Gagal",
-        message: err instanceof Error ? err.message : "Terjadi kesalahan sistem.",
+        message:
+          err instanceof Error ? err.message : "Terjadi kesalahan sistem.",
         isFailed: true,
         primaryButtonText: "Tutup",
-        onPrimaryClick: () => setToastData((prev) => ({ ...prev, isOpen: false })),
+        onPrimaryClick: () =>
+          setToastData((prev) => ({ ...prev, isOpen: false })),
         secondaryButtonText: "Coba Lagi",
         onSecondaryClick: () => {
           setToastData((prev) => ({ ...prev, isOpen: false }));
           setModalOpen(true);
-        }
+        },
       });
     } finally {
       setIsLoading(false);
@@ -246,34 +265,33 @@ export function CreateArenaCard() {
 
   return (
     <>
-      <div className="relative w-full h-full bg-[#4D70E8] text-white rounded-3xl p-6 lg:p-8 flex flex-col justify-center overflow-hidden shadow-sm min-h-[220px] md:min-h-[240px]">
-
+      <div className="relative flex h-full min-h-[220px] w-full flex-col justify-center overflow-hidden rounded-3xl bg-[#4D70E8] p-6 text-white shadow-sm md:min-h-[240px] lg:p-8">
         {/* Background Decorative Images */}
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl">
-          <div className="absolute top-0 right-[-10%] w-[70%] h-full">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-3xl">
+          <div className="absolute right-[-10%] top-0 h-full w-[70%]">
             <Image
               src="/dashboard/create-arena-bg-2.webp"
               alt=""
               fill
               sizes="(max-width: 768px) 70vw, 40vw"
-              className="object-contain object-top-right"
+              className="object-top-right object-contain"
             />
           </div>
 
-          <div className="absolute bottom-0 right-0 w-full h-[80%]">
+          <div className="absolute bottom-0 right-0 h-[80%] w-full">
             <Image
               src="/dashboard/create-arena-bg-1.webp"
               alt=""
               fill
               sizes="(max-width: 768px) 80vw, 40vw"
-              className="object-contain object-bottom-right"
+              className="object-bottom-right object-contain"
             />
           </div>
         </div>
 
         {/* Illustration (Karakter orang) */}
-        <div className="absolute right-0 md:right-[2%] lg:right-[5%] top-1/2 -translate-y-1/2 w-[50%] md:w-[40%] lg:w-[35%] h-[70%] md:h-[80%] pointer-events-none z-20 flex items-center justify-end pr-2">
-          <div className="relative w-full h-full">
+        <div className="pointer-events-none absolute right-0 top-1/2 z-20 flex h-[70%] w-[50%] -translate-y-1/2 items-center justify-end pr-2 md:right-[2%] md:h-[80%] md:w-[40%] lg:right-[5%] lg:w-[35%]">
+          <div className="relative h-full w-full">
             <Image
               src="/dashboard/create-arena-illust.webp"
               alt="Create Arena Illustration"
@@ -286,18 +304,18 @@ export function CreateArenaCard() {
         </div>
 
         {/* Content */}
-        <div className="relative z-30 w-[60%] sm:w-[55%] md:w-[60%] lg:w-[50%] flex flex-col items-start pl-1 md:pl-2">
-          <h2 className="text-2xl md:text-4xl lg:text-5xl font-extrabold mb-2 md:mb-4 tracking-wide leading-tight drop-shadow-sm">
+        <div className="relative z-30 flex w-[60%] flex-col items-start pl-1 sm:w-[55%] md:w-[60%] md:pl-2 lg:w-[50%]">
+          <h2 className="mb-2 text-2xl font-extrabold leading-tight tracking-wide drop-shadow-sm md:mb-4 md:text-4xl lg:text-5xl">
             Buat Arena
           </h2>
-          <p className="text-white/95 text-xs md:text-base leading-relaxed mb-4 md:mb-8 font-medium max-w-[220px] md:max-w-[280px]">
+          <p className="mb-4 max-w-[220px] text-xs font-medium leading-relaxed text-white/95 md:mb-8 md:max-w-[280px] md:text-base">
             Buat arena kuis dan tantang pemain lain dalam duel pengetahuan
           </p>
           <MainButton
             variant="white"
             size="sm"
             hasShadow
-            className="text-[#4D70E8] px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-base w-max font-extrabold"
+            className="w-max px-4 py-2 text-xs font-extrabold text-[#4D70E8] md:px-6 md:py-2.5 md:text-base"
             onClick={handleCreateArena}
           >
             Buat Arena Baru

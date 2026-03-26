@@ -29,7 +29,9 @@ export function LeaderboardClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/leaderboard?page=${p}&limit=${LIMIT}`);
+      const res = await fetch(`/api/leaderboard?page=${p}&limit=${LIMIT}`, {
+        credentials: "include",
+      });
       const json = await res.json();
 
       if (!json.success) {
@@ -119,24 +121,24 @@ export function LeaderboardClient() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-end mt-4 px-1">
+          <div className="mt-4 flex items-center justify-end px-1">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrev}
                 disabled={page === 1}
-                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-white text-sm md:text-md font-medium min-w-[80px] text-center">
+              <span className="md:text-md min-w-[80px] text-center text-sm font-medium text-white">
                 {page} / {totalPages}
               </span>
               <button
                 onClick={handleNext}
                 disabled={page === totalPages}
-                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

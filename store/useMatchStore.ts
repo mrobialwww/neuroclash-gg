@@ -36,9 +36,6 @@ export interface MatchState {
   isWaitingForAllBattles: boolean;
   isAdvancingRound: boolean;
   isSyncingPlayers: boolean;
-  lastAnswerCorrect: boolean | null; // null = not answered yet
-  correctAnswerId: string | null; // ID of the correct answer after reveal
-
   initializeMatch: (
     roomCode: string,
     gameRoomId: string,
@@ -172,7 +169,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   },
 
   syncPlayersFromDB: async (roomId) => {
-    const { isSyncingPlayers } = get();
+    const { isSyncingPlayers, isAdvancingRound } = get();
+
+    // IMPORTANT: Skip sync if we're currently advancing round
+    // This prevents excessive sync calls during round transition
+    if (isAdvancingRound) {
+      console.log(
+        `[MatchStore] ⚠️ Skipping player sync - currently advancing round`
+      );
+      return;
+    }
 
     // Prevent infinite sync loops
     if (isSyncingPlayers) {
@@ -186,6 +192,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     try {
       const res = await fetch(`/api/match/participants/${roomId}`, {
         cache: "no-store",
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -278,7 +285,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "match_rounds",
           filter: `game_room_id=eq.${roomId}`,
@@ -321,8 +328,19 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         },
         async (payload) => {
           // Sync players when health is updated
-          // Check if we're not already syncing to prevent infinite loops
-          const { isSyncingPlayers } = get();
+          // Check if we're not already syncing AND not currently advancing round
+          const { isSyncingPlayers, isAdvancingRound } = get();
+
+          // IMPORTANT: Skip sync if we're currently advancing round
+          // This prevents excessive sync calls during round transition
+          if (isAdvancingRound) {
+            console.log(
+              `[MatchStore] ⚠️ Skipping player sync (real-time) - currently advancing round`
+            );
+            return;
+          }
+
+          // Prevent infinite sync loops
           if (isSyncingPlayers) {
             console.log(
               `[MatchStore] ⚠️ Skipping real-time sync, already syncing`
@@ -426,6 +444,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
           game_room_id: state.gameRoomId,
           round_number: nextOrder,
         }),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -522,7 +541,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
       try {
         const res = await fetch(
-          `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${state.currentOrder}`
+          `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${state.currentOrder}`,
+          {
+            credentials: "include",
+          }
         );
 
         if (res.ok) {
@@ -592,18 +614,12 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
     set({ selectedAnswerId: answerId, isSubmitting: true });
 
-    // ── SOLO MODE: Submit via quiz user-answer API ──
-    if (isSolo) {
-      try {
-        const res = await fetch("/api/quiz/user-answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            answer_id: answerId,
-            round_number: state.currentOrder,
-          }),
-        });
+    console.log(
+      `[MatchStore] handleSelectAnswer called: userId=${userId.substring(
+        0,
+        8
+      )}, answerId=${answerId.substring(0, 8)}`
+    );
 
         if (res.ok) {
           const result = await res.json();
@@ -663,6 +679,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
           game_room_id: state.gameRoomId,
           round_number: state.currentOrder,
         }),
+        credentials: "include",
       });
 
       console.log(`[MatchStore] Response status: ${res.status}`);
@@ -682,7 +699,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             firstAnswerId: answerId,
           });
 
-          // Sync players to get updated health from database
+          // Sync players to get updated health from database (ONLY ONCE)
+          // Real-time subscription will handle subsequent updates
           console.log(
             "[MatchStore] Syncing players after answer submission..."
           );
@@ -748,6 +766,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
               round_number: currentOrder,
               battle_room_id: currentBattleRoom.battle_room_id,
             }),
+            credentials: "include",
           });
 
           if (res.ok) {

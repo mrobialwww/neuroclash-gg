@@ -10,16 +10,20 @@ export function OverlayJoinCardWrapper() {
   const [roomToJoin, setRoomToJoin] = useState<GameRoomWithPlayerCount | null>(
     null
   );
-  const [toastData, setToastData] = useState<{ isOpen: boolean; code: string }>({
-    isOpen: false,
-    code: ""
-  });
+  const [toastData, setToastData] = useState<{ isOpen: boolean; code: string }>(
+    {
+      isOpen: false,
+      code: "",
+    }
+  );
 
   const handleJoinByCode = async (code: string) => {
     if (!code) return;
 
     try {
-      const resp = await fetch(`/api/game-rooms/code/${code}`);
+      const resp = await fetch(`/api/game-rooms/code/${code}`, {
+        credentials: "include",
+      });
       const result = await resp.json();
 
       // API contract: { data: GameRoom[] } — ambil elemen pertama

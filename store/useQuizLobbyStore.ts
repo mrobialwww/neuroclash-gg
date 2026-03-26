@@ -114,9 +114,13 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
         try {
           // Fetch info User & Karakter secara paralel (tanpa cache agar avatar selalu fresh)
           const [userRes, charRes] = await Promise.all([
-            fetch(`/api/users/${raw.user_id}`, { cache: "no-store" }),
+            fetch(`/api/users/${raw.user_id}`, {
+              cache: "no-store",
+              credentials: "include",
+            }),
             fetch(`/api/user-character/${raw.user_id}?is_used=true`, {
               cache: "no-store",
+              credentials: "include",
             }),
           ]);
 
@@ -340,7 +344,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
             });
           }
 
-          // Redirect semua player ke halaman game/starbox saat room_status berubah jadi 'playing'
+          // Redirect semua player ke halaman game saat room_status berubah jadi 'playing'
           if (
             roomData &&
             payload.new.room_status === "playing" &&

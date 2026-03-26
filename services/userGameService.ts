@@ -52,8 +52,12 @@ export const userGameService = {
     const playerPromises = Array.from(uniqueUsers.values()).map(async (p) => {
       try {
         const [userRes, charRes] = await Promise.all([
-          fetch(`/api/users/${p.user_id}`, { cache: "no-store" }),
+          fetch(`/api/users/${p.user_id}`, {
+            cache: "no-store",
+            credentials: "include",
+          }),
           fetch(`/api/user-character/${p.user_id}?is_used=true`, {
+            credentials: "include",
             cache: "no-store",
           }),
         ]);
@@ -63,7 +67,10 @@ export const userGameService = {
           ? userResult.data[0]
           : userResult.data;
 
-        let characterData: { base_character: string; image_url: string } | null = null;
+        let characterData: {
+          base_character: string;
+          image_url: string;
+        } | null = null;
         if (charRes.ok) {
           const charResult = await charRes.json();
           const raw = charResult.data;

@@ -2,20 +2,57 @@ import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
 import { createClient } from "@/lib/supabase/server";
-import { userService } from "@/services/auth/userService";
-import { gameRoomService } from "@/services/gameRoomService";
-
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Parallel fetch: user data + public grouped rooms + user's own rooms
-  const [dashboardData, groupedRooms, userRooms] = await Promise.all([
-    user ? userService.getDashboardData(user.id) : null,
-    gameRoomService.getGroupedPublicRooms(),
-    user ? gameRoomService.getUserRooms(user.id) : [],
-  ]);
+  if (!user) {
+    redirect("/signin");
+  }
+
+  // Use API route for dashboard data to avoid circular dependencies
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/users/${
+      user.id
+    }/dashboard`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch dashboard data");
+  }
+
+  const { data: dashboardData } = await res.json();
+
+  // Fetch game rooms (only public rooms for now)
+  const rooms = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    }/api/game-rooms?room_visibility=public&room_status=open`,
+    {
+      credentials: "include",
+    }
+  )
+    .then((res) => (res.ok ? res.json() : { data: [] }))
+    .then((result) => result.data || []);
+
+  // Group rooms by category
+  const groupedRooms = rooms.reduce((acc: any[], room: any) => {
+    const existing = acc.find((g) => g.topic === room.category);
+    if (existing) {
+      existing.rooms.push(room);
+    } else {
+      acc.push({ topic: room.category, rooms: [room] });
+    }
+    return acc;
+  }, []);
 
   // Helper formatting for category titles
   const formatTopicTitle = (topic: string) => {
@@ -38,19 +75,12 @@ export default async function DashboardPage() {
       </div>
 
       <div className="space-y-12">
-        {/* Arena Kamu Section (Personalized) */}
-        {userRooms && userRooms.length > 0 && (
-          <CategorySection
-            key="arena-kamu"
-            title="Arena Kamu"
-            rooms={userRooms}
-          />
-        )}
-
         {/* Categories Section (Public) */}
-        {groupedRooms.map((group) => {
+        {groupedRooms.map((group: any) => {
           // Filter to ensure only public rooms are shown in categorized sections
-          const publicRooms = group.rooms.filter(r => r.room_visibility === 'public');
+          const publicRooms = group.rooms.filter(
+            (r: any) => r.room_visibility === "public"
+          );
 
           if (publicRooms.length === 0) return null;
 

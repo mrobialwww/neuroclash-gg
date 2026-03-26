@@ -12,13 +12,17 @@ export const gameRepository = {
     let targetRoom = null;
 
     if (code && code !== id) {
-      const res = await fetch(`/api/game-rooms/code/${code}`);
+      const res = await fetch(`/api/game-rooms/code/${code}`, {
+        credentials: "include",
+      });
       const result = await res.json();
       targetRoom = result.data?.[0] ?? result.data ?? null;
     }
 
     if (!targetRoom && id) {
-      const resId = await fetch(`/api/game-rooms/${id}`);
+      const resId = await fetch(`/api/game-rooms/${id}`, {
+        credentials: "include",
+      });
       const resIdData = await resId.json();
       targetRoom = resIdData.data?.[0] ?? resIdData.data ?? null;
     }
@@ -26,4 +30,3 @@ export const gameRepository = {
     return targetRoom || null;
   },
 };
-
