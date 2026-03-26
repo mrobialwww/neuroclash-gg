@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { GameRoom, GameRoomWithPlayerCount } from "@/types/GameRoom";
 import { Answer } from "@/types/quiz";
 
@@ -187,12 +187,31 @@ export const gameRoomRepository = {
   ): Promise<{ questionsInserted: number; answersInserted: number }> {
     const supabase = await createClient();
 
+    console.log(`[GameRoomRepo] insertQuestionsWithAnswers START`);
+    console.log(`[GameRoomRepo] Target game_room_id: ${gameRoomId}`);
+    console.log(
+      `[GameRoomRepo] Number of questions to insert: ${questions.length}`
+    );
+
     let questionsInserted = 0;
     let answersInserted = 0;
 
     for (const question of questions) {
+      console.log(
+        `[GameRoomRepo] Processing question ${question.question_order}`
+      );
+      console.log(
+        `[GameRoomRepo] Question text: ${question.question_text?.substring(
+          0,
+          50
+        )}...`
+      );
+      console.log(
+        `[GameRoomRepo] Number of answers: ${question.answers?.length || 0}`
+      );
+
       // Insert question
-      const { data: newQ } = await supabase
+      const { data: newQ, error: qError } = await supabase
         .from("questions")
         .insert({
           game_room_id: gameRoomId,
@@ -202,20 +221,40 @@ export const gameRoomRepository = {
         .select()
         .single();
 
+      if (qError) {
+        console.error("[GameRoomRepo] ❌ Failed to insert question:", qError);
+        console.error("[GameRoomRepo] Error code:", qError.code);
+        console.error("[GameRoomRepo] Error message:", qError.message);
+        console.error("[GameRoomRepo] Question data:", question);
+        continue;
+      }
+
       if (!newQ) {
         console.error(
-          "[GameRoomRepo] Failed to insert question:",
+          "[GameRoomRepo] ❌ Question insertion returned null:",
           question.question_order
         );
         continue;
       }
 
+      console.log(`[GameRoomRepo] ✅ Question inserted: ${newQ.question_id}`);
       questionsInserted++;
 
       // Insert answers untuk question ini
       if (question.answers && question.answers.length > 0) {
+        console.log(
+          `[GameRoomRepo] Inserting ${question.answers.length} answers for question ${question.question_order}`
+        );
+
         for (const answer of question.answers) {
-          const { data: answerData } = await supabase
+          console.log(
+            `[GameRoomRepo] Inserting answer: ${answer.answer_text?.substring(
+              0,
+              30
+            )}...`
+          );
+
+          const { data: answerData, error: aError } = await supabase
             .from("answers")
             .insert({
               question_id: newQ.question_id,
@@ -226,12 +265,36 @@ export const gameRoomRepository = {
             .select()
             .single();
 
+          if (aError) {
+            console.error("[GameRoomRepo] ❌ Failed to insert answer:", aError);
+            console.error("[GameRoomRepo] Error code:", aError.code);
+            console.error("[GameRoomRepo] Error message:", aError.message);
+            console.error("[GameRoomRepo] Answer data:", answer);
+            continue;
+          }
+
           if (answerData) {
+            console.log(
+              `[GameRoomRepo] ✅ Answer inserted: ${answerData.answer_id}`
+            );
             answersInserted++;
+          } else {
+            console.error(
+              "[GameRoomRepo] ❌ Answer insertion returned null:",
+              answer
+            );
           }
         }
+      } else {
+        console.warn(
+          `[GameRoomRepo] ⚠️ No answers found for question ${question.question_order}`
+        );
       }
     }
+
+    console.log(`[GameRoomRepo] insertQuestionsWithAnswers COMPLETE`);
+    console.log(`[GameRoomRepo] Questions inserted: ${questionsInserted}`);
+    console.log(`[GameRoomRepo] Answers inserted: ${answersInserted}`);
 
     return {
       questionsInserted: questionsInserted,

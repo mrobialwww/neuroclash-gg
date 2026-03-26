@@ -1,5 +1,5 @@
 import { gameRoomRepository } from "@/repository/gameRoomRepository";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -121,6 +121,27 @@ export async function POST(
     }
 
     console.log(`[DUPLICATE] Found ${questions.length} questions`);
+
+    // Log detailed question data for debugging
+    questions.forEach((q: any, idx: number) => {
+      console.log(`[DUPLICATE] Question ${idx + 1}:`);
+      console.log(`  - question_id: ${q.question_id}`);
+      console.log(`  - question_order: ${q.question_order}`);
+      console.log(`  - question_text: ${q.question_text?.substring(0, 50)}...`);
+      console.log(`  - Number of answers: ${q.answers?.length || 0}`);
+
+      if (q.answers && q.answers.length > 0) {
+        q.answers.forEach((a: any, aIdx: number) => {
+          console.log(`    Answer ${aIdx + 1}:`);
+          console.log(`      - answer_id: ${a.answer_id}`);
+          console.log(
+            `      - answer_text: ${a.answer_text?.substring(0, 30)}...`
+          );
+          console.log(`      - is_correct: ${a.is_correct}`);
+          console.log(`      - key: ${a.key}`);
+        });
+      }
+    });
 
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let newRoomCode = "";

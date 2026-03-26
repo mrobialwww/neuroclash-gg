@@ -1,6 +1,6 @@
 import { battleRoomService, BattleRoom } from "./battleRoomService";
 import { matchRepository } from "@/repository/matchRepository";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export const roundManagementService = {
   /**
@@ -126,7 +126,16 @@ export const roundManagementService = {
     message: string;
   }> {
     console.log(
+      `[RoundService] ==================================================`
+    );
+    console.log(
       `[RoundService] Processing answer from user ${userId} in battle room ${battleRoomId}`
+    );
+    console.log(
+      `[RoundService] Answer ID: ${answerId}, Game ID: ${gameId}, Round: ${roundNumber}`
+    );
+    console.log(
+      `[RoundService] ==================================================`
     );
 
     const supabase = await createClient();
@@ -163,8 +172,15 @@ export const roundManagementService = {
     }
 
     // 3. Get answer details
+    console.log(
+      `[RoundService] Step 2: Fetching answer details for ${answerId.substring(
+        0,
+        8
+      )}...`
+    );
     const answerDetail = await matchRepository.getAnswerDetail(answerId);
     if (!answerDetail) {
+      console.error(`[RoundService] ❌ Answer not found: ${answerId}`);
       return {
         success: false,
         is_correct: false,
@@ -173,13 +189,20 @@ export const roundManagementService = {
         message: "Answer not found",
       };
     }
+    console.log(
+      `[RoundService] ✅ Answer found: is_correct=${answerDetail.is_correct}`
+    );
 
     // 4. Record the answer
+    console.log(`[RoundService] Step 3: Recording answer to user_answers...`);
     await matchRepository.submitAnswer(userId, answerId, gameId, roundNumber);
+    console.log(`[RoundService] ✅ Answer recorded`);
 
     // 5. If this is the first answer, record it in battle room
     if (!battleRoom.first_answer_user_id) {
+      console.log(`[RoundService] Step 4: Recording first answer...`);
       await battleRoomService.recordFirstAnswer(battleRoomId, userId, answerId);
+      console.log(`[RoundService] ✅ First answer recorded in battle room`);
 
       // Update user_answers to mark as first answer
       await supabase
@@ -192,27 +215,53 @@ export const roundManagementService = {
         .eq("answer_id", answerId)
         .eq("round_number", roundNumber);
     }
-
     // 6. Get question metadata to calculate damage
+    // Fetch question and game_room separately to avoid JOIN issues
     const { data: questionData } = await supabase
       .from("questions")
-      .select("question_order, game_rooms(total_question)")
+      .select("question_order, game_room_id")
       .eq("question_id", answerDetail.question_id)
       .single();
 
     if (!questionData) {
+      console.error(
+        `[RoundService] ❌ Question not found for question_id: ${answerDetail.question_id}`
+      );
       return {
         success: false,
         is_correct: false,
         damage_applied: false,
         new_health: 100,
-        message: "Question metadata not found",
+        message: "Question not found",
       };
     }
 
+    // Fetch game_room separately to get total_round
+    const { data: gameRoomData } = await supabase
+      .from("game_rooms")
+      .select("total_round")
+      .eq("game_room_id", questionData.game_room_id)
+      .single();
+
+    if (!gameRoomData) {
+      console.error(
+        `[RoundService] ❌ Game room not found for game_room_id: ${questionData.game_room_id}`
+      );
+      return {
+        success: false,
+        is_correct: false,
+        damage_applied: false,
+        new_health: 100,
+        message: "Game room not found",
+      };
+    }
+
+    console.log(
+      `[RoundService] Question order: ${questionData.question_order}, Total rounds: ${gameRoomData.total_round}`
+    );
+
     const currentOrder = questionData.question_order;
-    const totalQuestions =
-      (questionData.game_rooms as any).total_question || 20;
+    const totalQuestions = gameRoomData.total_round || 20;
 
     // 7. Calculate damage
     const damage = this.calculateDamage(currentOrder, totalQuestions);
@@ -320,19 +369,41 @@ export const roundManagementService = {
       .single();
 
     if (!battleRoom) return;
-
     // Get question metadata to calculate damage
+    // Fetch question and game_room separately to avoid JOIN issues
     const { data: questionData } = await supabase
       .from("questions")
-      .select("question_order, game_rooms(total_question)")
+      .select("question_order, game_room_id")
       .eq("question_id", battleRoom.question_id)
       .single();
 
-    if (!questionData) return;
+    if (!questionData) {
+      console.error(
+        `[RoundService] ❌ Question not found for question_id: ${battleRoom.question_id}`
+      );
+      return;
+    }
+
+    // Fetch game_room separately to get total_round
+    const { data: gameRoomData } = await supabase
+      .from("game_rooms")
+      .select("total_round")
+      .eq("game_room_id", questionData.game_room_id)
+      .single();
+
+    if (!gameRoomData) {
+      console.error(
+        `[RoundService] ❌ Game room not found for game_room_id: ${questionData.game_room_id}`
+      );
+      return;
+    }
 
     const currentOrder = questionData.question_order;
-    const totalQuestions =
-      (questionData.game_rooms as any).total_question || 20;
+    const totalQuestions = gameRoomData.total_round || 20;
+
+    console.log(
+      `[RoundService] Timeout - Question order: ${currentOrder}, Total rounds: ${totalQuestions}`
+    );
 
     // Calculate damage
     const damage = this.calculateDamage(currentOrder, totalQuestions);
@@ -413,11 +484,17 @@ export const roundManagementService = {
     // 1. Check alive players
     const { data: players } = await supabase
       .from("game_players")
-      .select("health, status")
+      .select("user_id, health, status")
       .eq("game_room_id", gameId);
 
     const alivePlayers = (players || []).filter(
       (p: any) => p.health > 0 && p.status === "alive"
+    );
+
+    console.log(
+      `[RoundService] Checking game end condition - alive players: ${
+        alivePlayers.length
+      }, total players: ${players?.length || 0}`
     );
 
     if (alivePlayers.length <= 1) {
@@ -430,11 +507,16 @@ export const roundManagementService = {
     // 2. Check if all rounds completed
     const { data: room } = await supabase
       .from("game_rooms")
-      .select("total_question")
+      .select("total_round")
       .eq("game_room_id", gameId)
       .single();
 
-    if (!room) return false;
+    if (!room) {
+      console.error(
+        `[RoundService] Game room not found for game_id: ${gameId}`
+      );
+      return false;
+    }
 
     const { data: lastRound } = await supabase
       .from("match_rounds")
@@ -444,12 +526,18 @@ export const roundManagementService = {
       .limit(1)
       .single();
 
-    if (lastRound && lastRound.round_number >= room.total_question) {
+    if (lastRound && lastRound.round_number >= room.total_round) {
       console.log(
-        `[RoundService] Game should end - all ${room.total_question} rounds completed`
+        `[RoundService] Game should end - all ${room.total_round} rounds completed (current: ${lastRound.round_number}/${room.total_round})`
       );
       return true;
     }
+
+    console.log(
+      `[RoundService] Game should NOT end - continuing to round ${
+        lastRound ? lastRound.round_number + 1 : 2
+      }`
+    );
 
     return false;
   },

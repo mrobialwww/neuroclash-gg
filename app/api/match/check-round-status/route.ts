@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { roundManagementService } from "@/services/roundManagementService";
+import { battleRoomService } from "@/services/battleRoomService";
 
 /**
  * Check if all battle rooms are finished before advancing round
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       `[API] Checking round status for game ${game_room_id}, round ${round_number}`
     );
 
-    const allFinished = await roundManagementService.areAllBattlesFinished(
+    const allFinished = await battleRoomService.areAllBattlesFinished(
       game_room_id,
       round_number
     );
