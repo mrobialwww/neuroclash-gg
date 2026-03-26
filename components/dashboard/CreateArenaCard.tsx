@@ -189,7 +189,7 @@ export function CreateArenaCard() {
             <div className="bg-[#0b0d1e] border border-blue-500/20 rounded-xl p-4 space-y-2">
               <div className="flex justify-between items-center text-xs md:text-sm">
                 <span className="text-white/50">Materi</span>
-                <span className="text-white font-semibold capitalize font-mono text-[10px] md:text-xs truncate ml-2">
+                <span className="text-white font-semibold capitalize font-mono text-xs md:text-sm truncate ml-2">
                   {gameRoom.category === "bahasaindonesia"
                     ? "Bahasa Indonesia"
                     : gameRoom.category === "bahasainggris"
@@ -205,7 +205,7 @@ export function CreateArenaCard() {
                 <span className="text-white/50">Pemain Max</span>
                 <span className="text-white font-semibold">{gameRoom.max_player} Player</span>
               </div>
-              <div className="flex justify-between items-center text-xs md:text-sm pt-1 border-t border-white/5">
+              <div className="flex justify-between items-center text-xs md:text-sm">
                 <span className="text-white/50">Kesulitan</span>
                 <span className="font-bold capitalize bg-blue-600/30 px-2 py-0.5 rounded text-[10px] md:text-xs text-blue-300">
                   {gameRoom.difficulty}
