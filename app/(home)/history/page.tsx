@@ -1,17 +1,38 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import HistoryClient from "@/components/history/HistoryClient";
 
-export default async function HistoryPage() {
-  const supabase = await createClient();
+export default function HistoryPage() {
+  const router = useRouter();
+  const [userId, setUserId] = useState<string>("");
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
 
-  // Kalau belum login, redirect ke halaman login
-  if (error || !user?.id) {
-    redirect("/signin");
-  }
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
 
-  // userId langsung di-pass ke client component
-  return <HistoryClient userId={user.id} />;
+        // Kalau belum login, redirect ke halaman login
+        if (error || !user?.id) {
+          router.push("/signin");
+        } else {
+          setUserId(user.id);
+        }
+      } catch (error) {
+        console.error("[History] Error checking auth:", error);
+        router.push("/signin");
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  return userId ? <HistoryClient userId={userId} /> : null;
 }

@@ -29,7 +29,9 @@ export function LeaderboardClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/leaderboard?page=${p}&limit=${LIMIT}`);
+      const res = await fetch(`/api/leaderboard?page=${p}&limit=${LIMIT}`, {
+        credentials: "include",
+      });
       const json = await res.json();
 
       if (!json.success) {
@@ -56,12 +58,10 @@ export function LeaderboardClient() {
   const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
-    <div
-      className="min-h-screen w-full relative overflow-x-hidden"
-    >
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 py-12 sm:py-20 pb-12">
+    <div className="relative min-h-screen w-full overflow-x-hidden">
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-4 py-12 pb-12 sm:py-20">
         {/* Badge Title */}
-        <div className="relative flex justify-center mb-8 sm:mb-12">
+        <div className="relative mb-8 flex justify-center sm:mb-12">
           <div className="relative w-full max-w-[480px]">
             <LeaderboardBadge title="Pemain Teratas" />
           </div>
@@ -74,13 +74,15 @@ export function LeaderboardClient() {
 
           {/* Body */}
           {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-white/60" />
             </div>
           ) : error ? (
-            <div className="text-center py-16 text-white/60 text-sm">{error}</div>
+            <div className="py-16 text-center text-sm text-white/60">
+              {error}
+            </div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-16 text-white/60 text-sm">
+            <div className="py-16 text-center text-sm text-white/60">
               Belum ada data pemain.
             </div>
           ) : (
@@ -88,16 +90,18 @@ export function LeaderboardClient() {
               {entries.map((entry) => {
                 const isMe = myEntry?.user_id === entry.user_id;
                 return (
-                  <LeaderboardRow key={entry.user_id} entry={entry} isMe={isMe} />
+                  <LeaderboardRow
+                    key={entry.user_id}
+                    entry={entry}
+                    isMe={isMe}
+                  />
                 );
               })}
             </div>
           )}
 
           {/* Divider */}
-          {!loading && myEntry && (
-            <div className="my-[4px]" />
-          )}
+          {!loading && myEntry && <div className="my-[4px]" />}
 
           {/* My Position Row */}
           {!loading && myEntry && (
@@ -105,7 +109,9 @@ export function LeaderboardClient() {
               {/* Show "Me" only if not already visible on current page */}
               {!entries.some((e) => e.user_id === myEntry.user_id) && (
                 <LeaderboardRow
-                  entry={myEntry.position > 0 ? myEntry : { ...myEntry, position: 0 }}
+                  entry={
+                    myEntry.position > 0 ? myEntry : { ...myEntry, position: 0 }
+                  }
                   isMe
                 />
               )}
@@ -115,24 +121,24 @@ export function LeaderboardClient() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-end mt-4 px-1">
+          <div className="mt-4 flex items-center justify-end px-1">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrev}
                 disabled={page === 1}
-                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-white text-sm md:text-md font-medium min-w-[80px] text-center">
+              <span className="md:text-md min-w-[80px] text-center text-sm font-medium text-white">
                 {page} / {totalPages}
               </span>
               <button
                 onClick={handleNext}
                 disabled={page === totalPages}
-                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

@@ -44,6 +44,61 @@ export function Navbar({ initialData }: NavbarProps) {
     }
   }, [initialData, isInitialized, setUserData]);
 
+  // Fetch user data on client side if not initialized
+  useEffect(() => {
+    if (!isInitialized && !initialData) {
+      const fetchUserData = async () => {
+        try {
+          const { createClient } = await import("@/lib/supabase/client");
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (user) {
+            // Fetch user data from API to avoid importing server client
+            const res = await fetch(`/api/users/${user.id}`, {
+              cache: "no-store",
+              credentials: "include",
+            });
+            if (res.ok) {
+              const result = await res.json();
+              const userData = Array.isArray(result.data)
+                ? result.data[0]
+                : result.data;
+
+              if (userData) {
+                // Get user's active character
+                const charRes = await fetch(`/api/user-character/${user.id}`, {
+                  cache: "no-store",
+                  credentials: "include",
+                });
+                let avatar = "/default/Slime.webp";
+                if (charRes.ok) {
+                  const charResult = await charRes.json();
+                  const charData = Array.isArray(charResult.data)
+                    ? charResult.data[0]
+                    : charResult.data;
+                  avatar = charData?.image_url || avatar;
+                }
+
+                setUserData({
+                  username: userData.username || "Guest",
+                  coins: userData.coin || 0,
+                  avatar,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("[Navbar] Error fetching user data:", error);
+        }
+      };
+
+      fetchUserData();
+    }
+  }, [isInitialized, initialData, setUserData]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,29 +143,28 @@ export function Navbar({ initialData }: NavbarProps) {
   ];
 
   return (
-    <header className="sticky top-0 w-full bg-white border-b border-gray-100 z-50">
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-stretch justify-between lg:gap-4 h-[72px]">
-
+    <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white">
+      <div className="mx-auto flex h-[72px] max-w-[1440px] items-stretch justify-between px-4 md:px-8 lg:gap-4 lg:px-12">
         {/* Left: Logo & Search */}
-        <div className="flex items-center gap-8 flex-1 lg:flex-none">
-          <Link href="/" className="shrink-0 flex items-center">
+        <div className="flex flex-1 items-center gap-8 lg:flex-none">
+          <Link href="/" className="flex shrink-0 items-center">
             <Image
               src="/icons/neuroclash.svg"
               alt="Neuroclash Logo"
               width={50}
               height={50}
               priority
-              className="w-[50px] h-auto"
-              style={{ height: 'auto' }}
+              className="h-auto w-[50px]"
+              style={{ height: "auto" }}
             />
           </Link>
-          <div className="hidden xl:block w-[300px] xl:w-[360px]">
+          <div className="hidden w-[300px] xl:block xl:w-[360px]">
             <SearchBar />
           </div>
         </div>
 
         {/* Center: Desktop Navigation */}
-        <nav className="hidden md:flex items-center lg:gap-2">
+        <nav className="hidden items-center md:flex lg:gap-2">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -118,13 +172,15 @@ export function Navbar({ initialData }: NavbarProps) {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "relative flex items-center gap-2 px-4 h-full transition-all duration-200 group",
-                  isActive ? "text-[#256AF4]" : "text-[#A1A1A1] hover:text-[#555555]"
+                  "group relative flex h-full items-center gap-2 px-4 transition-all duration-200",
+                  isActive
+                    ? "text-[#256AF4]"
+                    : "text-[#A1A1A1] hover:text-[#555555]"
                 )}
               >
-                <div className="w-6 h-6">
+                <div className="h-6 w-6">
                   <div
-                    className="w-full h-full bg-current"
+                    className="h-full w-full bg-current"
                     style={{
                       maskImage: `url(${link.icon})`,
                       WebkitMaskImage: `url(${link.icon})`,
@@ -135,11 +191,11 @@ export function Navbar({ initialData }: NavbarProps) {
                     }}
                   />
                 </div>
-                <span className="text-md font-semibold whitespace-nowrap">
+                <span className="text-md whitespace-nowrap font-semibold">
                   {link.name}
                 </span>
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-[#256AF4]" />
+                  <div className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]" />
                 )}
               </Link>
             );
@@ -147,12 +203,11 @@ export function Navbar({ initialData }: NavbarProps) {
         </nav>
 
         {/* Right: User Stats */}
-        <div className="flex items-center gap-4 md:gap-6 flex-1 justify-end lg:flex-none">
-
-          <div className="relative avatar-dropdown-container">
+        <div className="flex flex-1 items-center justify-end gap-4 md:gap-6 lg:flex-none">
+          <div className="avatar-dropdown-container relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="relative w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-full overflow-hidden cursor-pointer"
+              className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-full md:h-12 md:w-12"
             >
               <Image
                 src={user.avatar}
@@ -165,16 +220,20 @@ export function Navbar({ initialData }: NavbarProps) {
 
             {/* Avatar Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in zoom-in-95 duration-200 z-100">
-                <div className="px-4 py-3 border-b border-gray-50 mb-1">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Akun Anda</p>
-                  <p className="text-sm font-bold text-gray-800 truncate">{user.username}</p>
+              <div className="animate-in fade-in zoom-in-95 z-100 absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white py-2 shadow-xl duration-200">
+                <div className="mb-1 border-b border-gray-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Akun Anda
+                  </p>
+                  <p className="truncate text-sm font-bold text-gray-800">
+                    {user.username}
+                  </p>
                 </div>
 
                 <Link
                   href="/profile"
                   onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
                 >
                   <UserIcon size={18} className="text-gray-400" />
                   <span>Profil</span>
@@ -183,7 +242,7 @@ export function Navbar({ initialData }: NavbarProps) {
                 <button
                   onClick={handleSignOut}
                   disabled={isLoggingOut}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
                 >
                   <LogOut size={18} />
                   <span>{isLoggingOut ? "Keluar..." : "Keluar"}</span>
@@ -192,8 +251,8 @@ export function Navbar({ initialData }: NavbarProps) {
             )}
           </div>
 
-          <div className="flex items-center bg-[#F9DA61]/50 border border-[#DFB200] rounded-full pl-1 pr-4 py-1 gap-2 shadow-sm">
-            <div className="relative w-7 h-7 md:w-8 md:h-8">
+          <div className="flex items-center gap-2 rounded-full border border-[#DFB200] bg-[#F9DA61]/50 py-1 pl-1 pr-4 shadow-sm">
+            <div className="relative h-7 w-7 md:h-8 md:w-8">
               <Image
                 src="/icons/coin-color.svg"
                 alt="Coin"
@@ -202,12 +261,15 @@ export function Navbar({ initialData }: NavbarProps) {
                 className="object-contain"
               />
             </div>
-            <span className="text-[#AD8A00] font-bold text-sm md:text-base tracking-tight">
+            <span className="text-sm font-bold tracking-tight text-[#AD8A00] md:text-base">
               {user.coins.toLocaleString("id-ID")}
             </span>
           </div>
 
-          <button className="md:hidden p-2 text-[#555555]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button
+            className="p-2 text-[#555555] md:hidden"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
             {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
@@ -215,7 +277,7 @@ export function Navbar({ initialData }: NavbarProps) {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white border-b p-4 space-y-2 md:hidden shadow-lg transition-all">
+        <div className="absolute left-0 top-full w-full space-y-2 border-b bg-white p-4 shadow-lg transition-all md:hidden">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -224,13 +286,13 @@ export function Navbar({ initialData }: NavbarProps) {
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={cn(
-                  "flex items-center gap-4 p-3 rounded-xl transition-all",
+                  "flex items-center gap-4 rounded-xl p-3 transition-all",
                   isActive ? "bg-blue-50 text-[#256AF4]" : "text-[#A1A1A1]"
                 )}
               >
-                <div className="w-6 h-6">
+                <div className="h-6 w-6">
                   <div
-                    className="w-full h-full bg-current"
+                    className="h-full w-full bg-current"
                     style={{
                       maskImage: `url(${link.icon})`,
                       WebkitMaskImage: `url(${link.icon})`,
@@ -243,7 +305,7 @@ export function Navbar({ initialData }: NavbarProps) {
                 </div>
                 <span className="font-semibold">{link.name}</span>
               </Link>
-            )
+            );
           })}
         </div>
       )}

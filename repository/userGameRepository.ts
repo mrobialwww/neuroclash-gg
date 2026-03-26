@@ -37,6 +37,7 @@ export const userGameRepository = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -56,6 +57,7 @@ export const userGameRepository = {
   async getParticipants(gameRoomId: string): Promise<ParticipantRecord[]> {
     const res = await fetch(`/api/user-game/participants/${gameRoomId}`, {
       cache: "no-store",
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -76,6 +78,7 @@ export const userGameRepository = {
     try {
       const res = await fetch(`/api/user-game/leave/${userGameId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       return res.ok;
     } catch {

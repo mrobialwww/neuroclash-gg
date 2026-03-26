@@ -29,7 +29,11 @@ export interface StarboxState {
   isLoading: boolean;
 
   initGameData: (code: string, roomId: string) => Promise<void>;
-  selectAbility: (roomId: string, abilityId: string, userId: string) => Promise<void>;
+  selectAbility: (
+    roomId: string,
+    abilityId: string,
+    userId: string
+  ) => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
   reset: () => void;
 }
@@ -62,12 +66,17 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
 
       // 2. Ambil currentUser untuk mengecek isHost
       const currentUser = await userClientService.getCurrentUserNavbarData();
-      const isHost = Boolean(currentUser && currentUser.id === roomConfig.user_id);
+      const isHost = Boolean(
+        currentUser && currentUser.id === roomConfig.user_id
+      );
 
       // 3. Ambil participants dari API (karena useQuizLobbyStore bisa reset jika kena window.location.href)
       let activeParticipants: any[] = [];
       try {
-        const res = await fetch(`/api/match/participants/${roomId}`, { cache: "no-store" });
+        const res = await fetch(`/api/match/participants/${roomId}`, {
+          cache: "no-store",
+          credentials: "include",
+        });
         if (res.ok) {
           const json = await res.json();
           activeParticipants = json.data || [];
@@ -89,20 +98,28 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
       // }
 
       //Insert dan Get all ability room ✅
-      const abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, isHost);
+      const abilityRooms = await abilityRoomRepository.initialAbilites(
+        roomId,
+        totalPlayer,
+        isHost
+      );
 
       // Map struktur Supabase → Ability interface ✅
-      const mappedAbilities: Ability[] = (abilityRooms ?? []).map((row: any) => {
-        const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
-        return {
-          id: String(row.ability_id),
-          name: detail?.name ?? "",
-          description: detail?.description ?? "",
-          stock: row.stock ?? 0,
-          image: detail?.image ?? "",
-          emptyImage: detail?.empty_image ?? "",
-        };
-      });
+      const mappedAbilities: Ability[] = (abilityRooms ?? []).map(
+        (row: any) => {
+          const detail = Array.isArray(row.abilities)
+            ? row.abilities[0]
+            : row.abilities;
+          return {
+            id: String(row.ability_id),
+            name: detail?.name ?? "",
+            description: detail?.description ?? "",
+            stock: row.stock ?? 0,
+            image: detail?.image ?? "",
+            emptyImage: detail?.empty_image ?? "",
+          };
+        }
+      );
 
       set({
         roomInfo: roomConfig,
@@ -113,7 +130,10 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
 
       get().setupRealtimeSubscription(roomId);
     } catch (e: any) {
-      console.error("Error initializing starbox game data:", e?.message || e?.details || JSON.stringify(e));
+      console.error(
+        "Error initializing starbox game data:",
+        e?.message || e?.details || JSON.stringify(e)
+      );
       set({ isLoading: false });
     }
   },
@@ -142,12 +162,14 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
           // Update state abilities di Zustand
           set((state) => ({
             abilities: state.abilities.map((ability) =>
-              ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
+              ability.id === String(updatedAbility.ability_id)
+                ? { ...ability, stock: updatedAbility.stock }
+                : ability
             ),
             pickingAbilityId: null,
             currentTurnIndex: state.currentTurnIndex + 1,
           }));
-        },
+        }
       )
       .subscribe();
   },
@@ -155,14 +177,20 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
   selectAbility: async (roomId: string, abilityId: string, userId: string) => {
     //Insert ability to rpc "increment ability" ✅
     try {
-      await abilityPlayerRepository.insertPlayerAbility(roomId, abilityId, userId);
+      await abilityPlayerRepository.insertPlayerAbility(
+        roomId,
+        abilityId,
+        userId
+      );
     } catch (error) {
       console.error("Gagal memilih ability", error);
     }
 
     set((state) => ({
       pickingAbilityId: abilityId,
-      abilities: state.abilities.map((a) => (a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a)),
+      abilities: state.abilities.map((a) =>
+        a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a
+      ),
     }));
   },
 

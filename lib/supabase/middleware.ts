@@ -50,12 +50,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Jika belum login dan bukan halaman publik, redirect ke signin
+  // NOTE: API routes harus handle auth sendiri, jangan redirect di middleware
   if (
     !user &&
     !isAuthPage &&
     request.nextUrl.pathname !== "/" &&
     !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/api/auth")
+    !request.nextUrl.pathname.startsWith("/api")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
