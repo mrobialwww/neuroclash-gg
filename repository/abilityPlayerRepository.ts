@@ -45,20 +45,20 @@ export const abilityPlayerRepository = {
   },
 
   /**
-   * ⚠️ Belum diimplementasikan dengan benar — masih query ke `game_players`.
-   * Perlu direfaktor sesuai kebutuhan aktual.
+   * Memanggil fungsi supabse rpc untuk mekanisme menggunakan ability heal
    */
-  async updatePlayerAbility(userId: string, roomId: string): Promise<number> {
-    const supabase = await createClient();
+  async userHealAbility(roomId: string, userId: string) {
+    const supabase = createClient();
 
-    const { data, error } = await supabase.from("game_players").select("health").eq("game_room_id", roomId).eq("user_id", userId).single();
+    const { error } = await supabase.rpc("use_healing_potion", {
+      p_game_room_id: roomId,
+      p_user_id: userId,
+    });
 
     if (error) {
-      console.error("[GamePlayerRepo] getPlayerHealth error:", error);
-      return 100;
+      console.error("[AbilityPlayerRepo] insertPlayerAbility error:", error);
+      throw error;
     }
-
-    return data?.health ?? 100;
   },
 
   /**

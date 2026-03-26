@@ -124,7 +124,7 @@ export default function StarboxPage() {
     setProgress(0);
     const duration = 3000; // 3 seconds
     const intervalTime = 50;
-    const step = (100 / (duration / intervalTime));
+    const step = 100 / (duration / intervalTime);
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -196,7 +196,7 @@ export default function StarboxPage() {
 
         {/* Title Section */}
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-white text-xl md:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-lg text-balance">
+          <h1 className="text-balance text-xl font-bold tracking-tight text-white drop-shadow-lg md:text-2xl lg:text-3xl">
             Takdir ada di tanganmu, pilih satu kekuatan!
           </h1>
 
@@ -265,22 +265,21 @@ export default function StarboxPage() {
 
         {/* Player Grid Container (Hanya relevan/tampil bagus di mode multiplayer) */}
         {roomInfo?.max_player !== 1 && (
-          <div className="relative w-full mt-4 py-8 px-4 sm:px-8 lg:px-10 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border border-white/10 shadow-2xl overflow-visible">
-
+          <div className="relative mt-4 w-full overflow-visible rounded-2xl border border-white/10 bg-[#D9D9D9]/20 px-4 py-8 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
             {/* Turn Badge Overlay */}
             {players[currentTurnIndex]?.isMe && (
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-full max-w-[400px] flex items-center justify-center z-30 px-4">
-                <div className="relative w-full h-auto flex items-center justify-center">
+              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
+                <div className="relative flex h-auto w-full items-center justify-center">
                   <NextImage
                     src="/dashboard/trophy-badge.webp"
                     alt="Badge Background"
                     width={400}
                     height={70}
-                    className="object-contain -z-10 drop-shadow-xl block w-full h-full"
+                    className="-z-10 block h-full w-full object-contain drop-shadow-xl"
                     priority
                   />
                   <div className="absolute inset-0 flex items-center justify-center px-4 md:px-8">
-                    <span className="uppercase text-xs sm:text-sm md:text-base text-white drop-shadow-md font-bold text-center leading-tight">
+                    <span className="text-center text-xs font-bold uppercase leading-tight text-white drop-shadow-md sm:text-sm md:text-base">
                       Sekarang giliran kamu untuk memilih kekuatan!
                     </span>
                   </div>
@@ -288,7 +287,7 @@ export default function StarboxPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-3 gap-y-12 md:gap-x-5 md:gap-y-16 items-start justify-items-center">
+            <div className="grid grid-cols-5 items-start justify-items-center gap-x-3 gap-y-12 md:grid-cols-8 md:gap-x-5 md:gap-y-16 lg:grid-cols-10">
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
                 const hasPicked = idx < currentTurnIndex;
@@ -317,4 +316,3 @@ export default function StarboxPage() {
 function nextTurn() {
   throw new Error("Function not implemented.");
 }
-

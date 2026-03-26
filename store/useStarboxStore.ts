@@ -308,6 +308,33 @@ export const useStarboxStore = create<StarboxState>()(
       },
 
       /**
+       * Gunakan ability Ramuan Penyembuh (ability_id = 3): +20 HP, max 100.
+       *  1. Panggil RPC `use_healing_potion` → UPDATE game_players.health di DB
+       *  2. Setelah RPC dikonfirmasi: update HP lokal + kurangi stok myInventory
+       *  3. Lawan melihat HP berubah via useMatchStore realtime listener (game_players)
+       *  4. Jika RPC gagal → tidak ada state yang perlu di-rollback
+       */
+      useHeal: async (roomId: string, userId: string) => {
+        try {
+          // RPC ke DB: kurangi stok ability_players + tambah health di game_players
+          await abilityPlayerRepository.userHealAbility(roomId, userId);
+
+          // Update HP lokal + kurangi stok — keduanya setelah DB konfirmasi (konsisten)
+          set((state) => ({
+            players: state.players.map((p) => (p.id === userId ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) } : p)),
+            myInventory: state.myInventory.map((a) => (a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a)).filter((a) => a.stock > 0),
+          }));
+        } catch (error) {
+          // RPC gagal → tidak ada state yang berubah, tidak perlu rollback
+          console.error("[StarboxStore] Gagal menggunakan Ramuan Penyembuh:", error);
+        }
+      },
+
+      useMateri: async () => {},
+      useAttack: async () => {},
+      useDefend: async () => {},
+
+      /**
        * Bersihkan semua state dan tutup koneksi Realtime.
        * Dipanggil saat game selesai sepenuhnya.
        */
