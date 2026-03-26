@@ -133,6 +133,7 @@ export const quizService = {
     );
 
     const res = await fetch(`/api/game-rooms/${roomId}/duplicate`, {
+      credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ max_player: maxPlayer, is_solo: isSolo }),

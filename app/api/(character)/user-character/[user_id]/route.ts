@@ -38,7 +38,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ user_id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ user_id: string }> }
+) {
   try {
     const supabase = await createClient();
 
@@ -48,9 +51,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const is_used = searchParams.get("is_used");
 
     // Convert string ke boolean
-    const is_used_bool = is_used === "true" ? true : is_used === "false" ? false : undefined;
+    const is_used_bool =
+      is_used === "true" ? true : is_used === "false" ? false : undefined;
 
-    let query = supabase.from("characters").select("*, user_characters!inner(user_id, is_used)").eq("user_characters.user_id", user_id);
+    let query = supabase
+      .from("characters")
+      .select("*, user_characters!inner(user_id, is_used)")
+      .eq("user_characters.user_id", user_id);
 
     if (is_used_bool) {
       query = query.eq("user_characters.is_used", is_used_bool);
@@ -66,11 +73,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ data });
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ user_id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ user_id: string }> }
+) {
   try {
     const supabase = await createClient();
 
@@ -94,6 +107,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import NextImage from "next/image";
 import { MainButton } from "@/components/common/MainButton";
 import { AbilityCard } from "@/components/match/AbilityCard";
 import { PlayerGridCard } from "@/components/match/PlayerGridCard";
@@ -114,6 +115,31 @@ export default function StarboxPage() {
   const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
   const activeStepIndex = 6;
 
+  const [progress, setProgress] = React.useState(0);
+
+  // 4. Timer Logic
+  useEffect(() => {
+    if (isLoading || !roomInfo || currentTurnIndex >= players.length) return;
+
+    setProgress(0);
+    const duration = 3000; // 3 seconds
+    const intervalTime = 50;
+    const step = (100 / (duration / intervalTime));
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          nextTurn();
+          return 100;
+        }
+        return prev + step;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [currentTurnIndex, isLoading, roomInfo, players.length, nextTurn]);
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4">
@@ -170,7 +196,7 @@ export default function StarboxPage() {
 
         {/* Title Section */}
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-lg md:text-2xl lg:text-3xl">
+          <h1 className="text-white text-xl md:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-lg text-balance">
             Takdir ada di tanganmu, pilih satu kekuatan!
           </h1>
 
@@ -239,27 +265,45 @@ export default function StarboxPage() {
 
         {/* Player Grid Container (Hanya relevan/tampil bagus di mode multiplayer) */}
         {roomInfo?.max_player !== 1 && (
-          <div className="mt-4 w-full rounded-2xl border-2 border-white/10 bg-[#D9D9D9]/20 px-4 py-6 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
-            <div className="grid grid-cols-5 items-center justify-items-center gap-x-4 gap-y-8 md:grid-cols-8 md:gap-x-6 md:gap-y-10 lg:grid-cols-10">
+          <div className="relative w-full mt-4 py-8 px-4 sm:px-8 lg:px-10 rounded-2xl bg-[#D9D9D9]/20 backdrop-blur-md border border-white/10 shadow-2xl overflow-visible">
+
+            {/* Turn Badge Overlay */}
+            {players[currentTurnIndex]?.isMe && (
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-full max-w-[400px] flex items-center justify-center z-30 px-4">
+                <div className="relative w-full h-auto flex items-center justify-center">
+                  <NextImage
+                    src="/dashboard/trophy-badge.webp"
+                    alt="Badge Background"
+                    width={400}
+                    height={70}
+                    className="object-contain -z-10 drop-shadow-xl block w-full h-full"
+                    priority
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center px-4 md:px-8">
+                    <span className="uppercase text-xs sm:text-sm md:text-base text-white drop-shadow-md font-bold text-center leading-tight">
+                      Sekarang giliran kamu untuk memilih kekuatan!
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-x-3 gap-y-12 md:gap-x-5 md:gap-y-16 items-start justify-items-center">
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
                 const hasPicked = idx < currentTurnIndex;
 
                 return (
-                  <div key={`${player.id}-${idx}`} className="relative">
+                  <div key={`${player.id}-${idx}`} className="w-full">
                     <PlayerGridCard
                       player={player}
                       hideHealthBar={true}
-                      className={cn(
-                        "transition-all duration-300",
-                        isActiveTurn ? "scale-110 drop-shadow-[0_0_15px_rgba(255,204,0,0.8)]" : "",
-                        hasPicked ? "opacity-50 grayscale" : "",
-                      )}
+                      highlight={player.isMe ? "self" : undefined}
+                      hasPicked={hasPicked}
+                      isActiveTurn={isActiveTurn}
+                      progress={progress}
+                      progressColor={player.isMe ? "bg-[#D46B1D]/80" : "bg-[#FDBB38]/80"}
                     />
-                    {/* Turn Indicator */}
-                    {isActiveTurn && (
-                      <div className="absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 animate-bounce border-2 border-white bg-[#FFCC00] shadow-lg" />
-                    )}
                   </div>
                 );
               })}
@@ -270,3 +314,7 @@ export default function StarboxPage() {
     </main>
   );
 }
+function nextTurn() {
+  throw new Error("Function not implemented.");
+}
+

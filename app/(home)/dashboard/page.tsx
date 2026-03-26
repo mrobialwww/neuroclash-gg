@@ -2,19 +2,65 @@ import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
 import { createClient } from "@/lib/supabase/server";
-import { userService } from "@/services/auth/userService";
-import { gameRoomService } from "@/services/gameRoomService";
-
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Parallel fetch: user data + game rooms
-  const [dashboardData, groupedRooms] = await Promise.all([
-    user ? userService.getDashboardData(user.id) : null,
-    gameRoomService.getGroupedPublicRooms(),
-  ]);
+  if (!user) {
+    redirect("/signin");
+  }
+
+  // Use API route for dashboard data to avoid circular dependencies
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/users/${
+      user.id
+    }/dashboard`,
+    {
+      cache: "no-store",
+      credentials: "include",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch dashboard data");
+  }
+
+  const { data: dashboardData } = await res.json();
+
+  // Fetch game rooms (only public rooms for now)
+  const rooms = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    }/api/game-rooms?room_visibility=public&room_status=open`,
+    {
+      credentials: "include",
+    }
+  )
+    .then((res) => (res.ok ? res.json() : { data: [] }))
+    .then((result) => result.data || []);
+
+  // Group rooms by category
+  const groupedRooms = rooms.reduce((acc: any[], room: any) => {
+    const existing = acc.find((g) => g.topic === room.category);
+    if (existing) {
+      existing.rooms.push(room);
+    } else {
+      acc.push({ topic: room.category, rooms: [room] });
+    }
+    return acc;
+  }, []);
+
+  // Helper formatting for category titles
+  const formatTopicTitle = (topic: string) => {
+    const t = topic.toLowerCase();
+    if (t === "bahasaindonesia") return "Bahasa Indonesia";
+    if (t === "bahasainggris") return "Bahasa Inggris";
+    return topic.charAt(0).toUpperCase() + topic.slice(1);
+  };
 
   return (
     <main className="mx-auto max-w-[1400px] space-y-8 px-6 py-10 pb-20 md:px-12 lg:px-16">
@@ -28,15 +74,24 @@ export default async function DashboardPage() {
         <CreateArenaCard />
       </div>
 
-      {/* Categories Section */}
-      <div className="space-y-8">
-        {groupedRooms.map((group) => (
-          <CategorySection
-            key={group.topic}
-            title={group.topic}
-            rooms={group.rooms}
-          />
-        ))}
+      <div className="space-y-12">
+        {/* Categories Section (Public) */}
+        {groupedRooms.map((group: any) => {
+          // Filter to ensure only public rooms are shown in categorized sections
+          const publicRooms = group.rooms.filter(
+            (r: any) => r.room_visibility === "public"
+          );
+
+          if (publicRooms.length === 0) return null;
+
+          return (
+            <CategorySection
+              key={group.topic}
+              title={formatTopicTitle(group.topic)}
+              rooms={publicRooms}
+            />
+          );
+        })}
       </div>
     </main>
   );

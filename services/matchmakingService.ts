@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 interface MatchRound {
   round_id: string;
@@ -72,7 +72,7 @@ export const matchmakingService = {
    * Dipanggil saat host klik "Mulai Pertandingan"
    */
   async generateAndSaveSchedule(roomId: string, playerIds: string[]) {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const schedules = this.generateRoundRobinSchedule(playerIds);
 
@@ -91,7 +91,10 @@ export const matchmakingService = {
       .order("round_number", { ascending: true });
 
     if (error) {
-      console.error("[MatchmakingService] generateAndSaveSchedule error:", error);
+      console.error(
+        "[MatchmakingService] generateAndSaveSchedule error:",
+        error
+      );
       throw error;
     }
 
@@ -107,7 +110,7 @@ export const matchmakingService = {
     userId: string,
     roundNumber: number
   ): Promise<MatchRound | null> {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("match_rounds")
@@ -130,7 +133,7 @@ export const matchmakingService = {
    * Dipanggil saat ronde baru dimulai
    */
   async activateRound(roomId: string, roundNumber: number) {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("match_rounds")
@@ -157,7 +160,7 @@ export const matchmakingService = {
     roundNumber: number,
     winnerId: string | null
   ) {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("match_rounds")
@@ -183,7 +186,7 @@ export const matchmakingService = {
    * Ambil semua pairing ronde untuk room tertentu
    */
   async getAllRounds(roomId: string): Promise<MatchRound[]> {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from("match_rounds")
@@ -203,7 +206,7 @@ export const matchmakingService = {
    * Hapus semua ronde saat room dihapus
    */
   async deleteRounds(roomId: string) {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { error } = await supabase
       .from("match_rounds")

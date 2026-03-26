@@ -13,7 +13,7 @@ import {
   getBannerColor,
 } from "@/lib/constants/overlay-theme";
 import { quizService } from "@/services/quizService";
-import { ToastFailed } from "@/components/common/ToastFailed";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 
 interface OverlayJoinCardProps {
   room: GameRoomWithPlayerCount;
@@ -175,7 +175,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
             <div className="flex items-center gap-2 text-[#555555]">
               <Flag size={20} className="text-[#256AF4]" />
               <span className="text-base font-bold">
-                {room.total_question} Ronde
+                {room.total_round} Ronde
               </span>
             </div>
           </div>
@@ -226,7 +226,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
         </div>
       </div>
 
-      <ToastFailed
+      <ToastOverlay
         isOpen={errorConfig.isOpen}
         onClose={() => setErrorConfig((prev) => ({ ...prev, isOpen: false }))}
         title={errorConfig.title}

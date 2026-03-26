@@ -37,7 +37,9 @@ export default function QuizLobbyPage() {
   useEffect(() => {
     if (!room_id || !currentUser?.id || isLoading) return;
 
-    console.log(`[QuizLobbyPage] Calling subscribeToPresence for roomId: ${room_id}, userId: ${currentUser.id}`);
+    console.log(
+      `[QuizLobbyPage] Calling subscribeToPresence for roomId: ${room_id}, userId: ${currentUser.id}`
+    );
     subscribeToPresence(room_id);
 
     // Browser closure tracking backup (Beacon)
@@ -56,11 +58,19 @@ export default function QuizLobbyPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      console.log(`[QuizLobbyPage] Unmounting - calling unsubscribeFromPresence`);
+      console.log(
+        `[QuizLobbyPage] Unmounting - calling unsubscribeFromPresence`
+      );
       window.removeEventListener("beforeunload", handleBeforeUnload);
       unsubscribeFromPresence();
     };
-  }, [room_id, currentUser?.id, isLoading, subscribeToPresence, unsubscribeFromPresence]);
+  }, [
+    room_id,
+    currentUser?.id,
+    isLoading,
+    subscribeToPresence,
+    unsubscribeFromPresence,
+  ]);
 
   const handleLeave = async () => {
     if (isLeaving) return;
@@ -69,7 +79,9 @@ export default function QuizLobbyPage() {
       if (currentUser?.id) {
         // Fetch raw rows directly from DB to catch ALL duplicate ghost records
         const participantRows = await quizRepository.fetchParticipants(room_id);
-        const userRows = participantRows.filter((p: any) => p.user_id === currentUser.id);
+        const userRows = participantRows.filter(
+          (p: any) => p.user_id === currentUser.id
+        );
 
         // Delete all records belonging to this user in this room
         for (const row of userRows) {
@@ -94,6 +106,7 @@ export default function QuizLobbyPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game_room_id: room_id }),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -117,7 +130,9 @@ export default function QuizLobbyPage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center gap-4">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#256AF4] border-t-transparent" />
-        <p className="animate-pulse text-lg font-semibold text-white">Memuat Lobby...</p>
+        <p className="animate-pulse text-lg font-semibold text-white">
+          Memuat Lobby...
+        </p>
       </main>
     );
   }
@@ -125,8 +140,13 @@ export default function QuizLobbyPage() {
   if (error || !roomData) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center gap-4">
-        <p className="text-lg font-bold text-red-500">Error: {error || "Gagal memuat room"}</p>
-        <button onClick={() => router.push("/dashboard")} className="rounded-md bg-white/20 px-6 py-2 font-bold text-white">
+        <p className="text-lg font-bold text-red-500">
+          Error: {error || "Gagal memuat room"}
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="rounded-md bg-white/20 px-6 py-2 font-bold text-white"
+        >
           Kembali
         </button>
       </main>

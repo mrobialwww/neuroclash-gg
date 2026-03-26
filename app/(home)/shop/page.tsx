@@ -1,18 +1,38 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import ShopClient from "@/components/shop/ShopCLient";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
+export default function ShopPage() {
+  const router = useRouter();
+  const [userId, setUserId] = useState<string>("");
 
-export default async function ShopPage() {
-  const supabase = await createClient();
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
 
-  // Kalau belum login, redirect ke halaman login
-  if (error || !user?.id) {
-    redirect("/signin");
-  }
+        // Kalau belum login, redirect ke halaman login
+        if (error || !user?.id) {
+          router.push("/signin");
+        } else {
+          setUserId(user.id);
+        }
+      } catch (error) {
+        console.error("[Shop] Error checking auth:", error);
+        router.push("/signin");
+      }
+    };
 
-  // userId langsung di-pass ke client — tidak perlu useSession sama sekali
-  return <ShopClient userId={user.id} />;
+    checkAuth();
+  }, [router]);
+
+  return userId ? <ShopClient userId={userId} /> : null;
 }

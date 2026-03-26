@@ -1,10 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export const gamePlayerRepository = {
   /**
    * Insert semua pemain saat match dimulai dengan health 100
    */
   async insertPlayers(roomId: string, userIds: string[]) {
+    console.log(
+      `[GamePlayerRepo] insertPlayers called for roomId: ${roomId}, userIds: ${userIds.length}`
+    );
+
     const supabase = await createClient();
 
     const players = userIds.map((user_id) => ({
@@ -14,6 +18,10 @@ export const gamePlayerRepository = {
       status: "alive",
     }));
 
+    console.log(
+      `[GamePlayerRepo] Inserting ${players.length} players with initial data`
+    );
+
     const { data, error } = await supabase
       .from("game_players")
       .insert(players)
@@ -22,108 +30,189 @@ export const gamePlayerRepository = {
 
     if (error) {
       console.error("[GamePlayerRepo] insertPlayers error:", error);
+      console.error("[GamePlayerRepo] Error code:", error.code);
+      console.error("[GamePlayerRepo] Error message:", error.message);
+      console.error("[GamePlayerRepo] Error details:", error.details);
+      console.error("[GamePlayerRepo] Error hint:", error.hint);
       throw error;
     }
+
+    console.log(
+      `[GamePlayerRepo] Successfully inserted ${data?.length || 0} players`
+    );
 
     return data;
   },
 
   /**
    * Fetch semua pemain + health untuk ditampilkan di UI
+   * Uses Supabase client directly to fetch user and character data
    */
   async getPlayers(roomId: string) {
-    const supabase = await createClient();
-
     console.log(`[GamePlayerRepo] getPlayers called for roomId: ${roomId}`);
 
-    // QUERY FIX: Proper nested joins through users -> user_characters -> characters
-    // Path: game_players -> users (FK) -> user_characters (reverse FK) -> characters (FK)
-    const { data, error } = await supabase
+    const supabase = await createClient();
+
+    // Step 1: Fetch game_players (without join first)
+    const { data: gamePlayers, error: gamePlayersError } = await supabase
       .from("game_players")
-      .select(
-        `
-        user_id,
-        health,
-        status,
-        users!inner(
-          username,
-          user_characters!inner(
-            is_used,
-            characters!inner(
-              skin_name,
-              image_url
-            )
-          )
-        )
-      `
-      )
+      .select("user_id, health, status")
       .eq("game_room_id", roomId);
 
-    console.log(`[GamePlayerRepo] Query executed, error:`, error);
-    console.log(`[GamePlayerRepo] Raw data from DB:`, data);
-    console.log(`[GamePlayerRepo] Raw data type: ${typeof data}`);
-    console.log(`[GamePlayerRepo] Raw data length: ${data?.length || 0}`);
-
-    if (error) {
-      console.error("[GamePlayerRepo] getPlayers error:", error);
-      console.error("[GamePlayerRepo] Error code:", error.code);
-      console.error("[GamePlayerRepo] Error message:", error.message);
-      console.error("[GamePlayerRepo] Error details:", error.details);
-      console.error("[GamePlayerRepo] Error hint:", error.hint);
+    if (gamePlayersError) {
+      console.error("[GamePlayerRepo] getPlayers error:", gamePlayersError);
+      console.error("[GamePlayerRepo] Error code:", gamePlayersError.code);
+      console.error(
+        "[GamePlayerRepo] Error message:",
+        gamePlayersError.message
+      );
       return [];
     }
 
     console.log(
-      `[GamePlayerRepo] getPlayers found ${data?.length || 0} players`
+      `[GamePlayerRepo] Found ${gamePlayers?.length || 0} game_players`
     );
 
-    if (!data || data.length === 0) {
+    // Log raw data for debugging
+    console.log(
+      `[GamePlayerRepo] Raw game_players data:`,
+      JSON.stringify(gamePlayers, null, 2)
+    );
+
+    if (!gamePlayers || gamePlayers.length === 0) {
       console.warn(
         `[GamePlayerRepo] No players found in game_players for roomId: ${roomId}`
       );
       return [];
     }
 
-    const mappedPlayers = data.map((row: any, idx: number) => {
-      console.log(`[GamePlayerRepo] Processing row ${idx + 1}:`, row);
-      console.log(`[GamePlayerRepo] Row keys:`, Object.keys(row));
+    // Step 2: Fetch all user data for these user_ids
+    const userIds = gamePlayers.map((gp: any) => gp.user_id);
+    console.log(
+      `[GamePlayerRepo] Fetching user data for ${userIds.length} users`
+    );
 
-      const user = row.users;
-      console.log(`[GamePlayerRepo] User data:`, user);
+    const { data: usersData, error: usersError } = await supabase
+      .from("users")
+      .select("user_id, username")
+      .in("user_id", userIds);
 
-      const userChars = user?.user_characters;
-      console.log(`[GamePlayerRepo] User characters array:`, userChars);
-      console.log(`[GamePlayerRepo] User characters type: ${typeof userChars}`);
-      console.log(
-        `[GamePlayerRepo] User characters length: ${userChars?.length || 0}`
+    if (usersError) {
+      console.error("[GamePlayerRepo] Error fetching users:", usersError);
+      console.error("[GamePlayerRepo] Users error code:", usersError.code);
+      console.error(
+        "[GamePlayerRepo] Users error message:",
+        usersError.message
       );
+    }
 
-      // Find the equipped character (is_used = true)
-      const equippedChar = userChars?.find(
-        (c: any) => c.is_used === true
-      )?.characters;
+    console.log(`[GamePlayerRepo] Fetched ${usersData?.length || 0} users`);
+    console.log(
+      `[GamePlayerRepo] Users data:`,
+      JSON.stringify(usersData, null, 2)
+    );
 
-      console.log(`[GamePlayerRepo] Equipped character:`, equippedChar);
+    // Create a map of user_id -> username for quick lookup
+    const userMap = new Map(
+      (usersData || []).map((u: any) => [u.user_id, u.username])
+    );
 
-      const mappedPlayer = {
-        id: row.user_id,
-        name: user?.username || "Unknown",
-        avatar: equippedChar?.image_url || "/default/Slime.webp",
-        character: equippedChar?.skin_name || "Slime",
-        health: row.health ?? 100,
-        is_alive: row.status === "alive",
-        score: 0,
-      };
+    // Step 3: For each player, fetch equipped character using Supabase
+    // Using same approach as lobby: query FROM characters and JOIN to user_characters
+    const mappedPlayers = await Promise.all(
+      gamePlayers.map(async (row: any, idx: number) => {
+        console.log(
+          `[GamePlayerRepo] Processing player ${
+            idx + 1
+          }: ${row.user_id.substring(0, 8)}`
+        );
 
-      console.log(`[GamePlayerRepo] Mapped player ${idx + 1}:`, mappedPlayer);
+        try {
+          // Get username from userMap
+          const username = userMap.get(row.user_id);
+          console.log(
+            `[GamePlayerRepo] Username for user ${row.user_id.substring(
+              0,
+              8
+            )}:`,
+            username
+          );
 
-      return mappedPlayer;
-    });
+          // Fetch equipped character using same approach as lobby
+          // Query FROM characters and JOIN to user_characters using !inner
+          const { data: charData, error: charError } = await supabase
+            .from("characters")
+            .select(
+              "skin_name, image_url, user_characters!inner(user_id, is_used)"
+            )
+            .eq("user_characters.user_id", row.user_id)
+            .eq("user_characters.is_used", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (charError) {
+            console.error(
+              `[GamePlayerRepo] ❌ Error fetching character for user ${row.user_id.substring(
+                0,
+                8
+              )}:`,
+              charError
+            );
+          }
+
+          console.log(
+            `[GamePlayerRepo] Character data for user ${row.user_id.substring(
+              0,
+              8
+            )}:`,
+            JSON.stringify(charData, null, 2)
+          );
+
+          // Extract character data - charData contains skin_name and image_url directly
+          const skin_name = charData?.skin_name || "Slime";
+          const image_url = charData?.image_url || "/default/Slime.webp";
+
+          const mappedPlayer = {
+            id: row.user_id,
+            name: username || "Unknown",
+            avatar: image_url,
+            character: skin_name,
+            health: row.health ?? 100,
+            is_alive: row.status === "alive",
+            score: 0,
+          };
+
+          console.log(`[GamePlayerRepo] ✅ Mapped player ${idx + 1}:`, {
+            id: mappedPlayer.id.substring(0, 8),
+            name: mappedPlayer.name,
+            character: mappedPlayer.character,
+            avatar: mappedPlayer.avatar,
+            health: mappedPlayer.health,
+          });
+
+          return mappedPlayer;
+        } catch (err) {
+          console.error(
+            `[GamePlayerRepo] ❌ Error fetching data for player ${idx + 1}:`,
+            err
+          );
+          // Return default data if fetch fails
+          return {
+            id: row.user_id,
+            name: "Unknown",
+            avatar: "/default/Slime.webp",
+            character: "Slime",
+            health: row.health ?? 100,
+            is_alive: row.status === "alive",
+            score: 0,
+          };
+        }
+      })
+    );
 
     console.log(
       `[GamePlayerRepo] Returning ${mappedPlayers.length} mapped players`
     );
-    console.log(`[GamePlayerRepo] All mapped players:`, mappedPlayers);
 
     return mappedPlayers;
   },
