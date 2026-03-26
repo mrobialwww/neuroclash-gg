@@ -144,7 +144,21 @@ Pastikan:
 
     const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
-    const cleanedParsed = JSON.parse(cleaned);
+
+    // Extract the first valid JSON object — Gemini occasionally appends
+    // trailing text after the closing brace, which breaks JSON.parse.
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error(
+        "[API Quiz] No JSON object found in Gemini response:",
+        cleaned.substring(0, 200)
+      );
+      return NextResponse.json(
+        { message: "Gemini tidak mengembalikan JSON yang valid." },
+        { status: 500 }
+      );
+    }
+    const cleanedParsed = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json(
       {
@@ -153,12 +167,66 @@ Pastikan:
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error API:", error);
-    console.log("Error API:", error);
-    return NextResponse.json(
-      { message: "Terjadi kesalahan pada server saat memproses dokumen." },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    console.error("[API Quiz] Error:", error);
+
+    // ── Parse Gemini / Google API errors ──────────────────────────────────
+    let geminiStatus: number | null = null;
+    let geminiCode: string | null = null;
+
+    try {
+      // GoogleGenAI wraps the raw response text in the error message
+      const raw = error instanceof Error ? error.message : String(error);
+      const jsonStart = raw.indexOf("{");
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(raw.slice(jsonStart));
+        geminiStatus = parsed?.error?.code ?? null;
+        geminiCode = parsed?.error?.status ?? null;
+      }
+    } catch {
+      /* not a JSON error, fall through */
+    }
+
+    if (geminiStatus === 503 || geminiCode === "UNAVAILABLE") {
+      return NextResponse.json(
+        {
+          message:
+            "Server AI sedang kelebihan beban (503 Unavailable). " +
+            "Model Gemini saat ini sedang ramai digunakan. " +
+            "Tunggu beberapa saat lalu coba lagi.",
+        },
+        { status: 503 }
+      );
+    }
+
+    if (geminiStatus === 429 || geminiCode === "RESOURCE_EXHAUSTED") {
+      return NextResponse.json(
+        {
+          message:
+            "Kuota API Gemini habis (429 Too Many Requests). " +
+            "Coba lagi dalam beberapa menit.",
+        },
+        { status: 429 }
+      );
+    }
+
+    if (geminiStatus === 400 || geminiCode === "INVALID_ARGUMENT") {
+      return NextResponse.json(
+        {
+          message:
+            "Dokumen tidak dapat dibaca oleh AI (400 Invalid Argument). " +
+            "Pastikan file PDF tidak rusak dan tidak terproteksi password.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────
+    const fallbackMsg =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan pada server saat memproses dokumen.";
+
+    return NextResponse.json({ message: fallbackMsg }, { status: 500 });
   }
 }

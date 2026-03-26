@@ -26,7 +26,7 @@ export interface MatchState {
   isFinished: boolean;
   timeLeft: number;
   players: PlayerMatchState[];
-  currentUser: { id: string; username: string; avatar: string } | null;
+  currentUser: { id: string; username: string; avatar: string; character: string } | null;
   currentBattleRoom: BattleRoom | null;
   opponentIds: string[];
   firstAnswerPlayerId: string | null;
@@ -36,6 +36,8 @@ export interface MatchState {
   isWaitingForAllBattles: boolean;
   isAdvancingRound: boolean;
   isSyncingPlayers: boolean;
+  lastAnswerCorrect: boolean | null;
+  correctAnswerId: string | null;
   initializeMatch: (
     roomCode: string,
     gameRoomId: string,
@@ -390,6 +392,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   advanceRound: async () => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
 
     console.log(
       `[MatchStore] advanceRound called - current: ${state.currentOrder}, selectedAnswerId: ${state.selectedAnswerId}`
@@ -404,7 +407,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       return;
     }
 
-    if (state.currentOrder % STARBOX_INTERVAL === 0) {
+    // Solo mode: skip Starbox, always advance directly
+    if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
       console.log(`[MatchStore] Starbox round!`);
       set({
         nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
@@ -434,7 +438,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       timeLeft: SECONDS_PER_ROUND,
     });
 
-    // Start next round and generate battle rooms
+    if (isSolo) {
+      // ── SOLO MODE: Skip battle room generation, just load question ──
+      console.log(
+        `[MatchStore] Solo mode - loading question ${nextOrder} directly`
+      );
+      await get().loadQuestion(state.gameRoomId, nextOrder);
+      return;
+    }
+
+    // ── MULTIPLAYER MODE: Start next round and generate battle rooms ──
     try {
       console.log(`[MatchStore] Starting round ${nextOrder}...`);
       const res = await fetch("/api/match/start-round", {
@@ -514,8 +527,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       return;
     }
 
-    // Check if this is a Starbox round
-    if (state.currentOrder % STARBOX_INTERVAL === 0) {
+    // Check if this is a Starbox round (multiplayer only)
+    const isSolo = state.roomInfo?.max_player === 1;
+    if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
       console.log(`[MatchStore] Starbox round!`);
       set({
         nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
@@ -614,12 +628,20 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
     set({ selectedAnswerId: answerId, isSubmitting: true });
 
-    console.log(
-      `[MatchStore] handleSelectAnswer called: userId=${userId.substring(
-        0,
-        8
-      )}, answerId=${answerId.substring(0, 8)}`
-    );
+    // ── SOLO MODE ──
+    if (isSolo) {
+      try {
+        const res = await fetch("/api/solo/submit-answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            answer_id: answerId,
+            game_room_id: state.gameRoomId,
+            round_number: state.currentOrder,
+          }),
+          credentials: "include",
+        });
 
         if (res.ok) {
           const result = await res.json();
@@ -632,16 +654,21 @@ export const useMatchStore = create<MatchState>((set, get) => ({
           set({
             lastAnswerCorrect: result.is_correct ?? false,
             correctAnswerId: correctOpt?.id ?? null,
+            isSubmitting: false,
           });
+
+          // Solo mode: show feedback briefly, then advance immediately
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await get().advanceRound();
         } else {
           console.error(
             "[MatchStore] Solo answer submit failed",
             await res.text()
           );
+          set({ isSubmitting: false });
         }
       } catch (e) {
         console.error("[MatchStore] Failed to submit solo answer:", e);
-      } finally {
         set({ isSubmitting: false });
       }
       return;

@@ -7,6 +7,7 @@ interface MatchProgressBarProps {
   duration?: number;
   timeLeft: number;
   activeStepIndex?: number;
+  isSolo?: boolean;
   className?: string;
 }
 
@@ -14,11 +15,12 @@ export function MatchProgressBar({
   duration = 30,
   timeLeft,
   activeStepIndex = 0,
+  isSolo = false,
   className
 }: MatchProgressBarProps) {
   const progressPercentage = (timeLeft / duration) * 100;
 
-  const steps = [
+  const allSteps = [
     { id: "book", icon: "/icons/book.svg" },
     { id: "battle-1", icon: "/icons/battle.svg" },
     { id: "battle-2", icon: "/icons/battle.svg" },
@@ -27,6 +29,16 @@ export function MatchProgressBar({
     { id: "battle-5", icon: "/icons/battle.svg" },
     { id: "treasure", icon: "/icons/treasure.svg" },
   ];
+
+  // Solo: hanya tampilkan 5 ikon battle (tanpa book & treasure)
+  // activeStepIndex dari store adalah 1-based (round % 5), jadi battle-N = index N-1
+  const steps = isSolo
+    ? allSteps.filter((s) => s.id.startsWith("battle"))
+    : allSteps;
+
+  const effectiveActiveIndex = isSolo
+    ? activeStepIndex - 1   // activeStepIndex=1 → index 0 (battle-1)
+    : activeStepIndex;
 
   return (
     <div className={cn("w-full max-w-[95%] lg:max-w-[860px] mx-auto", className)}>
@@ -65,7 +77,7 @@ export function MatchProgressBar({
       {/* Icons Indicators */}
       <div className="mt-4 flex justify-center gap-2 sm:gap-4 md:gap-6">
         {steps.map((step, index) => {
-          const isActive = index === activeStepIndex;
+          const isActive = index === effectiveActiveIndex;
 
           return (
             <div key={step.id} className="relative flex flex-col items-center">

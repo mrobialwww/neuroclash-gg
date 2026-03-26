@@ -45,6 +45,9 @@ export const CHARACTER_BG_COLORS: Record<string, string> = {
   "Roger Malam": "#B45309",
   Vampir: "#E11D48", // Merah darah gelap
   "Raden Drakula": "#E11D48",
+
+  // Mascot
+  "Prof. Bubu": "#3D79F3", // Biru Khas Neuroclash
 };
 
 /**

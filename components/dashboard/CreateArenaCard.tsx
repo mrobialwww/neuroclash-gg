@@ -153,9 +153,43 @@ export function CreateArenaCard() {
       if (aiStatusInterval) clearInterval(aiStatusInterval);
 
       if (!response.ok) {
-        throw new Error(
-          result.message ?? "Gagal meng-generate soal menggunakan AI."
-        );
+        // Build a specific title based on HTTP status
+        const statusCode = response.status;
+        let toastTitle = "Pembuatan Gagal";
+        if (statusCode === 503) toastTitle = "AI Kelebihan Beban";
+        else if (statusCode === 429) toastTitle = "Kuota AI Habis";
+        else if (statusCode === 400) toastTitle = "File Tidak Dapat Dibaca";
+
+        const errMsg: string =
+          result?.message ?? "Gagal meng-generate soal menggunakan AI.";
+
+        // For retriable errors keep the modal open, only show toast
+        const isRetriable = statusCode === 503 || statusCode === 429;
+        if (isRetriable) {
+          setIsLoading(false);
+          setLoadingText("Memproses...");
+        } else {
+          setModalOpen(false);
+        }
+
+        setToastData({
+          isOpen: true,
+          title: toastTitle,
+          message: errMsg,
+          isFailed: true,
+          primaryButtonText: "Tutup",
+          onPrimaryClick: () =>
+            setToastData((prev) => ({ ...prev, isOpen: false })),
+          secondaryButtonText: isRetriable ? "Coba Lagi" : undefined,
+          onSecondaryClick: isRetriable
+            ? () => {
+              setToastData((prev) => ({ ...prev, isOpen: false }));
+              // re-submit with same data automatically
+              handleSubmitArena(data);
+            }
+            : undefined,
+        });
+        return;
       }
 
       // ── Step 3: Simpan ke DB (/api/game-rooms) ───────────────────────
@@ -206,8 +240,8 @@ export function CreateArenaCard() {
                   {gameRoom.category === "bahasaindonesia"
                     ? "Bahasa Indonesia"
                     : gameRoom.category === "bahasainggris"
-                    ? "Bahasa Inggris"
-                    : gameRoom.category}
+                      ? "Bahasa Inggris"
+                      : gameRoom.category}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs md:text-sm">

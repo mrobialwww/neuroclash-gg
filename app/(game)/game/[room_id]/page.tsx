@@ -102,43 +102,51 @@ export default function GamePage() {
     const others = players.filter((p) => p.id !== currentUser?.id);
 
     // Gunakan opponentIds dari battle room untuk menentukan lawan
-    // Hanya player yang ada di battle room yang sama yang menjadi lawan
-    const battleOpponents = opponentIds.map((oppId) => players.find((p) => p.id === oppId)).filter((p): p is (typeof players)[0] => p !== undefined);
+    const battleOpponents = opponentIds
+      .map((oppId) => players.find((p) => p.id === oppId))
+      .filter((p): p is (typeof players)[0] => p !== undefined);
 
-    console.log(
-      `[GamePage] Current battle room opponents:`,
-      battleOpponents.map((p) => ({ id: p.id.substring(0, 8), name: p.name })),
-    );
-
-    // Identitas Lawan: Ambil lawan pertama dari battle room
     const enemyData = battleOpponents.length > 0 ? battleOpponents[0] : null;
 
     const mapToCard = (p: any) =>
       p
         ? {
-            id: p.id,
-            name: p.name,
-            character: p.character || "Slime",
-            image: p.avatar,
-            health: p.health,
-            maxHealth: 100,
-          }
+          id: p.id,
+          name: p.name,
+          character: p.character || "Slime",
+          image: p.avatar,
+          health: p.health,
+          maxHealth: 100,
+        }
         : null;
 
-    // Prof. Bubu card untuk Solo mode
+    // Prof. Bubu card untuk Solo mode (lawan)
     const profBubuCard = isSolo
       ? {
-          id: "prof-bubu",
-          name: "Prof. Bubu",
-          character: "Prof. Bubu",
-          image: "/mascot/mascot-match.webp",
+        id: "prof-bubu",
+        name: "Prof. Bubu",
+        character: "Prof. Bubu",
+        image: "/mascot/mascot-match.webp",
+        health: 100,
+        maxHealth: 100,
+      }
+      : null;
+
+    // Solo fallback: jika players belum terisi, gunakan data currentUser
+    const soloMeCard =
+      isSolo && !meData && currentUser
+        ? {
+          id: currentUser.id,
+          name: currentUser.username,
+          character: currentUser.character,
+          image: currentUser.avatar || "/default/slime.webp",
           health: 100,
           maxHealth: 100,
         }
-      : null;
+        : null;
 
     return {
-      meCard: mapToCard(meData),
+      meCard: mapToCard(meData) ?? soloMeCard,
       opponentCard: isSolo ? profBubuCard : mapToCard(enemyData),
       sortedForList: players.map((p) => ({
         id: p.id,
@@ -217,7 +225,7 @@ export default function GamePage() {
         </div>
 
         <div className="block flex-1 px-2 md:px-4 lg:px-10">
-          <MatchProgressBar key={`round-${currentOrder}`} duration={SECONDS_PER_ROUND} timeLeft={timeLeft} activeStepIndex={activeStepIndex} />
+          <MatchProgressBar key={`round-${currentOrder}`} duration={SECONDS_PER_ROUND} timeLeft={timeLeft} activeStepIndex={activeStepIndex} isSolo={isSolo} />
         </div>
 
         <MainButton variant="white" className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6" onClick={handleExit}>
@@ -268,7 +276,7 @@ export default function GamePage() {
                     {players.find((p) => p.id === firstAnswerPlayerId)?.name} menjawab pertama!
                   </div>
                 )}
-                              <QuestionCard
+                <QuestionCard
                   question={currentQuestion.question_text}
                   options={currentQuestion.options}
                   onSelect={onSelectAnswer}
