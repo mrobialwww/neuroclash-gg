@@ -77,6 +77,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   isWaitingForAllBattles: false,
   isAdvancingRound: false,
   isSyncingPlayers: false,
+  lastAnswerCorrect: null,
+  correctAnswerId: null,
 
   isOpponent: (playerId: string) => {
     return get().opponentIds.includes(playerId);
@@ -84,6 +86,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   canAnswer: () => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
+
+    // Solo mode: only needs currentUser and no previous answer
+    if (isSolo) {
+      return !!(
+        state.currentUser &&
+        !state.selectedAnswerId &&
+        !state.isSubmitting
+      );
+    }
 
     // Cannot answer if:
     // 1. No current user
@@ -357,6 +369,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       firstAnswerPlayerId: null,
       timeLeft: SECONDS_PER_ROUND,
       nextRoundUrl: null,
+      lastAnswerCorrect: null,
+      correctAnswerId: null,
     });
 
     const question = await quizService.getQuestionWithAnswers(roomId, order);
@@ -587,6 +601,18 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   handleSelectAnswer: async (userId, answerId) => {
     const state = get();
+    const isSolo = state.roomInfo?.max_player === 1;
+
+    console.log(
+      `[MatchStore] handleSelectAnswer called: userId=${userId.substring(
+        0,
+        8
+      )}, answerId=${answerId.substring(0, 8)}, isSolo=${isSolo}`
+    );
+
+    if (state.selectedAnswerId || state.isSubmitting) return;
+
+    set({ selectedAnswerId: answerId, isSubmitting: true });
 
     console.log(
       `[MatchStore] handleSelectAnswer called: userId=${userId.substring(
@@ -595,9 +621,36 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       )}, answerId=${answerId.substring(0, 8)}`
     );
 
-    // Cek apakah user di battle room
+        if (res.ok) {
+          const result = await res.json();
+          console.log("[MatchStore] Solo answer result:", result);
+
+          // Find the correct answer id from current question options
+          const correctOpt = state.currentQuestion?.options.find(
+            (o) => o.isCorrect
+          );
+          set({
+            lastAnswerCorrect: result.is_correct ?? false,
+            correctAnswerId: correctOpt?.id ?? null,
+          });
+        } else {
+          console.error(
+            "[MatchStore] Solo answer submit failed",
+            await res.text()
+          );
+        }
+      } catch (e) {
+        console.error("[MatchStore] Failed to submit solo answer:", e);
+      } finally {
+        set({ isSubmitting: false });
+      }
+      return;
+    }
+
+    // ── MULTIPLAYER MODE ──
     if (!state.currentBattleRoom) {
       console.error("[MatchStore] User not in any battle room");
+      set({ isSubmitting: false });
       return;
     }
 
@@ -608,15 +661,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       `[MatchStore] first_answer_user_id: ${state.currentBattleRoom.first_answer_user_id}`
     );
 
-    // Cek apakah sudah ada yang menjawab
     if (state.currentBattleRoom.first_answer_user_id) {
       console.log("[MatchStore] Someone already answered in this battle room");
+      set({ isSubmitting: false });
       return;
     }
-
-    if (state.selectedAnswerId || state.isSubmitting) return;
-
-    set({ selectedAnswerId: answerId, isSubmitting: true });
 
     try {
       // Submit answer to battle API
@@ -674,10 +723,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       gameRoomId,
       currentOrder,
       isAdvancingRound,
+      roomInfo,
     } = get();
 
-    // Timer should keep running even after someone answers
-    // Round will auto-advance when battle room status becomes 'finished'
+    const isSolo = roomInfo?.max_player === 1;
+
     if (isLoadingQuestion || isFinished) return;
 
     // Prevent calling waitForAllBattlesAndAdvance multiple times
@@ -691,7 +741,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     if (timeLeft <= 1) {
       console.log(`[MatchStore] Timer expired for round ${currentOrder}`);
 
-      // Check if anyone answered in this battle room
+      set({ timeLeft: 0 });
+
+      // ── SOLO MODE: skip battle/polling, advance directly ──
+      if (isSolo) {
+        console.log(`[MatchStore] Solo mode - advancing round directly`);
+        await get().advanceRound();
+        return;
+      }
+
+      // ── MULTIPLAYER MODE: apply timeout damage then poll ──
       if (currentBattleRoom && !currentBattleRoom.first_answer_user_id) {
         // No one answered - handle timeout damage
         console.log(
@@ -728,10 +787,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
       }
 
-      // Stop timer
-      set({ timeLeft: 0 });
-
-      // Wait for all battles to finish and then advance
       console.log(
         `[MatchStore] Timer expired, waiting for all battles to finish...`
       );
@@ -767,6 +822,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       isWaitingForAllBattles: false,
       isAdvancingRound: false,
       isSyncingPlayers: false,
+      lastAnswerCorrect: null,
+      correctAnswerId: null,
     });
   },
 }));

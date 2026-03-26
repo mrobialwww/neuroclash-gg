@@ -2,14 +2,13 @@ import { create } from "zustand";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
 import { Player } from "@/lib/constants/players";
 import { gameService } from "@/services/gameService";
-import { useQuizLobbyStore } from "@/store/useQuizLobbyStore";
 import { createClient } from "@/lib/supabase/client";
 import { abilityRoomRepository } from "@/repository/abilityRoomRepository";
 import { abilityPlayerRepository } from "@/repository/abilityPlayerRepository";
 import { userClientService } from "@/services/auth/userClientService";
 
 const supabase = createClient();
-let channel: ReturnType<typeof supabase.channel> | null = null;
+let stockChannel: ReturnType<typeof supabase.channel> | null = null;
 
 export interface Ability {
   id: string;
@@ -24,9 +23,14 @@ export interface StarboxState {
   roomInfo: GameRoomWithPlayerCount | null;
   players: Player[];
   abilities: Ability[];
-  currentTurnIndex: number;
+  serverStartTime: number | null;
   pickingAbilityId: string | null;
   isLoading: boolean;
+  isHost: boolean;
+  myPlayerId: string | null;
+
+  /** Set of player IDs who have already picked an ability */
+  pickedPlayerIds: string[];
 
   initGameData: (code: string, roomId: string) => Promise<void>;
   selectAbility: (
@@ -34,7 +38,9 @@ export interface StarboxState {
     abilityId: string,
     userId: string
   ) => Promise<void>;
+  autoAssignRemaining: (roomId: string) => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
+  cleanup: () => void;
   reset: () => void;
 }
 
@@ -42,22 +48,29 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
   roomInfo: null,
   players: [],
   abilities: [],
-  currentTurnIndex: 0,
+  serverStartTime: null,
   pickingAbilityId: null,
   isLoading: true,
+  isHost: false,
+  myPlayerId: null,
+  pickedPlayerIds: [],
 
   initGameData: async (code: string, roomId: string) => {
     // Reset state before fetching
     set({
       isLoading: true,
-      currentTurnIndex: 0,
       abilities: [],
+      serverStartTime: null,
       roomInfo: null,
       players: [],
+      pickedPlayerIds: [],
+      pickingAbilityId: null,
+      isHost: false,
+      myPlayerId: null,
     });
 
     try {
-      // 1. Service Orchestrator untuk memangkas Logika kompleks dari global state.
+      // 1. Fetch room config
       const roomConfig = await gameService.getGameRoomConfig(code, roomId);
       if (!roomConfig) {
         set({ isLoading: false });
@@ -70,12 +83,11 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
         currentUser && currentUser.id === roomConfig.user_id
       );
 
-      // 3. Ambil participants dari API (karena useQuizLobbyStore bisa reset jika kena window.location.href)
+      // 3. Ambil participants dari API
       let activeParticipants: any[] = [];
       try {
         const res = await fetch(`/api/match/participants/${roomId}`, {
           cache: "no-store",
-          credentials: "include",
         });
         if (res.ok) {
           const json = await res.json();
@@ -85,26 +97,47 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
         console.error("Gagal get participants di starbox", err);
       }
 
-      let totalPlayer = activeParticipants.length || 1;
+      const totalPlayer = activeParticipants.length || 1;
 
+      // Sort by HP ascending (lowest HP picks first)
       activeParticipants = activeParticipants
-        .sort((a, b) => (a.health ?? 100) - (b.health ?? 100))
-        .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
-      // if (roomConfig.max_player === 1) {
-      //   // Solo mode, find me only atau mock 1
-      //   activeParticipants = activeParticipants.filter(p => p.id === currentUser?.id);
-      //   if (activeParticipants.length === 0) activeParticipants = [{ id: currentUser?.id, isMe: true }];
-      //   totalPlayer = 1;
-      // }
+        .sort((a: any, b: any) => (a.health ?? 100) - (b.health ?? 100))
+        .map((p: any) => ({ ...p, isMe: p.id === currentUser?.id }));
 
-      //Insert dan Get all ability room ✅
-      const abilityRooms = await abilityRoomRepository.initialAbilites(
+      // 4. Insert dan Get all ability room (host initializes stock)
+      let abilityRooms = await abilityRoomRepository.initialAbilites(
         roomId,
         totalPlayer,
         isHost
       );
 
-      // Map struktur Supabase → Ability interface ✅
+      // Retry mechanism for non-host clients: wait for host to finish upsert/restock
+      let totalStock =
+        abilityRooms?.reduce(
+          (sum: number, room: any) => sum + (room.stock || 0),
+          0
+        ) || 0;
+      let retries = 5;
+
+      while (!isHost && totalStock === 0 && retries > 0) {
+        console.log(
+          `[StarboxStore] Waiting for abilities to be initialized/restocked... (${retries} retries left)`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        abilityRooms = await abilityRoomRepository.initialAbilites(
+          roomId,
+          totalPlayer,
+          false
+        );
+        totalStock =
+          abilityRooms?.reduce(
+            (sum: number, room: any) => sum + (room.stock || 0),
+            0
+          ) || 0;
+        retries--;
+      }
+
+      // Map Supabase → Ability interface
       const mappedAbilities: Ability[] = (abilityRooms ?? []).map(
         (row: any) => {
           const detail = Array.isArray(row.abilities)
@@ -121,30 +154,39 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
         }
       );
 
+      // Extract server Start Time (anchor)
+      const serverStartTimeMs = abilityRooms && abilityRooms.length > 0
+        ? Math.max(...abilityRooms.map((r: any) => new Date(r.updated_at).getTime()))
+        : Date.now();
+
       set({
         roomInfo: roomConfig,
         players: activeParticipants as any,
         abilities: mappedAbilities,
+        serverStartTime: serverStartTimeMs,
         isLoading: false,
+        isHost,
+        myPlayerId: currentUser?.id ?? null,
       });
 
       get().setupRealtimeSubscription(roomId);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as any;
       console.error(
         "Error initializing starbox game data:",
-        e?.message || e?.details || JSON.stringify(e)
+        err?.message || err?.details || JSON.stringify(err)
       );
       set({ isLoading: false });
     }
   },
 
   setupRealtimeSubscription: (roomId: string) => {
-    // Hindari subscribe berulang pada room yang sama
-    if (channel) {
-      supabase.removeChannel(channel);
+    // Clean up existing channel
+    if (stockChannel) {
+      supabase.removeChannel(stockChannel);
     }
 
-    channel = supabase
+    stockChannel = supabase
       .channel(`starbox_room:${roomId}`)
       .on(
         "postgres_changes",
@@ -159,15 +201,13 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
 
           const updatedAbility = payload.new as any;
 
-          // Update state abilities di Zustand
+          // Update stock only — don't advance turn here
           set((state) => ({
             abilities: state.abilities.map((ability) =>
               ability.id === String(updatedAbility.ability_id)
                 ? { ...ability, stock: updatedAbility.stock }
                 : ability
             ),
-            pickingAbilityId: null,
-            currentTurnIndex: state.currentTurnIndex + 1,
           }));
         }
       )
@@ -175,7 +215,21 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
   },
 
   selectAbility: async (roomId: string, abilityId: string, userId: string) => {
-    //Insert ability to rpc "increment ability" ✅
+    const state = get();
+    // Prevent double-picking
+    if (state.pickedPlayerIds.includes(userId) || state.pickingAbilityId)
+      return;
+
+    // Optimistic UI update
+    set((s) => ({
+      pickingAbilityId: abilityId,
+      abilities: s.abilities.map((a) =>
+        a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a
+      ),
+      pickedPlayerIds: [...s.pickedPlayerIds, userId],
+    }));
+
+    // Persist to DB via RPC (this triggers postgres_changes for stock sync)
     try {
       await abilityPlayerRepository.insertPlayerAbility(
         roomId,
@@ -185,23 +239,117 @@ export const useStarboxStore = create<StarboxState>((set, get) => ({
     } catch (error) {
       console.error("Gagal memilih ability", error);
     }
+  },
 
-    set((state) => ({
-      pickingAbilityId: abilityId,
-      abilities: state.abilities.map((a) =>
-        a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a
-      ),
-    }));
+  autoAssignRemaining: async (roomId: string) => {
+    const { players, pickedPlayerIds, abilities } = get();
+
+    // Find players who haven't picked
+    const unpickedPlayerIds = players
+      .map((p) => p.id)
+      .filter((id) => !pickedPlayerIds.includes(id));
+
+    if (unpickedPlayerIds.length === 0) return;
+
+    // Get available abilities with stock > 0
+    const availableAbilities = abilities.filter((a) => a.stock > 0);
+    if (availableAbilities.length === 0) return;
+
+    // Build a flat array of ability IDs based on remaining stock
+    const abilityPool: string[] = [];
+    for (const ability of availableAbilities) {
+      for (let i = 0; i < ability.stock; i++) {
+        abilityPool.push(ability.id);
+      }
+    }
+
+    // Shuffle the pool (Fisher-Yates)
+    for (let i = abilityPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [abilityPool[i], abilityPool[j]] = [abilityPool[j], abilityPool[i]];
+    }
+
+    const assignments = [];
+    const updatedAbilities = [...abilities];
+    const newPickedPlayerIds = [...pickedPlayerIds];
+
+    // Assign one item per unpicked player (sequentially to avoid conflicts)
+    for (
+      let i = 0;
+      i < unpickedPlayerIds.length && i < abilityPool.length;
+      i++
+    ) {
+      const playerId = unpickedPlayerIds[i];
+      const abilityId = abilityPool[i];
+
+      assignments.push({ playerId, abilityId });
+
+      // Apply optimistic update locally
+      const abilityIndex = updatedAbilities.findIndex(
+        (a) => a.id === abilityId
+      );
+      if (abilityIndex !== -1 && updatedAbilities[abilityIndex].stock > 0) {
+        updatedAbilities[abilityIndex] = {
+          ...updatedAbilities[abilityIndex],
+          stock: updatedAbilities[abilityIndex].stock - 1,
+        };
+      }
+      newPickedPlayerIds.push(playerId);
+    }
+
+    // Set optimistic state
+    set({
+      abilities: updatedAbilities,
+      pickedPlayerIds: newPickedPlayerIds,
+    });
+
+    try {
+      // Use the server API to bypass RLS, because the host cannot insert rows for other user_id directly
+      const response = await fetch("/api/starbox/auto-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, assignments }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Gagal auto-assign dari server");
+      }
+
+      const resData = await response.json();
+      if (!resData.success) {
+        console.error("Partial failure in auto-assign:", resData.failed);
+      }
+    } catch (error: any) {
+      console.error(
+        "Gagal bulk auto-assign ability:",
+        error?.message || error?.details || JSON.stringify(error)
+      );
+    }
+  },
+
+  cleanup: () => {
+    if (stockChannel) {
+      supabase.removeChannel(stockChannel);
+      stockChannel = null;
+    }
   },
 
   reset: () => {
+    if (stockChannel) {
+      supabase.removeChannel(stockChannel);
+      stockChannel = null;
+    }
     set({
       roomInfo: null,
       players: [],
       abilities: [],
-      currentTurnIndex: 0,
+      serverStartTime: null,
       pickingAbilityId: null,
       isLoading: true,
+      isHost: false,
+      myPlayerId: null,
+      pickedPlayerIds: [],
     });
   },
 }));

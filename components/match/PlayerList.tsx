@@ -41,10 +41,18 @@ export const PlayerList = ({ players, className }: PlayerListProps) => {
       </div>
 
       {/* Players List Container */}
-      <div className="w-full max-w-[240px] space-y-1.5 overflow-y-auto flex-1 scrollbar-hide pb-2">
-        {players.map((player) => (
-          <PlayerItem key={player.id} player={player} />
-        ))}
+      <div className="w-full flex-1 overflow-y-auto scrollbar-hide pb-2 flex flex-col">
+        {players.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center p-4 text-center text-sm font-medium text-white/50">
+            Tidak ada pemain lain di room ini
+          </div>
+        ) : (
+          <div className="w-full max-w-[240px] space-y-1.5 mx-auto">
+            {players.map((player) => (
+              <PlayerItem key={player.id} player={player} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

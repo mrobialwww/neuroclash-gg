@@ -18,6 +18,10 @@ interface QuestionCardProps {
   canAnswer?: boolean | (() => boolean);
   firstAnswerPlayerId?: string | null;
   firstAnswerId?: string | null;
+  /** ID of the correct answer — revealed after answering (Solo mode) */
+  correctAnswerId?: string | null;
+  /** Whether the last answer was correct (Solo mode) — null means not yet answered */
+  lastAnswerCorrect?: boolean | null;
   className?: string;
 }
 
@@ -30,10 +34,15 @@ export const QuestionCard = ({
   canAnswer = true,
   firstAnswerPlayerId,
   firstAnswerId,
+  correctAnswerId,
+  lastAnswerCorrect,
   className,
 }: QuestionCardProps) => {
   const canUserAnswer =
     typeof canAnswer === "function" ? canAnswer() : canAnswer;
+
+  // Whether we should show the correct/wrong reveal (Solo mode)
+  const shouldReveal = selectedId !== null && selectedId !== undefined && lastAnswerCorrect !== null && lastAnswerCorrect !== undefined;
 
   const optionColors: Record<string, string> = {
     A: "text-[#3B82F6] border-[#3B82F6]",
@@ -47,6 +56,35 @@ export const QuestionCard = ({
     B: "bg-[#EAB308]/20",
     C: "bg-[#22C55E]/20",
     D: "bg-[#A855F7]/20",
+  };
+
+  const getButtonStyle = (option: Option) => {
+    const isSelected = selectedId === option.id;
+    const isCorrect = correctAnswerId === option.id;
+    const isFirstAnswer = firstAnswerId === option.id;
+
+    // Solo reveal mode
+    if (shouldReveal) {
+      if (isCorrect) {
+        // Always highlight correct answer in green
+        return "border-[#008130] bg-[#008130]/30 scale-[1.02]";
+      }
+      if (isSelected && !lastAnswerCorrect) {
+        // Selected but wrong
+        return "border-[#B40000] bg-[#B40000]/30 scale-[1.02]";
+      }
+      // Other options fade out
+      return "border-white/10 opacity-40 cursor-not-allowed";
+    }
+
+    // Multiplayer / normal logic
+    if (isFirstAnswer) return "border-yellow-400 bg-yellow-400/20";
+    if (isSelected) return "scale-[1.02] border-white/60 bg-white/10";
+
+    const isDisabled = disabled || !canUserAnswer || (!!selectedId && selectedId !== option.id);
+    if (isDisabled) return "cursor-not-allowed border-white/10 opacity-50";
+
+    return "border-white/10 hover:border-white/40";
   };
 
   return (
@@ -75,6 +113,7 @@ export const QuestionCard = ({
           const isLongText = option.text.length > 50;
           const isFirstAnswer = firstAnswerId === option.id;
           const isDisabled =
+            shouldReveal ||
             disabled ||
             !canUserAnswer ||
             (!!selectedId && selectedId !== option.id);
@@ -89,12 +128,7 @@ export const QuestionCard = ({
                 "border-2 bg-[#D9D9D9]/20 backdrop-blur-md transition-colors",
                 "min-h-[70px] md:min-h-[100px] lg:min-h-[140px]",
                 "outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                isFirstAnswer && "border-yellow-400 bg-yellow-400/20",
-                selectedId === option.id
-                  ? "scale-[1.02] border-white/60 bg-white/10"
-                  : isDisabled
-                  ? "cursor-not-allowed border-white/10 opacity-50"
-                  : "border-white/10 hover:border-white/40"
+                getButtonStyle(option)
               )}
             >
               {/* Label Circle (A, B, C, D) */}
