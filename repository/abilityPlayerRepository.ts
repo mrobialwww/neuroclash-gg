@@ -49,12 +49,6 @@ export const abilityPlayerRepository = {
       console.error("[AbilityPlayerRepo] getMyAbilities error:", apError);
       throw apError;
     }
-    if (abilityPlayers.length > 0) {
-      console.log("pinterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
-    }
-    if (abilityPlayers.length == 0) {
-      console.log("kocakkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk");
-    }
     const { data: materials, error: amError } = await supabase
       .from("ability_materials")
       .select("ability_materi_id, title, content")
@@ -92,6 +86,24 @@ export const abilityPlayerRepository = {
     const { error } = await supabase.rpc("use_healing_potion", {
       p_game_room_id: roomId,
       p_user_id: userId,
+    });
+
+    if (error) {
+      console.error("[AbilityPlayerRepo] insertPlayerAbility error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Menggunkaan ability Attack atua Shield
+   */
+  async userAttackorShieldAbility(roomId: string, userId: string, abilityId: number) {
+    const supabase = createClient();
+
+    const { error } = await supabase.rpc("use_attack_shield_ability", {
+      p_game_room_id: roomId,
+      p_user_id: userId,
+      p_ability_id: abilityId,
     });
 
     if (error) {

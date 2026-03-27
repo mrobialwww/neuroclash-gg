@@ -129,6 +129,36 @@ export const matchRepository = {
   },
 
   /**
+   * Cek apakah user memiliki buff aktif Attack (ability_id=2) atau Shield (ability_id=4).
+   * Buff dianggap aktif jika row-nya masih ada di `ability_players` dengan stock > 0.
+   * Dipanggil oleh matchService sebelum menghitung damage final.
+   *
+   * @returns 2 jika Attack aktif, 4 jika Shield aktif, null jika tidak ada.
+   */
+  async getActiveAbilityBuff(roomId: string, userId: string): Promise<2 | 4 | null> {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("ability_players")
+      .select("ability_id, stock")
+      .eq("game_room_id", roomId)
+      .eq("user_id", userId)
+      // Hanya cek ability_id yang relevan: 2 = Attack, 4 = Shield
+      .in("ability_id", [2, 4])
+      .gt("stock", 0);
+
+    if (error) {
+      console.error("[MatchRepo] getActiveAbilityBuff error:", error);
+      return null;
+    }
+
+    // Shield diprioritaskan jika keduanya ada bersamaan
+    if (data?.some((r) => r.ability_id === 4)) return 4;
+    if (data?.some((r) => r.ability_id === 2)) return 2;
+    return null;
+  },
+
+  /**
    * Memberikan statistik akhir dari player ketika sudah tereliminasi dari room
    * Terdapat pengecekan apakah user memiliki ability boost coin/trophy
    */
