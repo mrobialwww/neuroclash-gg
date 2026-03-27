@@ -17,11 +17,13 @@ import {
 } from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
 import { createClient } from "@/lib/supabase/client";
+import { useStarboxStore } from "@/store/useStarboxStore";
 
 export default function GamePage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const [isProcessingEndgame, setIsProcessingEndgame] = React.useState(false);
 
   const gameRoomId = params.room_id as string;
   const roomCodeQuery = searchParams.get("code") ?? gameRoomId;
@@ -72,13 +74,22 @@ export default function GamePage() {
     canAnswer,
   } = useMatchStore();
 
+  const { myInventory, refreshMyInventory } = useStarboxStore();
+
   const activeStepIndex = ((currentOrder - 1) % STARBOX_INTERVAL) + 1;
   const isSolo = roomInfo?.max_player === 1;
 
-  // 1. Initialize Match Room Data
+  // 1. Initialize Match Room Data + hydrate inventory dari DB (termasuk ability_materials)
   useEffect(() => {
     initializeMatch(roomCodeQuery, gameRoomId, initialRound);
   }, [initializeMatch, roomCodeQuery, gameRoomId, initialRound]);
+
+  // 1b. Hydrate inventory dari DB agar ability_materials tersedia untuk OverlayMaterialCard
+  useEffect(() => {
+    if (currentUser?.id && gameRoomId) {
+      refreshMyInventory(gameRoomId, currentUser.id);
+    }
+  }, [currentUser?.id, gameRoomId, refreshMyInventory]);
 
   // Handle Error (Ongoing room or not found)
   useEffect(() => {
@@ -277,38 +288,38 @@ export default function GamePage() {
     const mapToCard = (p: any) =>
       p
         ? {
-            id: p.id,
-            name: p.name,
-            character: p.character || "Slime",
-            image: p.avatar,
-            health: p.health,
-            maxHealth: 100,
-          }
+          id: p.id,
+          name: p.name,
+          character: p.character || "Slime",
+          image: p.avatar,
+          health: p.health,
+          maxHealth: 100,
+        }
         : null;
 
     // Prof. Bubu card untuk Solo mode (lawan)
     const profBubuCard = isSolo
       ? {
-          id: "prof-bubu",
-          name: "Prof. Bubu",
-          character: "Prof. Bubu",
-          image: "/mascot/mascot-match.webp",
-          health: 100,
-          maxHealth: 100,
-        }
+        id: "prof-bubu",
+        name: "Prof. Bubu",
+        character: "Prof. Bubu",
+        image: "/mascot/mascot-match.webp",
+        health: 100,
+        maxHealth: 100,
+      }
       : null;
 
     // Solo fallback: jika players belum terisi, gunakan data currentUser
     const soloMeCard =
       isSolo && !meData && currentUser
         ? {
-            id: currentUser.id,
-            name: currentUser.username,
-            character: currentUser.character,
-            image: currentUser.avatar || "/default/slime.webp",
-            health: 100,
-            maxHealth: 100,
-          }
+          id: currentUser.id,
+          name: currentUser.username,
+          character: currentUser.character,
+          image: currentUser.avatar || "/default/slime.webp",
+          health: 100,
+          maxHealth: 100,
+        }
         : null;
 
     return {
@@ -339,6 +350,29 @@ export default function GamePage() {
       await quizRepository.deleteLeaveRoom(userGameId);
     }
     router.push("/dashboard");
+  };
+
+  const handleGoToEndgame = async () => {
+    if (isProcessingEndgame) return;
+    setIsProcessingEndgame(true);
+
+    try {
+      // Trigger centralized server-side reward processing
+      // This is idempotent and ensures all players get their rewards calculated correctly.
+      await fetch("/api/game/endgame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_room_id: gameRoomId }),
+        credentials: "include",
+      });
+
+      // Redirect to the actual endgame results page
+      router.push(`/endgame/${gameRoomId}`);
+    } catch (err) {
+      console.error("[GamePage] Failed to trigger endgame rewards:", err);
+      // Fail-safe: transition to endgame page anyway as the server might have already processed it.
+      router.push(`/endgame/${gameRoomId}`);
+    }
   };
 
   // Tampilan ketika Loading Data
@@ -374,6 +408,7 @@ export default function GamePage() {
   if (isFinished) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
+
         {/* Icon */}
         <p className="text-5xl">{eliminationData?.isWinner ? "🏆" : "🎮"}</p>
 
@@ -474,13 +509,16 @@ export default function GamePage() {
         )}
 
         {/* Back to Dashboard Button */}
+
         <MainButton
           variant="green"
           hasShadow
           className="rounded-xl px-10 py-4 text-lg font-bold"
-          onClick={() => router.push("/dashboard")}
+          onClick={handleGoToEndgame}
+          isLoading={isProcessingEndgame}
+          disabled={isProcessingEndgame}
         >
-          Kembali ke Dashboard
+          Lihat Hasil
         </MainButton>
       </main>
     );
@@ -526,7 +564,7 @@ export default function GamePage() {
           <div className="order-1 flex h-full flex-col justify-end gap-4 self-stretch lg:order-1">
             <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
-                <BuffList className="h-full" />
+                <BuffList buffs={myInventory} className="h-full" />
               </div>
             </div>
             <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
@@ -595,7 +633,7 @@ export default function GamePage() {
 
           {/* Mobile Layout */}
           <div className="order-4 col-span-1 lg:hidden">
-            <BuffList className="h-[200px] w-full sm:h-[240px]" />
+            <BuffList buffs={myInventory} className="h-[200px] w-full sm:h-[240px]" />
           </div>
 
           <div className="order-5 col-span-1 lg:hidden">

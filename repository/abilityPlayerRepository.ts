@@ -30,18 +30,57 @@ export const abilityPlayerRepository = {
   async getMyAbilities(gameRoomId: string, userId: string) {
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    const { data: abilityPlayers, error: apError } = await supabase
       .from("ability_players")
-      .select("ability_player_id, game_room_id, ability_id, stock, user_id, abilities!inner(name, description, image, empty_image)")
+      .select(
+        `
+      ability_player_id,
+      game_room_id,
+      ability_id,
+      stock,
+      user_id,
+      abilities(name, description, image, empty_image)
+    `,
+      )
       .eq("game_room_id", gameRoomId)
       .eq("user_id", userId);
 
-    if (error) {
-      console.error("[AbilityPlayerRepo] getMyAbilities error:", error);
-      throw error;
+    if (apError) {
+      console.error("[AbilityPlayerRepo] getMyAbilities error:", apError);
+      throw apError;
+    }
+    if (abilityPlayers.length > 0) {
+      console.log("pinterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+    }
+    if (abilityPlayers.length == 0) {
+      console.log("kocakkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk");
+    }
+    const { data: materials, error: amError } = await supabase
+      .from("ability_materials")
+      .select("ability_materi_id, title, content")
+      .eq("game_room_id", gameRoomId);
+
+    if (amError) {
+      console.error("[AbilityPlayerRepo] getMyAbilities material error:", amError);
+      throw amError;
     }
 
-    return data;
+    // Gabungkan semua material menjadi satu objek untuk ditampilkan di overlay.
+    // ability_materials bisa punya banyak row per room (1 per topik dari AI).
+    const combinedMaterial: { ability_materi_id: string; title: string; content: string } | null =
+      materials && materials.length > 0
+        ? {
+            ability_materi_id: materials[0].ability_materi_id,
+            title: materials.map((m) => m.title).join(" | "),
+            content: materials.map((m) => m.content).join("\n\n---\n\n"),
+          }
+        : null;
+
+    return (abilityPlayers ?? []).map((row) => ({
+      ...row,
+      // Hanya lampirkan material ke ability_id === 1 (tipe Materi/Kitab Pengetahuan)
+      ability_materials: row.ability_id === 1 ? combinedMaterial : null,
+    }));
   },
 
   /**

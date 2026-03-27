@@ -3,6 +3,8 @@ import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
 import { CategorySection } from "@/components/dashboard/CategorySection";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { dashboardService } from "@/services/dashboardService";
+import { gameRoomRepository } from "@/repository/gameRoomRepository";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,34 +16,18 @@ export default async function DashboardPage() {
     redirect("/signin");
   }
 
-  // Use API route for dashboard data to avoid circular dependencies
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/users/${
-      user.id
-    }/dashboard`,
-    {
-      cache: "no-store",
-      credentials: "include",
-    }
-  );
+  // Fetch Dashboard Stats via Server Service (bypassing slow HTTP calls and avoiding hardcoded URLs)
+  const dashboardData = await dashboardService.getDashboardData(user.id);
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch dashboard data");
+  if (!dashboardData) {
+    throw new Error("Failed to load user dashboard data");
   }
 
-  const { data: dashboardData } = await res.json();
+  // Fetch public game rooms using gameRoomRepository (which also injects precise player counts)
+  const rooms = await gameRoomRepository.getPublicOpenRooms();
 
-  // Fetch game rooms (only public rooms for now)
-  const rooms = await fetch(
-    `${
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    }/api/game-rooms?room_visibility=public&room_status=open`,
-    {
-      credentials: "include",
-    }
-  )
-    .then((res) => (res.ok ? res.json() : { data: [] }))
-    .then((result) => result.data || []);
+  // Fetch user's personal created rooms for "Arena Kamu"
+  const userRooms = await gameRoomRepository.getUserRooms(user.id);
 
   // Group rooms by category
   const groupedRooms = rooms.reduce((acc: any[], room: any) => {
@@ -75,12 +61,19 @@ export default async function DashboardPage() {
       </div>
 
       <div className="space-y-12">
+        {/* User's Created Arenas Section */}
+        {userRooms.length > 0 && (
+          <CategorySection
+            key="arena-kamu"
+            title="Arena Kamu"
+            rooms={userRooms}
+          />
+        )}
+
         {/* Categories Section (Public) */}
         {groupedRooms.map((group: any) => {
           // Filter to ensure only public rooms are shown in categorized sections
-          const publicRooms = group.rooms.filter(
-            (r: any) => r.room_visibility === "public"
-          );
+          const publicRooms = group.rooms; // (sudah difilter di atas dengan .eq(room_visibility, public))
 
           if (publicRooms.length === 0) return null;
 

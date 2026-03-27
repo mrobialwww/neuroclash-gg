@@ -23,6 +23,7 @@ export const matchRepository = {
   ) {
     const supabase = await createClient();
 
+
     const { data, error } = await supabase
       .from("user_answers")
       .insert({
@@ -98,7 +99,7 @@ export const matchRepository = {
    * Berguna untuk menentukan siapa yang tercepat.
    */
   async getQuestionAnswers(questionId: string) {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("user_answers")
       .select("user_id, created_at, answer_id, answers(is_correct)")

@@ -1,6 +1,7 @@
 import { battleRoomService, BattleRoom } from "./battleRoomService";
 import { matchRepository } from "@/repository/matchRepository";
 import { createClient } from "@/lib/supabase/client";
+import { endgameService } from "./endgameService";
 
 export const roundManagementService = {
   /**
@@ -614,6 +615,11 @@ export const roundManagementService = {
     );
 
     const supabase = await createClient();
+
+    // Call Centralized Atomic Endgame Processing
+    // This will calculate final trophies, coins, Win/Loss, apply abilities,
+    // persist everything to user_games and users, and finally set room_status to "finished".
+    await endgameService.processCentralizedRewards(gameId);
 
     // 1. Update room status
     await supabase
