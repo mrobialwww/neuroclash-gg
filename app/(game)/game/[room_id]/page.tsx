@@ -17,6 +17,7 @@ export default function GamePage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const [isProcessingEndgame, setIsProcessingEndgame] = React.useState(false);
 
   const gameRoomId = params.room_id as string;
   const roomCodeQuery = searchParams.get("code") ?? gameRoomId;
@@ -119,38 +120,38 @@ export default function GamePage() {
     const mapToCard = (p: any) =>
       p
         ? {
-            id: p.id,
-            name: p.name,
-            character: p.character || "Slime",
-            image: p.avatar,
-            health: p.health,
-            maxHealth: 100,
-          }
+          id: p.id,
+          name: p.name,
+          character: p.character || "Slime",
+          image: p.avatar,
+          health: p.health,
+          maxHealth: 100,
+        }
         : null;
 
     // Prof. Bubu card untuk Solo mode (lawan)
     const profBubuCard = isSolo
       ? {
-          id: "prof-bubu",
-          name: "Prof. Bubu",
-          character: "Prof. Bubu",
-          image: "/mascot/mascot-match.webp",
-          health: 100,
-          maxHealth: 100,
-        }
+        id: "prof-bubu",
+        name: "Prof. Bubu",
+        character: "Prof. Bubu",
+        image: "/mascot/mascot-match.webp",
+        health: 100,
+        maxHealth: 100,
+      }
       : null;
 
     // Solo fallback: jika players belum terisi, gunakan data currentUser
     const soloMeCard =
       isSolo && !meData && currentUser
         ? {
-            id: currentUser.id,
-            name: currentUser.username,
-            character: currentUser.character,
-            image: currentUser.avatar || "/default/slime.webp",
-            health: 100,
-            maxHealth: 100,
-          }
+          id: currentUser.id,
+          name: currentUser.username,
+          character: currentUser.character,
+          image: currentUser.avatar || "/default/slime.webp",
+          health: 100,
+          maxHealth: 100,
+        }
         : null;
 
     return {
@@ -183,6 +184,29 @@ export default function GamePage() {
     router.push("/dashboard");
   };
 
+  const handleGoToEndgame = async () => {
+    if (isProcessingEndgame) return;
+    setIsProcessingEndgame(true);
+
+    try {
+      // Trigger centralized server-side reward processing
+      // This is idempotent and ensures all players get their rewards calculated correctly.
+      await fetch("/api/game/endgame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_room_id: gameRoomId }),
+        credentials: "include",
+      });
+
+      // Redirect to the actual endgame results page
+      router.push(`/endgame/${gameRoomId}`);
+    } catch (err) {
+      console.error("[GamePage] Failed to trigger endgame rewards:", err);
+      // Fail-safe: transition to endgame page anyway as the server might have already processed it.
+      router.push(`/endgame/${gameRoomId}`);
+    }
+  };
+
   // Tampilan ketika Loading Data
   if (isLoadingQuestion && !currentQuestion && !error) {
     return (
@@ -213,8 +237,15 @@ export default function GamePage() {
         <p className="text-5xl">🏆</p>
         <h1 className="text-center text-3xl font-extrabold text-white">Quiz Selesai!</h1>
         <p className="text-center text-lg text-white/60">Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.</p>
-        <MainButton variant="green" hasShadow className="rounded-xl px-10 py-4 text-lg font-bold" onClick={() => router.push("/dashboard")}>
-          Kembali ke Dashboard
+        <MainButton
+          variant="green"
+          hasShadow
+          className="rounded-xl px-10 py-4 text-lg font-bold"
+          onClick={handleGoToEndgame}
+          isLoading={isProcessingEndgame}
+          disabled={isProcessingEndgame}
+        >
+          Lihat Hasil
         </MainButton>
       </main>
     );

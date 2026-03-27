@@ -1,6 +1,7 @@
 import { battleRoomService, BattleRoom } from "./battleRoomService";
 import { matchRepository } from "@/repository/matchRepository";
 import { createClient } from "@/lib/supabase/client";
+import { endgameService } from "./endgameService";
 
 export const roundManagementService = {
   /**
@@ -551,46 +552,13 @@ export const roundManagementService = {
   async endGame(gameId: string): Promise<void> {
     console.log(`[RoundService] Ending game ${gameId}`);
 
-    const supabase = await createClient();
+    // Call Centralized Atomic Endgame Processing
+    // This will calculate final trophies, coins, Win/Loss, apply abilities,
+    // persist everything to user_games and users, and finally set room_status to "finished".
+    await endgameService.processCentralizedRewards(gameId);
 
-    // 1. Update room status
-    await supabase
-      .from("game_rooms")
-      .update({
-        room_status: "finished",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("game_room_id", gameId);
-
-    // 2. Get final standings
-    const { data: players } = await supabase
-      .from("game_players")
-      .select("user_id, health")
-      .eq("game_room_id", gameId)
-      .order("health", { ascending: false });
-
-    // 3. Update user_games with trophy/coins (simplified - adjust based on your requirements)
-    if (players && players.length > 0) {
-      for (let i = 0; i < players.length; i++) {
-        const player = players[i];
-        const placement = i + 1;
-        const trophy_won = placement === 1 ? 50 : 0;
-        const coins_earned = placement === 1 ? 100 : placement === 2 ? 50 : 20;
-
-        await supabase
-          .from("user_games")
-          .update({
-            trophy_won,
-            coins_earned,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("game_room_id", gameId)
-          .eq("user_id", player.user_id);
-      }
-    }
-
-    // 4. Delete game_players data
-    await supabase.from("game_players").delete().eq("game_room_id", gameId);
+    // The Endgame UI depends on game_players and user_answers to render the podium and stats table.
+    // game_players can be deleted via a scheduled cron job or when a room is explicitly destroyed later.
 
     console.log(`[RoundService] Game ${gameId} ended successfully`);
   },

@@ -35,7 +35,25 @@ export const gameRoomRepository = {
       return [];
     }
 
-    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+    const rooms = data ?? [];
+    if (rooms.length === 0) return [];
+
+    // Fetch player counts
+    const roomIds = rooms.map((r) => r.game_room_id);
+    const { data: userGames } = await supabase
+      .from("user_games")
+      .select("game_room_id")
+      .in("game_room_id", roomIds);
+
+    const countMap = new Map();
+    userGames?.forEach((ug) => {
+      countMap.set(ug.game_room_id, (countMap.get(ug.game_room_id) || 0) + 1);
+    });
+
+    return rooms.map((room) => ({
+      ...room,
+      player_count: countMap.get(room.game_room_id) || 0,
+    }));
   },
 
   /**
@@ -55,7 +73,25 @@ export const gameRoomRepository = {
       return [];
     }
 
-    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+    const rooms = data ?? [];
+    if (rooms.length === 0) return [];
+
+    // Fetch player counts
+    const roomIds = rooms.map((r) => r.game_room_id);
+    const { data: userGames } = await supabase
+      .from("user_games")
+      .select("game_room_id")
+      .in("game_room_id", roomIds);
+
+    const countMap = new Map();
+    userGames?.forEach((ug) => {
+      countMap.set(ug.game_room_id, (countMap.get(ug.game_room_id) || 0) + 1);
+    });
+
+    return rooms.map((room) => ({
+      ...room,
+      player_count: countMap.get(room.game_room_id) || 0,
+    }));
   },
 
   /**
