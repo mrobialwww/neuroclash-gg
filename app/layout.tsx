@@ -23,30 +23,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${baloo2.variable} antialiased relative min-h-screen`}>
+      <body className={`${baloo2.variable} relative min-h-screen antialiased`}>
         {/* Scrolling Background Container - Looping & Mirrored */}
-        <div className="absolute inset-0 -z-50 w-full flex flex-col pointer-events-none select-none overflow-hidden h-full">
+        <div className="pointer-events-none absolute inset-0 -z-50 flex h-full w-full select-none flex-col overflow-hidden">
           {Array.from({ length: 20 }).map((_, i) => (
-            <div
-              key={i}
-              className={`relative shrink-0 w-full h-screen ${i % 2 !== 0 ? "scale-y-[-1]" : ""}`}
-            >
-              <Image
-                src="/background.webp"
-                alt={`Background Tile ${i}`}
-                fill
-                priority={i < 2}
-                sizes="100vw"
-                className="object-cover"
-              />
+            <div key={i} className={`relative h-screen w-full shrink-0 ${i % 2 !== 0 ? "scale-y-[-1]" : ""}`}>
+              <Image src="/background.webp" alt={`Background Tile ${i}`} fill priority={i < 2} sizes="100vw" className="object-cover" />
             </div>
           ))}
         </div>
 
         {/* Konten Utama */}
-        <div className="relative z-0">
-          {children}
-        </div>
+        <div className="relative z-0">{children}</div>
 
         <Toaster richColors position="top-right" />
       </body>

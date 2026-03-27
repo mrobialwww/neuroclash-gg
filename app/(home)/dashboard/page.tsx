@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import { dashboardService } from "@/services/dashboardService";
 import { gameRoomRepository } from "@/repository/gameRoomRepository";
 
-export default async function DashboardPage(props: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,16 +35,8 @@ export default async function DashboardPage(props: {
   const searchParamRaw = (await props.searchParams)?.search;
   const searchQuery = typeof searchParamRaw === "string" ? searchParamRaw.toLowerCase() : undefined;
   if (searchQuery) {
-    rooms = rooms.filter(
-      (room) =>
-        room.title?.toLowerCase().includes(searchQuery) ||
-        room.category?.toLowerCase().includes(searchQuery)
-    );
-    userRooms = userRooms.filter(
-      (room) =>
-        room.title?.toLowerCase().includes(searchQuery) ||
-        room.category?.toLowerCase().includes(searchQuery)
-    );
+    rooms = rooms.filter((room) => room.title?.toLowerCase().includes(searchQuery) || room.category?.toLowerCase().includes(searchQuery));
+    userRooms = userRooms.filter((room) => room.title?.toLowerCase().includes(searchQuery) || room.category?.toLowerCase().includes(searchQuery));
   }
 
   // Group rooms by category
@@ -80,13 +72,7 @@ export default async function DashboardPage(props: {
 
       <div className="space-y-12">
         {/* User's Created Arenas Section */}
-        {userRooms.length > 0 && (
-          <CategorySection
-            key="arena-kamu"
-            title="Arena Kamu"
-            rooms={userRooms}
-          />
-        )}
+        {userRooms.length > 0 && <CategorySection key="arena-kamu" title="Arena Kamu" rooms={userRooms} />}
 
         {/* Categories Section (Public) */}
         {groupedRooms.map((group: any) => {
@@ -95,13 +81,7 @@ export default async function DashboardPage(props: {
 
           if (publicRooms.length === 0) return null;
 
-          return (
-            <CategorySection
-              key={group.topic}
-              title={formatTopicTitle(group.topic)}
-              rooms={publicRooms}
-            />
-          );
+          return <CategorySection key={group.topic} title={formatTopicTitle(group.topic)} rooms={publicRooms} />;
         })}
       </div>
     </main>
