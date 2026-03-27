@@ -116,7 +116,7 @@ export default function CreateQuizDummy() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        alert("Anda belum login! Silakan login untuk membuat ruangan.");
+        alert("Kamu belum login! Silakan login untuk membuat ruangan.");
         setSaving(false);
         return;
       }
@@ -152,7 +152,7 @@ export default function CreateQuizDummy() {
         <CardHeader>
           <CardTitle>Generate Kuis dengan AI</CardTitle>
           <CardDescription>
-            Pilih metode yang Anda inginkan untuk men-generate soal kuis dari
+            Pilih metode yang kamu inginkan untuk men-generate soal kuis dari
             PDF.
           </CardDescription>
         </CardHeader>

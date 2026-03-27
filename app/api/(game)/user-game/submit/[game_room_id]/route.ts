@@ -26,25 +26,10 @@ export async function PATCH(
   { params }: { params: Promise<{ game_room_id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-
-    const body = await request.json();
-
-    const { game_room_id } = await params;
-
-    // Memanggil fungsi transaksi (RPC) di Supabase
-    const { error } = await supabase.rpc("submit_game_result", {
-      p_user_id: body.user_id,
-      p_game_room_id: game_room_id,
-      p_trophy_won: body.trophy_won,
-      p_coins_earned: body.coins_earned,
-      p_placement: body.placement, // Peringkat akhir pemain (misal: 5)
-    });
-
-    if (error) {
-      console.error("Supabase RPC Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    // NOTE: Reward calculation and database updates (user_games and users)
+    // are now handled centrally by endgameService.processCentralizedRewards
+    // when the round ends logic triggers. This endpoint now simply returns success
+    // to avoid duplicating rewards and overlapping database transactions.
 
     return NextResponse.json({
       message: "Berhasil mengupdate statistik pemain",

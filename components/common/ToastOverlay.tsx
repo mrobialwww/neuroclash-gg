@@ -43,7 +43,7 @@ export const ToastOverlay = ({
       <div className="relative w-full max-w-[400px] md:max-w-[440px] rounded-2xl bg-[#040619] border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-6 md:p-8 flex flex-col items-center text-center gap-4 md:gap-6 animate-in fade-in zoom-in-95 duration-200">
 
         {/* Title */}
-        <h2 className={`text-xl md:text-3xl font-black uppercase ${titleColor}`}>
+        <h2 className={`text-xl md:text-3xl font-extrabold uppercase ${titleColor}`}>
           {title || (isFailed ? "Gagal Bergabung" : "Konfirmasi")}
         </h2>
 

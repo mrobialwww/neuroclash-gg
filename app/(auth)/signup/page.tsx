@@ -175,7 +175,7 @@ export default function SignUpPage() {
           </p>
 
           <p className="text-[12px] text-white/50 leading-relaxed">
-            Dengan mendaftar, Anda menyetujui{" "}
+            Dengan mendaftar, kamu menyetujui{" "}
             <Link href="/terms" className="hover:text-white/80 underline">
               Ketentuan layanan
             </Link>{" "}

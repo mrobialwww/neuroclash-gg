@@ -5,7 +5,9 @@ import { Users, Flag } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { OverlayJoinCard } from "@/components/dashboard/OverlayJoinCard";
+import { AvatarCircles } from "@/components/dashboard/AvatarCircles";
 import { GameRoomWithPlayerCount } from "@/types/GameRoom";
+import { MockUser } from "@/types/MockUser";
 
 interface GameRoomCardProps {
   room: GameRoomWithPlayerCount;
@@ -25,6 +27,16 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
 
   const progress = Math.min((room.player_count / room.max_player) * 100, 100);
   const displayTitle = room.title || room.category;
+
+  // Map participant avatar URLs into MockUser objects for AvatarCircles
+  const avatarUsers: MockUser[] = (room.participants_avatars ?? [])
+    .slice(0, 4)
+    .map((data, idx) => ({
+      id: String(idx),
+      name: `Pemain ${idx + 1}`,
+      character: data.character,
+      image: data.image,
+    }));
 
   const handleClick = () => {
     setOpen(true);
@@ -67,17 +79,30 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
         </div>
 
         {/* Footer Stats Row */}
-        <div className="mt-auto flex w-full items-center justify-end">
+        <div className="mt-auto flex w-full items-center justify-between">
+          {/* Participant Character Avatars (max 4) */}
+          {avatarUsers.length > 0 ? (
+            <AvatarCircles
+              items={avatarUsers}
+              avatarSize={44}
+              maxItems={4}
+              className="md:pl-1"
+            />
+          ) : (
+            <div />
+          )}
+
+          {/* Player count & round count */}
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-center">
               <Users size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
-              <span className="text-sm font-extrabold text-[#555555]">
+              <span className="text-sm font-bold text-[#555555]">
                 {room.player_count}/{room.max_player}
               </span>
             </div>
             <div className="flex flex-col items-center">
               <Flag size={22} className="mb-0.5 text-[#256AF4] opacity-80" />
-              <span className="text-sm font-extrabold text-[#555555]">
+              <span className="text-sm font-bold text-[#555555]">
                 {room.total_round}
               </span>
             </div>

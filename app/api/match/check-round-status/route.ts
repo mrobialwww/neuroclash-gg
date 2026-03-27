@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { battleRoomService } from "@/services/battleRoomService";
+import { roundManagementService } from "@/services/roundManagementService";
 
 /**
  * Check if all battle rooms are finished before advancing round
@@ -28,8 +29,14 @@ export async function GET(request: NextRequest) {
       round_number
     );
 
+    // Check game end condition (only 1 player alive or all rounds completed)
+    const shouldEndGame = await roundManagementService.checkGameEndCondition(
+      game_room_id
+    );
+
     return NextResponse.json({
       all_finished: allFinished,
+      game_ended: shouldEndGame,
       game_room_id,
       round_number,
     });

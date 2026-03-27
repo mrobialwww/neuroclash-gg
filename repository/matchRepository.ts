@@ -15,8 +15,14 @@ export const matchRepository = {
   /**
    * Simpan jawaban user ke tabel user_answers.
    */
-  async submitAnswer(userId: string, answerId: string, roomId: string, roundNumber: number) {
-    const supabase = createClient();
+  async submitAnswer(
+    userId: string,
+    answerId: string,
+    roomId: string,
+    roundNumber: number
+  ) {
+    const supabase = await createClient();
+
 
     const { data, error } = await supabase
       .from("user_answers")
@@ -40,16 +46,46 @@ export const matchRepository = {
   /**
    * Update health user di tabel game_players.
    */
-  async updateHealth(userId: string, roomId: string, newHealth: number) {
-    return gamePlayerRepository.updateHealth(userId, roomId, newHealth);
+  async updateHealth(
+    userId: string,
+    roomId: string,
+    newHealth: number,
+    roundNumber?: number
+  ) {
+    console.log(
+      `[MatchRepo] updateHealth called: userId=${userId.substring(
+        0,
+        8
+      )}, roomId=${roomId.substring(
+        0,
+        8
+      )}, health=${newHealth}, round=${roundNumber}`
+    );
+    return gamePlayerRepository.updateHealth(
+      userId,
+      roomId,
+      newHealth,
+      roundNumber
+    );
+  },
+
+  /**
+   * Increment win count when user answers first and correctly
+   */
+  async incrementWin(userId: string, roomId: string) {
+    return gamePlayerRepository.incrementWin(userId, roomId);
   },
 
   /**
    * Mendapatkan detail jawaban (apakah benar) dari answerId.
    */
   async getAnswerDetail(answerId: string) {
-    const supabase = createClient();
-    const { data, error } = await supabase.from("answers").select("is_correct, question_id").eq("answer_id", answerId).single();
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("answers")
+      .select("is_correct, question_id")
+      .eq("answer_id", answerId)
+      .single();
 
     if (error) {
       console.error("[MatchRepo] getAnswerDetail error:", error);
@@ -80,7 +116,7 @@ export const matchRepository = {
           is_correct,
           question_id
         )
-      `,
+      `
       )
       .eq("answer.question_id", questionId)
       .order("created_at", { ascending: true });
@@ -126,9 +162,18 @@ export const matchRepository = {
    * Memberikan statistik akhir dari player ketika sudah tereliminasi dari room
    * Terdapat pengecekan apakah user memiliki ability boost coin/trophy
    */
-  async playerElimination(roomId: string, userId: string, totalTrophy: number, totalCoin: number, placement: number) {
+  async playerElimination(
+    roomId: string,
+    userId: string,
+    totalTrophy: number,
+    totalCoin: number,
+    placement: number
+  ) {
     const supabase = createClient();
-    const abilities = await abilityPlayerRepository.getMyAbilities(roomId, userId);
+    const abilities = await abilityPlayerRepository.getMyAbilities(
+      roomId,
+      userId
+    );
 
     // Cek apakah user memiliki ability "PIALA KEJAYAAN"
     const ability5 = abilities?.find((a) => a.ability_id === 5);

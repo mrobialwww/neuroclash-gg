@@ -1,121 +1,80 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import { EndgameRewardBadge } from "@/components/endgame/EndgameRewardBadge";
 import { EndgamePodium, PodiumPlayer } from "@/components/endgame/EndgamePodium";
 import { EndgameTable } from "@/components/endgame/EndgameTable";
 import { EndgamePlayer } from "@/components/endgame/EndgameTableRow";
+import { useMatchStore } from "@/store/useMatchStore";
 
-export default function EndgamePage() {
+export default function EndgamePage({ params }: { params: Promise<{ room_id: string }> }) {
   const router = useRouter();
+  const { currentUser } = useMatchStore();
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const resolvedParams = use(params);
+  const roomId = resolvedParams.room_id;
 
-  // --- MOCK DATA ---
-  const currentUserId = "user-123";
+  useEffect(() => {
+    async function fetchEndgame() {
+      try {
+        const res = await fetch(`/api/endgame/${roomId}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setResults(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch endgame data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const mockReward = {
-    coinsEarned: 179,
-    trophyWon: 89,
+    if (roomId) {
+      fetchEndgame();
+    }
+  }, [roomId, currentUser]);
+
+  const currentUserId = currentUser?.id || "unknown";
+  const myResult = results.find((r) => r.userId === currentUserId);
+
+  const reward = {
+    coinsEarned: myResult?.coinsEarned || 0,
+    trophyWon: myResult?.trophyWon || 0,
+    coinBoost: myResult?.coinBoost || 0,
+    trophyBoost: myResult?.trophyBoost || 0,
   };
 
-  const mockPodiumPlayers: PodiumPlayer[] = [
-    {
-      userId: "u1",
-      placement: 1,
-      username: "Nama_User",
-      baseCharacter: "Mecha Blaze",
-      characterImage: "/legend/Mecha Blaze.webp",
-    },
-    {
-      userId: "u2",
-      placement: 2,
-      username: "Nama_User",
-      baseCharacter: "Jamur",
-      characterImage: "/default/Jamur.webp",
-    },
-    {
-      userId: "u3",
-      placement: 3,
-      username: "Nama_User",
-      baseCharacter: "Batu Pendekar",
-      characterImage: "/epic/Batu Pendekar.webp",
-    },
-  ];
+  const podiumPlayers: PodiumPlayer[] = results
+    .filter((r) => r.placement <= 3)
+    .map((r) => ({
+      userId: r.userId,
+      placement: r.placement,
+      username: r.username,
+      baseCharacter: r.baseCharacter,
+      characterImage: r.characterImage,
+    }));
 
-  // Map to table players
-  const mockTablePlayers: EndgamePlayer[] = [
-    {
-      id: "u1",
-      position: 1,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Mecha Blaze",
-      characterImage: "/legend/Mecha Blaze.webp",
-      playTime: "15:04",
-      wins: 7,
-      losses: 5,
-    },
-    {
-      id: "u2",
-      position: 2,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Jamur",
-      characterImage: "/default/Jamur.webp",
-      playTime: "12:32",
-      wins: 7,
-      losses: 5,
-    },
-    {
-      id: "u3",
-      position: 3,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Batu Pendekar",
-      characterImage: "/epic/Batu Pendekar.webp",
-      playTime: "11:23",
-      wins: 7,
-      losses: 5,
-    },
-    {
-      id: "user-123", // Matches current userId
-      position: 4,
-      username: "Lorem_Nama_User",
-      baseCharacter: "Air",
-      characterImage: "/default/Air.webp",
-      playTime: "11:23",
-      wins: 7,
-      losses: 5,
-    },
-    {
-      id: "u5",
-      position: 5,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Akuatron",
-      characterImage: "/legend/Akuatron.webp",
-      playTime: "11:23",
-      wins: 7,
-      losses: 5,
-    },
-    {
-      id: "u6",
-      position: 6,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Api Baskara",
-      characterImage: "/epic/Api Baskara.webp",
-      playTime: "11:23",
-      wins: 7,
-      losses: 5,
-    },
-    { // Extra data to ensure list is filled as image shows multiple '5' (mocked)
-      id: "u7",
-      position: 7,
-      username: "Lorem_Ipsum_nama",
-      baseCharacter: "Robot",
-      characterImage: "/default/Robot.webp",
-      playTime: "11:23",
-      wins: 7,
-      losses: 5,
-    },
-  ];
+  const tablePlayers: EndgamePlayer[] = results.map((r) => ({
+    id: r.userId,
+    position: r.placement,
+    username: r.username,
+    baseCharacter: r.baseCharacter,
+    characterImage: r.characterImage,
+    playTime: r.survivalTime || (r.isAlive ? "Bertahan" : "-"),
+    wins: r.win || 0,
+    losses: r.lose || 0,
+  }));
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen w-full items-center justify-center">
+        <p className="text-white text-xl animate-pulse">Menghitung hasil pertandingan...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center overflow-x-hidden px-4 py-6 sm:px-8 md:px-12 relative">
@@ -135,24 +94,26 @@ export default function EndgamePage() {
         {/* Reward second on mobile, but first on desktop */}
         <div className="order-2 sm:order-1">
           <EndgameRewardBadge
-            coinsEarned={mockReward.coinsEarned}
-            trophyWon={mockReward.trophyWon}
+            coinsEarned={reward.coinsEarned}
+            trophyWon={reward.trophyWon}
+            coinBoost={reward.coinBoost}
+            trophyBoost={reward.trophyBoost}
           />
         </div>
       </header>
 
       {/* PODIUM SECTION */}
       <div className="relative z-10 w-full max-w-6xl mt-28 sm:mt-24 lg:mt-12 mb-4">
-        <EndgamePodium players={mockPodiumPlayers} />
+        <EndgamePodium players={podiumPlayers} />
       </div>
 
       {/* TABLE SECTION */}
       <div className="relative z-20 w-full max-w-5xl -mt-32 sm:-mt-48 md:-mt-56 lg:-mt-64 mb-8">
         <EndgameTable
-          players={mockTablePlayers}
+          players={tablePlayers}
           currentUserId={currentUserId}
         />
       </div>
-    </main >
+    </main>
   );
 }
