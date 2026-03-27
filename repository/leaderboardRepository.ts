@@ -60,7 +60,7 @@ export const leaderboardRepository = {
     return { data, count, error: null };
   },
 
-  async getUserLeaderboardPosition(username: string): Promise<number | null> {
+  async getUserLeaderboardPosition(userId: string): Promise<number | null> {
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
@@ -80,12 +80,12 @@ export const leaderboardRepository = {
       return null;
     }
 
-    const idx = rawData.findIndex((u) => u.username === username);
+    const idx = rawData.findIndex((u) => u.user_id === userId);
     return idx >= 0 ? idx + 1 : null;
   },
 
   async getUserLeaderboardEntry(
-    username: string
+    userId: string
   ): Promise<(LeaderboardEntry & { position: number }) | null> {
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
@@ -114,7 +114,7 @@ export const leaderboardRepository = {
       return null;
     }
 
-    const idx = rawData.findIndex((u) => u.username === username);
+    const idx = rawData.findIndex((u) => u.user_id === userId);
     if (idx < 0) return null;
 
     const row = rawData[idx];

@@ -26,6 +26,7 @@ export interface GameRoom {
  */
 export interface GameRoomWithPlayerCount extends GameRoom {
   player_count: number;
+  participants_avatars?: { image: string; character: string }[];
 }
 
 /**

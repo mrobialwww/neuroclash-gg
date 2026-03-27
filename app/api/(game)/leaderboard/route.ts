@@ -18,16 +18,7 @@ export async function GET(request: NextRequest) {
     // If user is logged in, also fetch their personal entry
     let myEntry = null;
     if (user) {
-      // Get username from users table
-      const { data: userData } = await supabase
-        .from("users")
-        .select("username")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (userData?.username) {
-        myEntry = await leaderboardService.getUserLeaderboardEntry(userData.username);
-      }
+      myEntry = await leaderboardService.getUserLeaderboardEntry(user.id);
     }
 
     return NextResponse.json(

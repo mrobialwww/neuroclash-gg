@@ -15,6 +15,8 @@ export interface EndgameResult {
   answerTime: number; // For tie-breaker
   win: number;
   lose: number;
+  coinBoost: number;
+  trophyBoost: number;
 }
 
 export const endgameService = {
@@ -57,6 +59,12 @@ export const endgameService = {
       roomId,
       supabase
     );
+
+    // Fetch abilities for all players in this room to apply boosts
+    const { data: abilitiesData } = await supabase
+      .from("ability_players")
+      .select("user_id, ability_id, stock")
+      .eq("game_room_id", roomId);
 
     const charMap = new Map();
     if (chars) {
@@ -211,6 +219,27 @@ export const endgameService = {
         finalTrophy = Math.round(TrophyBase * Ef);
       }
 
+      // Apply Ability Boosts (Multiplier)
+      let coinBoost = 0;
+      let trophyBoost = 0;
+
+      const pAbilities = (abilitiesData || []).filter(
+        (a: any) => a.user_id === p.userId
+      );
+
+      // PIALA KEJAYAAN (ID 5) = Trophy Multiplier
+      const piala = pAbilities.find((a: any) => a.ability_id === 5);
+      if (piala) trophyBoost = Math.round(piala.stock * 5); // 5% per stock
+
+      // KANTONG HARTA (ID 6) = Coin Multiplier
+      const kantong = pAbilities.find((a: any) => a.ability_id === 6);
+      if (kantong) coinBoost = Math.round(kantong.stock * 5); // 5% per stock
+
+      if (trophyBoost > 0)
+        finalTrophy = Math.round(finalTrophy * (1 + trophyBoost / 100));
+      if (coinBoost > 0)
+        finalCoin = Math.round(finalCoin * (1 + coinBoost / 100));
+
       return {
         userId: p.userId,
         username: p.username,
@@ -225,6 +254,8 @@ export const endgameService = {
         answerTime: p.answerCount,
         win: p.win,
         lose: p.lose,
+        coinBoost,
+        trophyBoost,
       };
     });
   },
@@ -266,29 +297,14 @@ export const endgameService = {
     await Promise.all(
       results.map(async (player) => {
         try {
-          const { data: abilities } = await endgameRepository.getUserAbilities(
-            roomId,
-            player.userId,
-            adminSupabase
-          );
-          let finalTrophy = player.trophyWon;
-          let finalCoin = player.coinsEarned;
-
-          // PIALA KEJAYAAN (ID 5) = Trophy Multiplier
-          const piala = abilities?.find((a: any) => a.ability_id === 5);
-          if (piala)
-            finalTrophy = Math.round(finalTrophy * (1 + 0.05 * piala.stock));
-
-          // KANTONG HARTA (ID 6) = Coin Multiplier
-          const kantong = abilities?.find((a: any) => a.ability_id === 6);
-          if (kantong)
-            finalCoin = Math.round(finalCoin * (1 + 0.05 * kantong.stock));
-
           const { data: userData } = await endgameRepository.getUserData(
             player.userId,
             adminSupabase
           );
           if (!userData) return;
+
+          const finalTrophy = player.trophyWon;
+          const finalCoin = player.coinsEarned;
 
           // Update user's match performance
           await endgameRepository.updateUserGame(

@@ -69,7 +69,7 @@ export function Navbar({ initialData }: NavbarProps) {
 
               if (userData) {
                 // Get user's active character
-                const charRes = await fetch(`/api/user-character/${user.id}`, {
+                const charRes = await fetch(`/api/user-character/${user.id}?is_used=true`, {
                   cache: "no-store",
                   credentials: "include",
                 });

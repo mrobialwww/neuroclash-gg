@@ -3,11 +3,15 @@ import Image from "next/image";
 interface EndgameRewardBadgeProps {
   coinsEarned: number;
   trophyWon: number;
+  coinBoost?: number;
+  trophyBoost?: number;
 }
 
 export function EndgameRewardBadge({
   coinsEarned,
   trophyWon,
+  coinBoost = 0,
+  trophyBoost = 0,
 }: EndgameRewardBadgeProps) {
   return (
     <div
@@ -22,36 +26,50 @@ export function EndgameRewardBadge({
         Hadiah Total Pertandingan
       </span>
 
-      <div className="flex items-center gap-4 sm:gap-6 justify-center mt-0.5 sm:mt-1">
+      <div className="flex items-start gap-4 sm:gap-6 justify-center mt-0.5 sm:mt-1">
         {/* Coin */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="relative h-5 w-5 sm:h-8 sm:w-8 shrink-0">
-            <Image
-              src="/icons/coin-color.svg"
-              alt="Coin"
-              fill
-              sizes="(max-width: 640px) 20px, 32px"
-              className="object-contain"
-            />
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="relative h-5 w-5 sm:h-8 sm:w-8 shrink-0">
+              <Image
+                src="/icons/coin-color.svg"
+                alt="Coin"
+                fill
+                sizes="(max-width: 640px) 20px, 32px"
+                className="object-contain"
+              />
+            </div>
+            <span className="text-lg sm:text-2xl font-bold text-white">+{coinsEarned}</span>
           </div>
-          <span className="text-lg sm:text-2xl font-bold text-white">+{coinsEarned}</span>
+          {coinBoost > 0 && (
+            <span className="text-[10px] sm:text-xs font-semibold text-[#4ade80] -mt-0.5 sm:-mt-1">
+              (+{coinBoost}%)
+            </span>
+          )}
         </div>
 
         {/* Divider */}
-        <div className="h-5 sm:h-8 w-px bg-white/30 rounded-full" />
+        <div className="h-5 sm:h-8 w-px bg-white/30 rounded-full mt-1 sm:mt-2" />
 
         {/* Trophy */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="relative h-5 w-5 sm:h-8 sm:w-8 shrink-0">
-            <Image
-              src="/icons/trophy-color.svg"
-              alt="Trophy"
-              fill
-              sizes="(max-width: 640px) 20px, 32px"
-              className="object-contain"
-            />
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="relative h-5 w-5 sm:h-8 sm:w-8 shrink-0">
+              <Image
+                src="/icons/trophy-color.svg"
+                alt="Trophy"
+                fill
+                sizes="(max-width: 640px) 20px, 32px"
+                className="object-contain"
+              />
+            </div>
+            <span className="text-lg sm:text-2xl font-bold text-white">+{trophyWon}</span>
           </div>
-          <span className="text-lg sm:text-2xl font-bold text-white">+{trophyWon}</span>
+          {trophyBoost > 0 && (
+            <span className="text-[10px] sm:text-xs font-semibold text-[#4ade80] -mt-0.5 sm:-mt-1">
+              (+{trophyBoost}%)
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -43,6 +43,8 @@ export default function EndgamePage({ params }: { params: Promise<{ room_id: str
   const reward = {
     coinsEarned: myResult?.coinsEarned || 0,
     trophyWon: myResult?.trophyWon || 0,
+    coinBoost: myResult?.coinBoost || 0,
+    trophyBoost: myResult?.trophyBoost || 0,
   };
 
   const podiumPlayers: PodiumPlayer[] = results
@@ -94,6 +96,8 @@ export default function EndgamePage({ params }: { params: Promise<{ room_id: str
           <EndgameRewardBadge
             coinsEarned={reward.coinsEarned}
             trophyWon={reward.trophyWon}
+            coinBoost={reward.coinBoost}
+            trophyBoost={reward.trophyBoost}
           />
         </div>
       </header>
