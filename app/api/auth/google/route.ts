@@ -1,13 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient();
+    const host = request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") ?? "https";
+    const origin = `${protocol}://${host}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/callback/google`,
+        redirectTo: `${origin}/api/auth/callback/google`,
         queryParams: {
           access_type: "offline",
           prompt: "consent",
