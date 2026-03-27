@@ -198,8 +198,14 @@ export const roundManagementService = {
     await matchRepository.submitAnswer(userId, answerId, gameId, roundNumber);
     console.log(`[RoundService] ✅ Answer recorded`);
 
-    // 5. If this is the first answer, record it in battle room
-    if (!battleRoom.first_answer_user_id) {
+    // 5. Check if this is the first answer BEFORE recording (for win tracking)
+    const isFirstAnswer = !battleRoom.first_answer_user_id;
+    console.log(
+      `[RoundService] isFirstAnswer check: ${isFirstAnswer}, current first_answer_user_id: ${battleRoom.first_answer_user_id}`
+    );
+
+    // 6. If this is the first answer, record it in battle room
+    if (isFirstAnswer) {
       console.log(`[RoundService] Step 4: Recording first answer...`);
       await battleRoomService.recordFirstAnswer(battleRoomId, userId, answerId);
       console.log(`[RoundService] ✅ First answer recorded in battle room`);
@@ -215,7 +221,7 @@ export const roundManagementService = {
         .eq("answer_id", answerId)
         .eq("round_number", roundNumber);
     }
-    // 6. Get question metadata to calculate damage
+    // 7. Get question metadata to calculate damage
     // Fetch question and game_room separately to avoid JOIN issues
     const { data: questionData } = await supabase
       .from("questions")
@@ -269,6 +275,7 @@ export const roundManagementService = {
     // 8. Apply damage based on correctness
     let damageApplied = false;
     let newHealth = 100;
+    let isFirstAndCorrect = false;
 
     if (answerDetail.is_correct) {
       // Correct answer - damage to opponents in same battle room
@@ -283,21 +290,52 @@ export const roundManagementService = {
         const opponentState = opponent.find((p) => p.id === opponentId);
         if (opponentState && opponentState.health > 0) {
           const healthAfterDamage = Math.max(0, opponentState.health - damage);
+          console.log(
+            `[RoundService] Applying damage to opponent ${opponentId.substring(
+              0,
+              8
+            )}: ${
+              opponentState.health
+            } -> ${healthAfterDamage}, round=${roundNumber}`
+          );
           await matchRepository.updateHealth(
             opponentId,
             gameId,
-            healthAfterDamage
+            healthAfterDamage,
+            roundNumber
           );
         }
       }
       damageApplied = opponents.length > 0;
+
+      // If first answer and correct, increment win count
+      if (isFirstAnswer) {
+        isFirstAndCorrect = true;
+        console.log(
+          `[RoundService] User ${userId.substring(
+            0,
+            8
+          )} answered first and correctly! Incrementing win...`
+        );
+        await matchRepository.incrementWin(userId, gameId);
+      }
     } else {
       // Wrong answer - damage to self
       const player = await matchRepository.getParticipants(gameId);
       const playerState = player.find((p) => p.id === userId);
       if (playerState) {
         newHealth = Math.max(0, playerState.health - damage);
-        await matchRepository.updateHealth(userId, gameId, newHealth);
+        console.log(
+          `[RoundService] Applying damage to self ${userId.substring(0, 8)}: ${
+            playerState.health
+          } -> ${newHealth}, round=${roundNumber}`
+        );
+        await matchRepository.updateHealth(
+          userId,
+          gameId,
+          newHealth,
+          roundNumber
+        );
         damageApplied = true;
       }
     }
@@ -420,7 +458,20 @@ export const roundManagementService = {
       const playerState = player.find((p) => p.id === playerId);
       if (playerState && playerState.health > 0) {
         const healthAfterDamage = Math.max(0, playerState.health - damage);
-        await matchRepository.updateHealth(playerId, gameId, healthAfterDamage);
+        console.log(
+          `[RoundService] [Timeout] Applying damage to ${playerId.substring(
+            0,
+            8
+          )}: ${
+            playerState.health
+          } -> ${healthAfterDamage}, round=${roundNumber}`
+        );
+        await matchRepository.updateHealth(
+          playerId,
+          gameId,
+          healthAfterDamage,
+          roundNumber
+        );
       }
     }
 
@@ -469,7 +520,7 @@ export const roundManagementService = {
    */
   calculateDamage(roundNumber: number, totalQuestions: number): number {
     if (!totalQuestions || totalQuestions === 0) return 20;
-    const damage = 5 + (roundNumber / totalQuestions) * 20;
+    const damage = 50 + (roundNumber / totalQuestions) * 20;
     return Math.floor(damage);
   },
 
@@ -545,11 +596,22 @@ export const roundManagementService = {
   /**
    * End the game:
    * 1. Update room status to 'finished'
-   * 2. Calculate and save final results
-   * 3. Delete game_players data
+   * 2. Calculate and save final results based on survival order
+   * 3. Broadcast game end to all clients
+   * 4. Delete game_players data
+   *
+   * Placement logic:
+   * - First eliminated = last place (e.g., 4th)
+   * - Last survivor = 1st place (winner)
    */
   async endGame(gameId: string): Promise<void> {
+    console.log(
+      `[RoundService] ==================================================`
+    );
     console.log(`[RoundService] Ending game ${gameId}`);
+    console.log(
+      `[RoundService] ==================================================`
+    );
 
     const supabase = await createClient();
 
@@ -563,36 +625,169 @@ export const roundManagementService = {
       .eq("game_room_id", gameId);
 
     // 2. Get final standings
+    // Sort by eliminated_at ASC NULLS LAST:
+    // - Players who died first (earliest eliminated_at) come first
+    // - Players still alive (NULL eliminated_at) come last
     const { data: players } = await supabase
       .from("game_players")
-      .select("user_id, health")
+      .select("user_id, health, win, eliminated_at, status")
       .eq("game_room_id", gameId)
-      .order("health", { ascending: false });
+      .order("eliminated_at", { ascending: true, nullsFirst: false });
 
-    // 3. Update user_games with trophy/coins (simplified - adjust based on your requirements)
+    const totalPlayers = players?.length || 0;
+    console.log(`[RoundService] Found ${totalPlayers} players in game_players`);
+
+    // 3. Update user_games with trophy/coins based on placement
     if (players && players.length > 0) {
+      console.log(`[RoundService] Final standings for game ${gameId}:`);
+
+      // Calculate B = 3/4 of total players (rounded)
+      const B = Math.ceil(totalPlayers * 0.75);
+      console.log(
+        `[RoundService] Trophy formula: B=${B}, totalPlayers=${totalPlayers}`
+      );
+
       for (let i = 0; i < players.length; i++) {
         const player = players[i];
-        const placement = i + 1;
-        const trophy_won = placement === 1 ? 50 : 0;
-        const coins_earned = placement === 1 ? 100 : placement === 2 ? 50 : 20;
 
-        await supabase
+        // Calculate placement based on elimination order
+        // First in list (i=0) = first eliminated = last place
+        // Last in list (i=totalPlayers-1) = last survivor = 1st place
+        const placement = totalPlayers - i;
+        const R = placement;
+        const N = totalPlayers;
+
+        // Calculate trophy based on formula
+        let trophy_won = 0;
+
+        if (R <= B) {
+          // Winning ranks
+          if (B === 1) {
+            trophy_won = 100;
+          } else {
+            trophy_won = Math.round(100 - (R - 1) * (90 / (B - 1)));
+          }
+        } else {
+          // Losing ranks
+          const losingPlayers = N - B;
+          if (losingPlayers === 1) {
+            trophy_won = -100;
+          } else {
+            trophy_won = Math.round(-10 - (R - (B + 1)) * (90 / (N - (B + 1))));
+          }
+        }
+
+        // Calculate coins = trophy + (3/4 * trophy)
+        const coins_earned = Math.round(trophy_won + trophy_won * 0.75);
+
+        // Calculate lose = eliminated_at - win (for died players)
+        const winCount = player.win || 0;
+        const loseCount = player.eliminated_at
+          ? Math.max(0, player.eliminated_at - winCount)
+          : 0;
+
+        const statusLabel =
+          player.status === "alive" ? "SURVIVOR" : "ELIMINATED";
+        console.log(
+          `[RoundService] ${placement}. [${statusLabel}] User ${player.user_id.substring(
+            0,
+            8
+          )} - ` +
+            `Wins: ${winCount}, Lose: ${loseCount}, Health: ${player.health}, eliminated_at: ${player.eliminated_at} -> ` +
+            `Trophy: ${trophy_won}, Coins: ${coins_earned}`
+        );
+
+        // Cek apakah record user_games sudah ada
+        console.log(
+          `[RoundService] Checking user_games for user=${player.user_id.substring(
+            0,
+            8
+          )}, room=${gameId.substring(0, 8)}`
+        );
+
+        const { data: existingRecords } = await supabase
           .from("user_games")
-          .update({
-            trophy_won,
-            coins_earned,
-            updated_at: new Date().toISOString(),
-          })
+          .select("user_game_id")
           .eq("game_room_id", gameId)
           .eq("user_id", player.user_id);
+
+        console.log(`[RoundService] Existing records:`, existingRecords);
+
+        // Update atau Insert user_games
+        let updateError;
+
+        if (existingRecords && existingRecords.length > 0) {
+          // Record exists, update it
+          console.log(`[RoundService] Updating existing user_games record...`);
+          const { error } = await supabase
+            .from("user_games")
+            .update({
+              trophy_won,
+              coins_earned,
+              win: winCount,
+              lose: loseCount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("game_room_id", gameId)
+            .eq("user_id", player.user_id);
+
+          updateError = error;
+        } else {
+          // Record doesn't exist, insert it
+          console.log(`[RoundService] Creating new user_games record...`);
+          const { error } = await supabase.from("user_games").insert({
+            game_room_id: gameId,
+            user_id: player.user_id,
+            trophy_won,
+            coins_earned,
+            win: winCount,
+            lose: loseCount,
+          });
+
+          updateError = error;
+        }
+
+        if (updateError) {
+          console.error(
+            `[RoundService] Error updating user_games for ${player.user_id.substring(
+              0,
+              8
+            )}:`,
+            updateError
+          );
+        } else {
+          console.log(
+            `[RoundService] ✅ Updated user_games for ${player.user_id.substring(
+              0,
+              8
+            )}`
+          );
+        }
       }
     }
 
-    // 4. Delete game_players data
+    // 4. Broadcast game end to all clients via realtime
+    const channel = supabase.channel(`room:${gameId}`);
+    await channel.send({
+      type: "broadcast",
+      event: "game_ended",
+      payload: {
+        game_room_id: gameId,
+        message: "Game has ended!",
+        players: players || [],
+      },
+    });
+
+    // 5. Delete game_players data
     await supabase.from("game_players").delete().eq("game_room_id", gameId);
 
+    console.log(
+      `[RoundService] ==================================================`
+    );
     console.log(`[RoundService] Game ${gameId} ended successfully`);
+    console.log(
+      `[RoundService] ==================================================`
+    );
   },
 
   /**

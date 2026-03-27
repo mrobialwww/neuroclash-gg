@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import { MatchProgressBar } from "@/components/match/MatchProgressBar";
@@ -8,9 +8,15 @@ import { QuestionCard } from "@/components/match/QuestionCard";
 import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
+import { EliminationOverlay } from "@/components/game/EliminationOverlay";
 
-import { useMatchStore, SECONDS_PER_ROUND, STARBOX_INTERVAL } from "@/store/useMatchStore";
+import {
+  useMatchStore,
+  SECONDS_PER_ROUND,
+  STARBOX_INTERVAL,
+} from "@/store/useMatchStore";
 import { quizRepository } from "@/repository/quizRepository";
+import { createClient } from "@/lib/supabase/client";
 
 export default function GamePage() {
   const router = useRouter();
@@ -21,6 +27,21 @@ export default function GamePage() {
   const roomCodeQuery = searchParams.get("code") ?? gameRoomId;
   const initialRound = parseInt(searchParams.get("nextRound") ?? "1", 10);
   const userGameId = searchParams.get("ugid") ?? null;
+
+  // Elimination overlay state
+  const [showEliminationOverlay, setShowEliminationOverlay] = useState(false);
+  const [eliminationData, setEliminationData] = useState<{
+    placement: number;
+    win: number;
+    lose: number;
+    trophyWon: number;
+    coinsEarned: number;
+    survivalTime: string;
+    isWinner: boolean;
+  } | null>(null);
+  const [hasShownOverlay, setHasShownOverlay] = useState(false);
+  const [isLoadingEliminationData, setIsLoadingEliminationData] =
+    useState(false);
 
   const {
     roomCode,
@@ -85,6 +106,151 @@ export default function GamePage() {
     }
   }, [nextRoundUrl, router]);
 
+  // Check if current user died and show elimination overlay
+  const checkElimination = useCallback(async () => {
+    if (!currentUser || !gameRoomId || hasShownOverlay || isSolo) return;
+    if (isLoadingEliminationData) return;
+
+    const currentPlayer = players.find((p) => p.id === currentUser.id);
+
+    // Check if player is dead
+    if (currentPlayer && !currentPlayer.is_alive && currentPlayer.health <= 0) {
+      try {
+        setIsLoadingEliminationData(true);
+        const supabase = createClient();
+
+        // Show loading state, then fetch data after delay to ensure user_games is updated
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Calculate placement based on elimination order from game_players
+        const { data: allPlayers } = await supabase
+          .from("game_players")
+          .select("user_id, status, eliminated_at")
+          .eq("game_room_id", gameRoomId)
+          .order("eliminated_at", { ascending: true, nullsFirst: false });
+
+        const totalPlayers = allPlayers?.length || 0;
+        const myIndex =
+          allPlayers?.findIndex((p) => p.user_id === currentUser.id) ?? 0;
+        const placement = totalPlayers - myIndex;
+
+        // Get user_games data for stats (should be updated by now)
+        const { data: userGameData, error: userGameError } = await supabase
+          .from("user_games")
+          .select("win, lose, trophy_won, coins_earned, created_at, updated_at")
+          .eq("game_room_id", gameRoomId)
+          .eq("user_id", currentUser.id)
+          .single();
+
+        console.log("[GamePage] user_games data:", userGameData);
+        if (userGameError) {
+          console.error("[GamePage] Error fetching user_games:", userGameError);
+        }
+
+        // Calculate survival time
+        let survivalTime = "00:00";
+        if (userGameData?.created_at && userGameData?.updated_at) {
+          const createdAt = new Date(userGameData.created_at).getTime();
+          const updatedAt = new Date(userGameData.updated_at).getTime();
+          const diffSeconds = Math.floor((updatedAt - createdAt) / 1000);
+          const minutes = Math.floor(diffSeconds / 60);
+          const seconds = diffSeconds % 60;
+          survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+        }
+
+        setEliminationData({
+          placement,
+          win: userGameData?.win || 0,
+          lose: userGameData?.lose || 0,
+          trophyWon: userGameData?.trophy_won || 0,
+          coinsEarned: userGameData?.coins_earned || 0,
+          survivalTime,
+          isWinner: placement === 1,
+        });
+
+        setShowEliminationOverlay(true);
+        setHasShownOverlay(true);
+        setIsLoadingEliminationData(false);
+      } catch (err) {
+        console.error("Error fetching elimination data:", err);
+        setIsLoadingEliminationData(false);
+      }
+    }
+  }, [
+    currentUser,
+    gameRoomId,
+    hasShownOverlay,
+    isSolo,
+    players,
+    isLoadingEliminationData,
+  ]);
+
+  useEffect(() => {
+    checkElimination();
+  }, [checkElimination, players]);
+
+  // Fetch elimination data when game is finished (for end screen)
+  const fetchEndGameData = useCallback(async () => {
+    if (!currentUser || !gameRoomId || eliminationData) return;
+
+    try {
+      const supabase = createClient();
+
+      // Get user_games data for stats
+      const { data: userGameData } = await supabase
+        .from("user_games")
+        .select("win, lose, trophy_won, coins_earned, created_at, updated_at")
+        .eq("game_room_id", gameRoomId)
+        .eq("user_id", currentUser.id)
+        .single();
+
+      // Calculate survival time
+      let survivalTime = "00:00";
+      if (userGameData?.created_at && userGameData?.updated_at) {
+        const createdAt = new Date(userGameData.created_at).getTime();
+        const updatedAt = new Date(userGameData.updated_at).getTime();
+        const diffSeconds = Math.floor((updatedAt - createdAt) / 1000);
+        const minutes = Math.floor(diffSeconds / 60);
+        const seconds = diffSeconds % 60;
+        survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      // Calculate placement based on elimination order
+      const { data: allPlayers } = await supabase
+        .from("game_players")
+        .select("user_id, status, eliminated_at")
+        .eq("game_room_id", gameRoomId)
+        .order("eliminated_at", { ascending: true, nullsFirst: false });
+
+      const totalPlayers = allPlayers?.length || 0;
+      const myIndex =
+        allPlayers?.findIndex((p) => p.user_id === currentUser.id) ?? 0;
+      const placement = totalPlayers - myIndex;
+
+      setEliminationData({
+        placement,
+        win: userGameData?.win || 0,
+        lose: userGameData?.lose || 0,
+        trophyWon: userGameData?.trophy_won || 0,
+        coinsEarned: userGameData?.coins_earned || 0,
+        survivalTime,
+        isWinner: placement === 1,
+      });
+    } catch (err) {
+      console.error("Error fetching end game data:", err);
+    }
+  }, [currentUser, gameRoomId, eliminationData]);
+
+  useEffect(() => {
+    if (isFinished && !eliminationData) {
+      fetchEndGameData();
+    }
+  }, [isFinished, fetchEndGameData, eliminationData]);
+
   // 2. Local Timer
   useEffect(() => {
     if (isLoadingQuestion || isFinished || error) return;
@@ -102,7 +268,9 @@ export default function GamePage() {
     const others = players.filter((p) => p.id !== currentUser?.id);
 
     // Gunakan opponentIds dari battle room untuk menentukan lawan
-    const battleOpponents = opponentIds.map((oppId) => players.find((p) => p.id === oppId)).filter((p): p is (typeof players)[0] => p !== undefined);
+    const battleOpponents = opponentIds
+      .map((oppId) => players.find((p) => p.id === oppId))
+      .filter((p): p is (typeof players)[0] => p !== undefined);
 
     const enemyData = battleOpponents.length > 0 ? battleOpponents[0] : null;
 
@@ -178,7 +346,9 @@ export default function GamePage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
-        <p className="animate-pulse text-lg font-semibold text-white">Memuat Arena...</p>
+        <p className="animate-pulse text-lg font-semibold text-white">
+          Memuat Arena...
+        </p>
       </main>
     );
   }
@@ -189,8 +359,12 @@ export default function GamePage() {
       <div className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14]/95 backdrop-blur-sm">
         <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
         <div className="space-y-2 text-center">
-          <p className="animate-pulse text-2xl font-bold text-white">Menunggu semua pertempuran selesai...</p>
-          <p className="text-white/60">Ronde {currentOrder} akan segera berakhir</p>
+          <p className="animate-pulse text-2xl font-bold text-white">
+            Menunggu semua pertempuran selesai...
+          </p>
+          <p className="text-white/60">
+            Ronde {currentOrder} akan segera berakhir
+          </p>
         </div>
       </div>
     );
@@ -200,10 +374,112 @@ export default function GamePage() {
   if (isFinished) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
-        <p className="text-5xl">🏆</p>
-        <h1 className="text-center text-3xl font-extrabold text-white">Quiz Selesai!</h1>
-        <p className="text-center text-lg text-white/60">Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.</p>
-        <MainButton variant="green" hasShadow className="rounded-xl px-10 py-4 text-lg font-bold" onClick={() => router.push("/dashboard")}>
+        {/* Icon */}
+        <p className="text-5xl">{eliminationData?.isWinner ? "🏆" : "🎮"}</p>
+
+        {/* Title */}
+        <h1 className="text-center text-3xl font-extrabold text-white">
+          {eliminationData?.isWinner ? "SELAMAT!" : "Quiz Selesai!"}
+        </h1>
+
+        {/* Subtitle */}
+        <p className="text-center text-lg text-white/60">
+          {eliminationData?.isWinner
+            ? "Anda memenangkan pertandingan!"
+            : `Kamu telah menyelesaikan semua ${
+                totalQuestions ?? currentOrder - 1
+              } soal.`}
+        </p>
+
+        {/* Stats Box */}
+        {eliminationData && (
+          <div className="w-full max-w-sm rounded-xl bg-white/5 p-4">
+            <div className="grid grid-cols-4 gap-3">
+              {/* Win */}
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-green-400">
+                  {eliminationData.win}
+                </span>
+                <span className="mt-1 text-xs text-white/60">WIN</span>
+              </div>
+
+              {/* Lose */}
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-red-400">
+                  {eliminationData.lose}
+                </span>
+                <span className="mt-1 text-xs text-white/60">LOSE</span>
+              </div>
+
+              {/* Trophy */}
+              <div className="flex flex-col items-center">
+                <span
+                  className={`text-2xl font-bold ${
+                    eliminationData.trophyWon >= 0
+                      ? "text-yellow-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {eliminationData.trophyWon >= 0 ? "+" : ""}
+                  {eliminationData.trophyWon}
+                </span>
+                <span className="mt-1 text-xs text-white/60">TROPHY</span>
+              </div>
+
+              {/* Coins */}
+              <div className="flex flex-col items-center">
+                <span
+                  className={`text-2xl font-bold ${
+                    eliminationData.coinsEarned >= 0
+                      ? "text-amber-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {eliminationData.coinsEarned >= 0 ? "+" : ""}
+                  {eliminationData.coinsEarned}
+                </span>
+                <span className="mt-1 text-xs text-white/60">COINS</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Survival Time */}
+        {eliminationData && (
+          <div className="flex items-center gap-2">
+            <span className="text-white/60">Waktu Bertahan:</span>
+            <span className="text-xl font-bold text-blue-400">
+              {eliminationData.survivalTime}
+            </span>
+          </div>
+        )}
+
+        {/* Placement Badge */}
+        {eliminationData && (
+          <div
+            className={`rounded-full px-6 py-2 ${
+              eliminationData.isWinner
+                ? "bg-gradient-to-r from-yellow-500 to-amber-500"
+                : eliminationData.placement === 2
+                ? "bg-gradient-to-r from-gray-400 to-gray-500"
+                : eliminationData.placement === 3
+                ? "bg-gradient-to-r from-amber-600 to-amber-700"
+                : "bg-gradient-to-r from-gray-600 to-gray-700"
+            }`}
+          >
+            <span className="text-lg font-bold text-white">
+              PERINGKAT {eliminationData.placement}
+            </span>
+          </div>
+        )}
+
+        {/* Back to Dashboard Button */}
+        <MainButton
+          variant="green"
+          hasShadow
+          className="rounded-xl px-10 py-4 text-lg font-bold"
+          onClick={() => router.push("/dashboard")}
+        >
           Kembali ke Dashboard
         </MainButton>
       </main>
@@ -228,7 +504,11 @@ export default function GamePage() {
           />
         </div>
 
-        <MainButton variant="white" className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6" onClick={handleExit}>
+        <MainButton
+          variant="white"
+          className="h-8 shrink-0 px-2 text-sm md:px-4 md:text-base lg:h-9 lg:px-6"
+          onClick={handleExit}
+        >
           Keluar
         </MainButton>
       </header>
@@ -250,7 +530,15 @@ export default function GamePage() {
               </div>
             </div>
             <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
-              {meCard ? <PlayerCard player={meCard as any} isMe={true} className="w-full" /> : <div className="h-[90px] w-full" />}
+              {meCard ? (
+                <PlayerCard
+                  player={meCard as any}
+                  isMe={true}
+                  className="w-full"
+                />
+              ) : (
+                <div className="h-[90px] w-full" />
+              )}
             </div>
           </div>
 
@@ -259,12 +547,20 @@ export default function GamePage() {
             <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
                 {/* Always pass empty array for players in Solo to trigger the empty state text */}
-                <PlayerList players={isSolo ? [] : (sortedForList as any)} className="h-full" />
+                <PlayerList
+                  players={isSolo ? [] : (sortedForList as any)}
+                  className="h-full"
+                />
               </div>
             </div>
             <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
               {opponentCard ? (
-                <PlayerCard player={opponentCard as any} isMe={false} hideHealthBar={isSolo} className="w-full" />
+                <PlayerCard
+                  player={opponentCard as any}
+                  isMe={false}
+                  hideHealthBar={isSolo}
+                  className="w-full"
+                />
               ) : (
                 <div className="h-[90px] w-full" />
               )}
@@ -277,7 +573,8 @@ export default function GamePage() {
               <>
                 {firstAnswerPlayerId && (
                   <div className="mb-4 text-center font-semibold text-yellow-400">
-                    {players.find((p) => p.id === firstAnswerPlayerId)?.name} menjawab pertama!
+                    {players.find((p) => p.id === firstAnswerPlayerId)?.name}{" "}
+                    menjawab pertama!
                   </div>
                 )}
                 <QuestionCard
@@ -302,10 +599,29 @@ export default function GamePage() {
           </div>
 
           <div className="order-5 col-span-1 lg:hidden">
-            <PlayerList players={sortedForList as any} className="h-[200px] w-full sm:h-[240px]" />
+            <PlayerList
+              players={sortedForList as any}
+              className="h-[200px] w-full sm:h-[240px]"
+            />
           </div>
         </div>
       </div>
+
+      {/* Elimination Overlay */}
+      {(showEliminationOverlay || isLoadingEliminationData) && (
+        <EliminationOverlay
+          isOpen={showEliminationOverlay || isLoadingEliminationData}
+          onClose={() => setShowEliminationOverlay(false)}
+          placement={eliminationData?.placement || 0}
+          win={eliminationData?.win || 0}
+          lose={eliminationData?.lose || 0}
+          trophyWon={eliminationData?.trophyWon || 0}
+          coinsEarned={eliminationData?.coinsEarned || 0}
+          survivalTime={eliminationData?.survivalTime || "00:00"}
+          isWinner={eliminationData?.isWinner || false}
+          isLoading={isLoadingEliminationData}
+        />
+      )}
     </main>
   );
 }
