@@ -9,8 +9,8 @@ import { battleRoomService, BattleRoom } from "@/services/battleRoomService";
 
 const supabase = createClient();
 
-export const SECONDS_PER_ROUND = 30;
-export const STARBOX_INTERVAL = 5;
+export const SECONDS_PER_ROUND = 15;
+export const STARBOX_INTERVAL = 1;
 export const INITIAL_ROUND = 1;
 
 export interface MatchState {

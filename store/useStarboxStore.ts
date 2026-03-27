@@ -74,20 +74,19 @@ export interface StarboxState extends PersistedStarboxSlice {
   roomInfo: GameRoomWithPlayerCount | null;
   players: Player[];
   abilities: Ability[];
-
   pickingAbilityId: string | null;
   isLoading: boolean;
   isHost: boolean;
   myPlayerId: string | null;
   pickedPlayerIds: string[];
+  attackorShield: number;
 
   initGameData: (code: string, roomId: string, nextRound: string) => Promise<void>;
   selectAbility: (roomId: string, abilityId: string, userId: string) => Promise<void>;
   autoAssignRemaining: (roomId: string) => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
   useHeal: (roomId: string, userId: string) => Promise<void>;
-  useAttack: () => Promise<void>;
-  useDefend: () => Promise<void>;
+  useAttackorShield: (roomId: string, userId: string, abilityId: number) => Promise<void>;
   refreshMyInventory: (roomId: string, userId: string) => Promise<void>;
   cleanup: () => void;
   reset: () => void;
@@ -104,12 +103,12 @@ export const useStarboxStore = create<StarboxState>()(
       roomInfo: null,
       players: [],
       abilities: [],
-
       pickingAbilityId: null,
       isLoading: true,
       isHost: false,
       myPlayerId: null,
       pickedPlayerIds: [],
+      attackorShield: 0,
 
       /**
        * Entry point halaman Starbox. Dipanggil sekali saat komponen mount.
@@ -146,6 +145,7 @@ export const useStarboxStore = create<StarboxState>()(
             players: [],
             pickedPlayerIds: [],
             pickingAbilityId: null,
+            attackorShield: 0,
           });
         }
 
@@ -500,8 +500,10 @@ export const useStarboxStore = create<StarboxState>()(
         }
       },
 
-      useAttack: async () => {},
-      useDefend: async () => {},
+      useAttackorShield: async (roomId: string, userId: string, abilityId: number) => {
+        await abilityPlayerRepository.userAttackorShieldAbility(roomId, userId, abilityId);
+        set({ attackorShield: abilityId });
+      },
 
       /**
        * Re-hydrate myInventory dari DB (termasuk ability_materials).
@@ -572,6 +574,7 @@ export const useStarboxStore = create<StarboxState>()(
           isHost: false,
           myPlayerId: null,
           pickedPlayerIds: [],
+          attackorShield: 0,
         });
       },
     }),

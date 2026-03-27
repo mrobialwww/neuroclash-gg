@@ -64,26 +64,6 @@ export const abilityRoomRepository = {
   },
 
   /**
-   * User melihat daftar ability di starbox
-   */
-  // async getAbilityRoom(gameRoomId: string) {
-  //   const supabase = await createClient();
-
-  //   const { data, error } = await supabase
-  //     .from("ability_rooms")
-  //     .select("ability_id, stock, abilities!inner(name, description, image, empty_image)")
-  //     .eq("game_room_id", gameRoomId)
-  //     .order("ability_id", { ascending: true });
-
-  //   if (error) {
-  //     console.error("[AbilityRoomRepo] Error:", error.message);
-  //     return;
-  //   }
-
-  //   return data;
-  // },
-
-  /**
    * Delete semua pemain di room saat match selesai
    */
   async deleteRoomAbility(roomId: string) {
