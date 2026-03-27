@@ -53,9 +53,9 @@ export const leaderboardService = {
   },
 
   async getUserLeaderboardEntry(
-    username: string
+    userId: string
   ): Promise<LeaderboardRankEntry | null> {
-    const entry = await leaderboardRepository.getUserLeaderboardEntry(username);
+    const entry = await leaderboardRepository.getUserLeaderboardEntry(userId);
     if (!entry) return null;
 
     const rank = await rankRepository.getRankByTrophy(entry.total_trophy);

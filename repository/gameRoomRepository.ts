@@ -21,7 +21,10 @@ export const gameRoomRepository = {
    * Digunakan oleh Server Components — query Supabase langsung (tanpa HTTP round-trip).
    */
   async getPublicOpenRooms(): Promise<GameRoomWithPlayerCount[]> {
-    const supabase = await createClient();
+    const { createClient: createServerClient } = await import(
+      "@/lib/supabase/server"
+    );
+    const supabase = await createServerClient();
 
     const { data, error } = await supabase
       .from("game_rooms")
@@ -35,14 +38,80 @@ export const gameRoomRepository = {
       return [];
     }
 
-    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+    const rooms = data ?? [];
+    if (rooms.length === 0) return [];
+
+    // Fetch user_games for these rooms
+    const roomIds = rooms.map((r) => r.game_room_id);
+    const { data: userGames } = await supabase
+      .from("user_games")
+      .select("game_room_id, user_id")
+      .in("game_room_id", roomIds);
+
+    const countMap = new Map<string, number>();
+    const roomAvatarMap = new Map<
+      string,
+      { image: string; character: string }[]
+    >();
+
+    if (userGames && userGames.length > 0) {
+      // Collect unique user IDs
+      const userIds = Array.from(new Set(userGames.map((ug) => ug.user_id)));
+
+      // Fetch active characters for these users
+      const { data: userChars } = await supabase
+        .from("user_characters")
+        .select("user_id, characters!inner(image_url, base_character)")
+        .in("user_id", userIds)
+        .eq("is_used", true);
+
+      // Map userId -> avatar object
+      const avatarMap = new Map<string, { image: string; character: string }>();
+      userChars?.forEach((uc: any) => {
+        const charData = Array.isArray(uc.characters)
+          ? uc.characters[0]
+          : uc.characters;
+        if (charData?.image_url) {
+          avatarMap.set(uc.user_id, {
+            image: charData.image_url,
+            character: charData.base_character || "",
+          });
+        }
+      });
+
+      // Populate counts and avatars per room
+      userGames.forEach((ug) => {
+        countMap.set(ug.game_room_id, (countMap.get(ug.game_room_id) || 0) + 1);
+
+        if (!roomAvatarMap.has(ug.game_room_id)) {
+          roomAvatarMap.set(ug.game_room_id, []);
+        }
+
+        const avatars = roomAvatarMap.get(ug.game_room_id)!;
+        if (avatars.length < 4) {
+          const avatarData = avatarMap.get(ug.user_id);
+          if (avatarData) {
+            avatars.push(avatarData);
+          }
+        }
+      });
+    }
+
+    return rooms.map((room) => ({
+      ...room,
+      player_count: countMap.get(room.game_room_id) || 0,
+      participants_avatars: roomAvatarMap.get(room.game_room_id) || [],
+    }));
   },
 
   /**
    * Fetch all game rooms created by a specific user.
    */
   async getUserRooms(userId: string): Promise<GameRoomWithPlayerCount[]> {
-    const supabase = await createClient();
+    const { createClient: createServerClient } = await import(
+      "@/lib/supabase/server"
+    );
+    const supabase = await createServerClient();
 
     const { data, error } = await supabase
       .from("game_rooms")
@@ -55,7 +124,70 @@ export const gameRoomRepository = {
       return [];
     }
 
-    return (data ?? []).map((room) => ({ ...room, player_count: 0 }));
+    const rooms = data ?? [];
+    if (rooms.length === 0) return [];
+
+    // Fetch user_games for these rooms
+    const roomIds = rooms.map((r) => r.game_room_id);
+    const { data: userGames } = await supabase
+      .from("user_games")
+      .select("game_room_id, user_id")
+      .in("game_room_id", roomIds);
+
+    const countMap = new Map<string, number>();
+    const roomAvatarMap = new Map<
+      string,
+      { image: string; character: string }[]
+    >();
+
+    if (userGames && userGames.length > 0) {
+      // Collect unique user IDs
+      const userIds = Array.from(new Set(userGames.map((ug) => ug.user_id)));
+
+      // Fetch active characters for these users
+      const { data: userChars } = await supabase
+        .from("user_characters")
+        .select("user_id, characters!inner(image_url, base_character)")
+        .in("user_id", userIds)
+        .eq("is_used", true);
+
+      // Map userId -> avatar object
+      const avatarMap = new Map<string, { image: string; character: string }>();
+      userChars?.forEach((uc: any) => {
+        const charData = Array.isArray(uc.characters)
+          ? uc.characters[0]
+          : uc.characters;
+        if (charData?.image_url) {
+          avatarMap.set(uc.user_id, {
+            image: charData.image_url,
+            character: charData.base_character || "",
+          });
+        }
+      });
+
+      // Populate counts and avatars per room
+      userGames.forEach((ug) => {
+        countMap.set(ug.game_room_id, (countMap.get(ug.game_room_id) || 0) + 1);
+
+        if (!roomAvatarMap.has(ug.game_room_id)) {
+          roomAvatarMap.set(ug.game_room_id, []);
+        }
+
+        const avatars = roomAvatarMap.get(ug.game_room_id)!;
+        if (avatars.length < 4) {
+          const avatarData = avatarMap.get(ug.user_id);
+          if (avatarData) {
+            avatars.push(avatarData);
+          }
+        }
+      });
+    }
+
+    return rooms.map((room) => ({
+      ...room,
+      player_count: countMap.get(room.game_room_id) || 0,
+      participants_avatars: roomAvatarMap.get(room.game_room_id) || [],
+    }));
   },
 
   /**

@@ -132,7 +132,7 @@ export default function SignInPage() {
           Belum punya akun? <Link href="/signup" className="text-white font-semibold hover:underline">Daftar</Link>
         </p>
         <p className="mt-5 text-[12px] text-white/50 leading-relaxed">
-          Dengan masuk, Anda menyetujui <Link href="/terms" className="hover:text-white/80 underline">Ketentuan layanan</Link> dan <Link href="/privacy" className="hover:text-white/80 underline">Kebijakan Privasi</Link>
+          Dengan masuk, kamu menyetujui <Link href="/terms" className="hover:text-white/80 underline">Ketentuan layanan</Link> dan <Link href="/privacy" className="hover:text-white/80 underline">Kebijakan Privasi</Link>
         </p>
       </div>
     </AuthCard>

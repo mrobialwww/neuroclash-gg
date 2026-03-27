@@ -15,6 +15,12 @@ type Props = {
 
 export default function HistoryClient({ userId }: Props) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
   const [stats, setStats] = useState({
     totalMatches: 0,
     winRate: "0%",
@@ -25,19 +31,30 @@ export default function HistoryClient({ userId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Load history data ketika component mount
+   * Load history data ketika component mount atau page berubah
    */
-  const loadHistoryData = useCallback(async () => {
+  const loadHistoryData = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
 
-      const historyData = await getUserGameHistory(userId);
-      setHistory(historyData);
+      const result = await getUserGameHistory(userId, page);
+      setHistory(result.history);
+      setPagination(result.pagination);
 
-      // Calculate stats dari history data
-      const calculatedStats = calculateHistoryStats(historyData);
-      setStats(calculatedStats);
+      // Calculate stats based on ALL historical data might be expensive,
+      // but for now historyService.calculateHistoryStats expects an array.
+      // If the API only returns a page, we might need a separate API for stats.
+      // However, the current calculateHistoryStats is used for the summary cards.
+      // For now, we'll just use the first page's stats or assume we need a full fetch for stats.
+      // Looking at historyService, it doesn't have a "get stats" API yet.
+      // Let's stick to what we have or just use the total from pagination for "Total Pertandingan".
+
+      const calculatedStats = calculateHistoryStats(result.history);
+      setStats({
+        ...calculatedStats,
+        totalMatches: result.pagination.total // Use actual total from DB
+      });
     } catch (err) {
       console.error("Error loading history:", err);
       setError(
@@ -51,16 +68,25 @@ export default function HistoryClient({ userId }: Props) {
   }, [userId]);
 
   useEffect(() => {
-    loadHistoryData();
+    loadHistoryData(1);
   }, [loadHistoryData]);
 
-  if (loading) {
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadHistoryData(newPage);
+    }
+  };
+
+  if (loading && history.length === 0) {
     return (
       <main className="mx-auto max-w-[1400px] px-6 py-10 pb-20 md:px-12 lg:px-16">
         <h2 className="mb-4 text-2xl font-bold text-white md:text-3xl">
           Statistik Pertandingan
         </h2>
-        <div className="text-center text-gray-400">Loading...</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#4D70E8] border-t-transparent" />
+          <p className="mt-4 text-gray-400">Memuat riwayat...</p>
+        </div>
       </main>
     );
   }
@@ -120,7 +146,13 @@ export default function HistoryClient({ userId }: Props) {
         Riwayat Pertandingan
       </h2>
 
-      <HistoryTable historyData={history} />
+      <HistoryTable
+        historyData={history}
+        currentPage={pagination.page}
+        totalPages={pagination.totalPages}
+        onPageChange={handlePageChange}
+        isLoading={loading}
+      />
     </main>
   );
 }

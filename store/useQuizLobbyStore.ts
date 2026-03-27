@@ -26,7 +26,6 @@ export interface QuizLobbyState {
   error: string | null;
   currentUser: { id: string; username: string; avatar: string } | null;
   isMigrating: boolean;
-  starboxRedirect: boolean; // FOR TESTING — remove in production
 
   loadLobbyData: (roomId: string) => Promise<void>;
   decrementTimer: () => void;
@@ -54,7 +53,6 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
   error: null,
   currentUser: null,
   isMigrating: false,
-  starboxRedirect: false, // FOR TESTING — remove in production
 
   setError: (msg: string) => set({ error: msg, isLoading: false }),
   setParticipants: (participants: LobbyPlayer[]) =>
@@ -305,14 +303,6 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
           }
         }
       })
-      .on("broadcast", { event: "starbox_redirect" }, (payload: any) => {
-        // FOR TESTING — remove in production
-        console.log(
-          "[LobbyStore] 🎯 Received starbox_redirect broadcast",
-          payload
-        );
-        set({ starboxRedirect: true });
-      })
       .on(
         "postgres_changes",
         {
@@ -373,11 +363,7 @@ export const useQuizLobbyStore = create<QuizLobbyState>((set, get) => ({
             );
 
             if (typeof window !== "undefined" && currentUser?.id) {
-              // FOR TESTING — remove in production (use only gameUrl)
-              const { starboxRedirect } = get();
-              const gameUrl = starboxRedirect
-                ? `/starbox?roomId=${roomId}&code=${roomData.room_code}&nextRound=1`
-                : `/game/${roomId}?code=${roomData.room_code}`;
+              const gameUrl = `/game/${roomId}?code=${roomData.room_code}`;
               console.log(`[LobbyStore] 🚀 Redirecting to: ${gameUrl}`);
               window.location.href = gameUrl;
             }

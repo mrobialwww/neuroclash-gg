@@ -28,7 +28,13 @@ export const BuffItem = ({ buff, onClick }: BuffItemProps) => {
         {/* Glow Effect on Hover */}
         <div className="absolute inset-0 rounded-full bg-white/0 blur-xl transition-all duration-300 group-hover:bg-white/10" />
 
-        <Image src={buff.image} alt={buff.name} fill sizes="(max-width: 768px) 48px, 56px" className="relative z-10 object-contain drop-shadow-md" />
+        <Image
+          src={buff.image?.replace("-card", "") || "/default-ability.webp"}
+          alt={buff.name}
+          fill
+          sizes="(max-width: 768px) 48px, 56px"
+          className="relative z-10 object-contain drop-shadow-md"
+        />
       </div>
 
       {/* Label Text */}

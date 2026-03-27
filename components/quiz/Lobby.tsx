@@ -27,8 +27,6 @@ export interface LobbyRoomProps {
   isHost?: boolean;
   /** Called when solo user or host clicks "Mulai" */
   onStart?: () => void;
-  /** FOR TESTING — remove in production */
-  onStartStarbox?: () => void;
   /** Loading state for start button */
   isLoading?: boolean;
   /** Is the user leaving? */
@@ -46,7 +44,6 @@ export function LobbyRoom({
   isSolo = false,
   isHost = false,
   onStart,
-  onStartStarbox, // FOR TESTING — remove in production
   isLoading = false,
   isLeaving = false,
   onLeave,
@@ -229,20 +226,6 @@ export function LobbyRoom({
               Menunggu Host...
             </MainButton>
           )}
-
-          {/* FOR TESTING — remove in production */}
-          {isHost && !isSolo && onStartStarbox && (
-            <MainButton
-              variant="blue"
-              hasShadow
-              className="w-full text-lg font-bold py-5 rounded-xl mt-3"
-              onClick={onStartStarbox}
-              disabled={isLoading || players.length < 2}
-            >
-              {isLoading ? "Memuat..." : "Tes Starbox"}
-            </MainButton>
-          )}
-          {/* END FOR TESTING */}
         </div>
       </div>
     </main>

@@ -55,19 +55,31 @@ export interface MainButtonProps
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   VariantProps<typeof mainButtonVariants> {
   asChild?: boolean;
+  isLoading?: boolean;
 }
 
 const MainButton = React.forwardRef<HTMLButtonElement, MainButtonProps>(
-  ({ className, variant, size, hasShadow, type = "button", ...props }, ref) => {
+  ({ className, variant, size, hasShadow, type = "button", isLoading, children, ...props }, ref) => {
     return (
       <button
         type={type}
         className={cn(
           mainButtonVariants({ variant, size, hasShadow, className }),
+          isLoading && "opacity-80 cursor-not-allowed"
         )}
+        disabled={isLoading || props.disabled}
         ref={ref}
         {...props}
-      />
+      >
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <span>Memproses...</span>
+          </div>
+        ) : (
+          children
+        )}
+      </button>
     );
   },
 );

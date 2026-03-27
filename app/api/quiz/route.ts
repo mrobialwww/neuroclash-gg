@@ -145,20 +145,75 @@ Pastikan:
     const rawText = result.text ?? "";
     const cleaned = rawText.replace(/```json|```/g, "").trim();
 
-    // Extract the first valid JSON object — Gemini occasionally appends
-    // trailing text after the closing brace, which breaks JSON.parse.
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    // Find the first complete JSON object by counting braces
+    let jsonStr = "";
+    const startIndex = cleaned.indexOf("{");
+    if (startIndex !== -1) {
+      let braceCount = 0;
+      let insideString = false;
+      let escapeNext = false;
+
+      for (let i = startIndex; i < cleaned.length; i++) {
+        const char = cleaned[i];
+
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+
+        if (char === "\\") {
+          escapeNext = true;
+          continue;
+        }
+
+        if (char === '"') {
+          insideString = !insideString;
+        }
+
+        if (!insideString) {
+          if (char === "{") braceCount++;
+          else if (char === "}") braceCount--;
+        }
+
+        if (braceCount === 0 && i > startIndex) {
+          jsonStr = cleaned.substring(startIndex, i + 1);
+          break;
+        }
+      }
+    }
+
+    if (!jsonStr) {
       console.error(
         "[API Quiz] No JSON object found in Gemini response:",
         cleaned.substring(0, 200)
       );
       return NextResponse.json(
-        { message: "Gemini tidak mengembalikan JSON yang valid." },
+        {
+          message:
+            "Oops! AI gagal membuat soal dengan format yang benar. Silakan coba lagi.",
+        },
         { status: 500 }
       );
     }
-    const cleanedParsed = JSON.parse(jsonMatch[0]);
+
+    let cleanedParsed;
+    try {
+      cleanedParsed = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error(
+        "[API Quiz] JSON Parse Exception:",
+        parseError,
+        "\nRaw String:",
+        jsonStr.substring(0, 200)
+      );
+      return NextResponse.json(
+        {
+          message:
+            "Oops! Text dari AI sedikit berantakan. Silakan Create Room sekali lagi ya.",
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -222,11 +277,13 @@ Pastikan:
     }
 
     // ── Fallback ──────────────────────────────────────────────────────────
-    const fallbackMsg =
-      error instanceof Error
-        ? error.message
-        : "Terjadi kesalahan pada server saat memproses dokumen.";
-
-    return NextResponse.json({ message: fallbackMsg }, { status: 500 });
+    console.error("[API Quiz] Fallback Error details:", error);
+    return NextResponse.json(
+      {
+        message:
+          "Oops! Proses pembuatan soal gagal akibat kendala server AI. Silakan coba beberapa saat lagi ya.",
+      },
+      { status: 500 }
+    );
   }
 }

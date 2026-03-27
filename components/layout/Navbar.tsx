@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 import { SearchBar } from "../common/Searchbar";
 import axios from "axios";
 import { useUserStore } from "@/store/useUserStore";
+import { Suspense } from "react";
 
 interface NavbarProps {
   initialData?: {
     username: string;
     coins: number;
     avatar: string;
+    baseCharacter: string;
   } | null;
 }
 
@@ -25,13 +27,7 @@ export function Navbar({ initialData }: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const {
-    coins: storeCoins,
-    avatar: storeAvatar,
-    username: storeUsername,
-    isInitialized,
-    setUserData,
-  } = useUserStore();
+  const { coins: storeCoins, avatar: storeAvatar, username: storeUsername, isInitialized, setUserData } = useUserStore();
 
   // Sinkronisasi data awal dari server ke global store
   useEffect(() => {
@@ -40,6 +36,7 @@ export function Navbar({ initialData }: NavbarProps) {
         username: initialData.username,
         coins: initialData.coins,
         avatar: initialData.avatar,
+        baseCharacter: initialData.baseCharacter,
       });
     }
   }, [initialData, isInitialized, setUserData]);
@@ -63,29 +60,28 @@ export function Navbar({ initialData }: NavbarProps) {
             });
             if (res.ok) {
               const result = await res.json();
-              const userData = Array.isArray(result.data)
-                ? result.data[0]
-                : result.data;
+              const userData = Array.isArray(result.data) ? result.data[0] : result.data;
 
               if (userData) {
                 // Get user's active character
-                const charRes = await fetch(`/api/user-character/${user.id}`, {
+                const charRes = await fetch(`/api/user-character/${user.id}?is_used=true`, {
                   cache: "no-store",
                   credentials: "include",
                 });
                 let avatar = "/default/Slime.webp";
+                let baseCharacter = "Slime";
                 if (charRes.ok) {
                   const charResult = await charRes.json();
-                  const charData = Array.isArray(charResult.data)
-                    ? charResult.data[0]
-                    : charResult.data;
+                  const charData = Array.isArray(charResult.data) ? charResult.data[0] : charResult.data;
                   avatar = charData?.image_url || avatar;
+                  baseCharacter = charData?.base_character || baseCharacter;
                 }
 
                 setUserData({
                   username: userData.username || "Guest",
                   coins: userData.coin || 0,
                   avatar,
+                  baseCharacter,
                 });
               }
             }
@@ -159,7 +155,9 @@ export function Navbar({ initialData }: NavbarProps) {
             />
           </Link>
           <div className="hidden w-[300px] xl:block xl:w-[360px]">
-            <SearchBar />
+            <Suspense>
+              <SearchBar />
+            </Suspense>
           </div>
         </div>
 
@@ -173,9 +171,7 @@ export function Navbar({ initialData }: NavbarProps) {
                 href={link.href}
                 className={cn(
                   "group relative flex h-full items-center gap-2 px-4 transition-all duration-200",
-                  isActive
-                    ? "text-[#256AF4]"
-                    : "text-[#A1A1A1] hover:text-[#555555]"
+                  isActive ? "text-[#256AF4]" : "text-[#A1A1A1] hover:text-[#555555]",
                 )}
               >
                 <div className="h-6 w-6">
@@ -191,12 +187,8 @@ export function Navbar({ initialData }: NavbarProps) {
                     }}
                   />
                 </div>
-                <span className="text-md whitespace-nowrap font-semibold">
-                  {link.name}
-                </span>
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]" />
-                )}
+                <span className="text-md whitespace-nowrap font-semibold">{link.name}</span>
+                {isActive && <div className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]" />}
               </Link>
             );
           })}
@@ -209,25 +201,15 @@ export function Navbar({ initialData }: NavbarProps) {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-full md:h-12 md:w-12"
             >
-              <Image
-                src={user.avatar}
-                alt={`${user.username}'s Avatar`}
-                fill
-                sizes="(max-width: 768px) 40px, 48px"
-                className="object-contain"
-              />
+              <Image src={user.avatar} alt={`${user.username}'s Avatar`} fill sizes="(max-width: 768px) 40px, 48px" className="object-contain" />
             </button>
 
             {/* Avatar Dropdown Menu */}
             {isDropdownOpen && (
               <div className="animate-in fade-in zoom-in-95 z-100 absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white py-2 shadow-xl duration-200">
                 <div className="mb-1 border-b border-gray-50 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Akun Anda
-                  </p>
-                  <p className="truncate text-sm font-bold text-gray-800">
-                    {user.username}
-                  </p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Akun Anda</p>
+                  <p className="truncate text-sm font-bold text-gray-800">{user.username}</p>
                 </div>
 
                 <Link
@@ -253,23 +235,12 @@ export function Navbar({ initialData }: NavbarProps) {
 
           <div className="flex items-center gap-2 rounded-full border border-[#DFB200] bg-[#F9DA61]/50 py-1 pl-1 pr-4 shadow-sm">
             <div className="relative h-7 w-7 md:h-8 md:w-8">
-              <Image
-                src="/icons/coin-color.svg"
-                alt="Coin"
-                fill
-                sizes="32px"
-                className="object-contain"
-              />
+              <Image src="/icons/coin-color.svg" alt="Coin" fill sizes="32px" className="object-contain" />
             </div>
-            <span className="text-sm font-bold tracking-tight text-[#AD8A00] md:text-base">
-              {user.coins.toLocaleString("id-ID")}
-            </span>
+            <span className="text-sm font-bold tracking-tight text-[#AD8A00] md:text-base">{user.coins.toLocaleString("id-ID")}</span>
           </div>
 
-          <button
-            className="p-2 text-[#555555] md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
+          <button className="p-2 text-[#555555] md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
@@ -285,10 +256,7 @@ export function Navbar({ initialData }: NavbarProps) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-4 rounded-xl p-3 transition-all",
-                  isActive ? "bg-blue-50 text-[#256AF4]" : "text-[#A1A1A1]"
-                )}
+                className={cn("flex items-center gap-4 rounded-xl p-3 transition-all", isActive ? "bg-blue-50 text-[#256AF4]" : "text-[#A1A1A1]")}
               >
                 <div className="h-6 w-6">
                   <div

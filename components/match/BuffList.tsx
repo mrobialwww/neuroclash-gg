@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 import { BuffItem } from "./BuffItem";
 import { OverlayMaterialCard } from "./OverlayMaterialCard";
 import { OverlayAbilityCard } from "./OverlayAbilityCard";
-import { AbilityMaterial, PickedAbility } from "@/store/useStarboxStore";
-import { matchRepository } from "@/repository/matchRepository";
+import { PickedAbility, useStarboxStore } from "@/store/useStarboxStore";
 import { abilityPlayerRepository } from "@/repository/abilityPlayerRepository";
 
 interface BuffListProps {
@@ -19,13 +18,13 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
   const [selectedMaterial, setSelectedMaterial] = React.useState<PickedAbility | null>(null);
   const [selectedAbility, setSelectedAbility] = React.useState<PickedAbility | null>(null);
 
-  const handleBuffClick = async (buff: PickedAbility) => {
+  const refreshMyInventory = useStarboxStore((s) => s.refreshMyInventory);
+
+  const handleBuffClick = (buff: PickedAbility) => {
     if (buff.ability_id === 1) {
       setSelectedMaterial(buff);
     } else {
-      if (buff) {
-        setSelectedAbility(buff);
-      }
+      setSelectedAbility(buff);
     }
   };
   return (
@@ -55,9 +54,11 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
                 gridTemplateColumns: "repeat(auto-fit, minmax(65px, 1fr))",
               }}
             >
-              {buffs.map((buff) => (
-                <BuffItem key={buff.ability_id} buff={buff} onClick={() => handleBuffClick(buff)} />
-              ))}
+              {buffs.map((buff) => {
+                if (buff.stock > 0) {
+                  return <BuffItem key={buff.ability_id} buff={buff} onClick={() => handleBuffClick(buff)} />;
+                }
+              })}
             </div>
           )}
         </div>
@@ -75,8 +76,21 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
         isOpen={!!selectedAbility}
         ability={selectedAbility}
         onClose={() => setSelectedAbility(null)}
-        onUse={async (id) => {
-          await abilityPlayerRepository.userHealAbility(selectedAbility?.game_room_id!, selectedAbility?.user_id!);
+        onUse={async () => {
+          if (!selectedAbility) return;
+
+          const { game_room_id, user_id, ability_id } = selectedAbility;
+
+          if (ability_id === 2 || ability_id === 4) {
+            await abilityPlayerRepository.userAttackorShieldAbility(game_room_id, user_id, ability_id);
+          } else if (ability_id === 3) {
+            await abilityPlayerRepository.userHealAbility(game_room_id, user_id);
+          }
+
+          // Sync myInventory dari DB agar stock terbaru langsung terefleksi di BuffList.
+          await refreshMyInventory(game_room_id, user_id);
+
+          setSelectedAbility(null);
         }}
       />
     </>

@@ -1,6 +1,7 @@
 import { battleRoomService, BattleRoom } from "./battleRoomService";
 import { matchRepository } from "@/repository/matchRepository";
 import { createClient } from "@/lib/supabase/client";
+import { endgameService } from "./endgameService";
 
 export const roundManagementService = {
   /**
@@ -198,8 +199,14 @@ export const roundManagementService = {
     await matchRepository.submitAnswer(userId, answerId, gameId, roundNumber);
     console.log(`[RoundService] ✅ Answer recorded`);
 
-    // 5. If this is the first answer, record it in battle room
-    if (!battleRoom.first_answer_user_id) {
+    // 5. Check if this is the first answer BEFORE recording (for win tracking)
+    const isFirstAnswer = !battleRoom.first_answer_user_id;
+    console.log(
+      `[RoundService] isFirstAnswer check: ${isFirstAnswer}, current first_answer_user_id: ${battleRoom.first_answer_user_id}`
+    );
+
+    // 6. If this is the first answer, record it in battle room
+    if (isFirstAnswer) {
       console.log(`[RoundService] Step 4: Recording first answer...`);
       await battleRoomService.recordFirstAnswer(battleRoomId, userId, answerId);
       console.log(`[RoundService] ✅ First answer recorded in battle room`);
@@ -215,7 +222,7 @@ export const roundManagementService = {
         .eq("answer_id", answerId)
         .eq("round_number", roundNumber);
     }
-    // 6. Get question metadata to calculate damage
+    // 7. Get question metadata to calculate damage
     // Fetch question and game_room separately to avoid JOIN issues
     const { data: questionData } = await supabase
       .from("questions")
@@ -269,6 +276,7 @@ export const roundManagementService = {
     // 8. Apply damage based on correctness
     let damageApplied = false;
     let newHealth = 100;
+    let isFirstAndCorrect = false;
 
     if (answerDetail.is_correct) {
       // Correct answer - damage to opponents in same battle room
@@ -283,21 +291,52 @@ export const roundManagementService = {
         const opponentState = opponent.find((p) => p.id === opponentId);
         if (opponentState && opponentState.health > 0) {
           const healthAfterDamage = Math.max(0, opponentState.health - damage);
+          console.log(
+            `[RoundService] Applying damage to opponent ${opponentId.substring(
+              0,
+              8
+            )}: ${
+              opponentState.health
+            } -> ${healthAfterDamage}, round=${roundNumber}`
+          );
           await matchRepository.updateHealth(
             opponentId,
             gameId,
-            healthAfterDamage
+            healthAfterDamage,
+            roundNumber
           );
         }
       }
       damageApplied = opponents.length > 0;
+
+      // If first answer and correct, increment win count
+      if (isFirstAnswer) {
+        isFirstAndCorrect = true;
+        console.log(
+          `[RoundService] User ${userId.substring(
+            0,
+            8
+          )} answered first and correctly! Incrementing win...`
+        );
+        await matchRepository.incrementWin(userId, gameId);
+      }
     } else {
       // Wrong answer - damage to self
       const player = await matchRepository.getParticipants(gameId);
       const playerState = player.find((p) => p.id === userId);
       if (playerState) {
         newHealth = Math.max(0, playerState.health - damage);
-        await matchRepository.updateHealth(userId, gameId, newHealth);
+        console.log(
+          `[RoundService] Applying damage to self ${userId.substring(0, 8)}: ${
+            playerState.health
+          } -> ${newHealth}, round=${roundNumber}`
+        );
+        await matchRepository.updateHealth(
+          userId,
+          gameId,
+          newHealth,
+          roundNumber
+        );
         damageApplied = true;
       }
     }
@@ -420,7 +459,20 @@ export const roundManagementService = {
       const playerState = player.find((p) => p.id === playerId);
       if (playerState && playerState.health > 0) {
         const healthAfterDamage = Math.max(0, playerState.health - damage);
-        await matchRepository.updateHealth(playerId, gameId, healthAfterDamage);
+        console.log(
+          `[RoundService] [Timeout] Applying damage to ${playerId.substring(
+            0,
+            8
+          )}: ${
+            playerState.health
+          } -> ${healthAfterDamage}, round=${roundNumber}`
+        );
+        await matchRepository.updateHealth(
+          playerId,
+          gameId,
+          healthAfterDamage,
+          roundNumber
+        );
       }
     }
 
@@ -545,13 +597,29 @@ export const roundManagementService = {
   /**
    * End the game:
    * 1. Update room status to 'finished'
-   * 2. Calculate and save final results
-   * 3. Delete game_players data
+   * 2. Calculate and save final results based on survival order
+   * 3. Broadcast game end to all clients
+   * 4. Delete game_players data
+   *
+   * Placement logic:
+   * - First eliminated = last place (e.g., 4th)
+   * - Last survivor = 1st place (winner)
    */
   async endGame(gameId: string): Promise<void> {
+    console.log(
+      `[RoundService] ==================================================`
+    );
     console.log(`[RoundService] Ending game ${gameId}`);
+    console.log(
+      `[RoundService] ==================================================`
+    );
 
     const supabase = await createClient();
+
+    // Call Centralized Atomic Endgame Processing
+    // This will calculate final trophies, coins, Win/Loss, apply abilities,
+    // persist everything to user_games and users, and finally set room_status to "finished".
+    await endgameService.processCentralizedRewards(gameId);
 
     // 1. Update room status
     await supabase
@@ -563,36 +631,39 @@ export const roundManagementService = {
       .eq("game_room_id", gameId);
 
     // 2. Get final standings
+    // Sort by eliminated_at ASC NULLS LAST:
+    // - Players who died first (earliest eliminated_at) come first
+    // - Players still alive (NULL eliminated_at) come last
     const { data: players } = await supabase
       .from("game_players")
-      .select("user_id, health")
+      .select("user_id, health, win, eliminated_at, status")
       .eq("game_room_id", gameId)
-      .order("health", { ascending: false });
+      .order("eliminated_at", { ascending: true, nullsFirst: false });
 
-    // 3. Update user_games with trophy/coins (simplified - adjust based on your requirements)
-    if (players && players.length > 0) {
-      for (let i = 0; i < players.length; i++) {
-        const player = players[i];
-        const placement = i + 1;
-        const trophy_won = placement === 1 ? 50 : 0;
-        const coins_earned = placement === 1 ? 100 : placement === 2 ? 50 : 20;
+    const totalPlayers = players?.length || 0;
+    console.log(`[RoundService] Found ${totalPlayers} players in game_players`);
 
-        await supabase
-          .from("user_games")
-          .update({
-            trophy_won,
-            coins_earned,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("game_room_id", gameId)
-          .eq("user_id", player.user_id);
-      }
-    }
+    // 3. Broadcast game end to all clients via realtime
+    const channel = supabase.channel(`room:${gameId}`);
+    await channel.send({
+      type: "broadcast",
+      event: "game_ended",
+      payload: {
+        game_room_id: gameId,
+        message: "Game has ended!",
+        players: players || [],
+      },
+    });
 
-    // 4. Delete game_players data
-    await supabase.from("game_players").delete().eq("game_room_id", gameId);
+    // NOTE: game_players is deliberately NOT deleted here so the endgame stats page can fetch players.
 
+    console.log(
+      `[RoundService] ==================================================`
+    );
     console.log(`[RoundService] Game ${gameId} ended successfully`);
+    console.log(
+      `[RoundService] ==================================================`
+    );
   },
 
   /**
