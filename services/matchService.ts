@@ -15,7 +15,7 @@ export const matchService = {
    */
   calculateDamage(currentOrder: number, totalQuestions: number): number {
     if (!totalQuestions || totalQuestions === 0) return 20; // Default base damage if N is invalid
-    const damage = 50 + (currentOrder / totalQuestions) * 20;
+    const damage = 5 + (currentOrder / totalQuestions) * 20;
     return Math.floor(damage); // We use floor for whole numbers damage
   },
 

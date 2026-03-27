@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { dashboardService } from "@/services/dashboardService";
 import { gameRoomRepository } from "@/repository/gameRoomRepository";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,10 +26,26 @@ export default async function DashboardPage() {
   }
 
   // Fetch public game rooms using gameRoomRepository (which also injects precise player counts)
-  const rooms = await gameRoomRepository.getPublicOpenRooms();
+  let rooms = await gameRoomRepository.getPublicOpenRooms();
 
   // Fetch user's personal created rooms for "Arena Kamu"
-  const userRooms = await gameRoomRepository.getUserRooms(user.id);
+  let userRooms = await gameRoomRepository.getUserRooms(user.id);
+
+  // Apply search filtering if 'search' query exists
+  const searchParamRaw = (await props.searchParams)?.search;
+  const searchQuery = typeof searchParamRaw === "string" ? searchParamRaw.toLowerCase() : undefined;
+  if (searchQuery) {
+    rooms = rooms.filter(
+      (room) =>
+        room.title?.toLowerCase().includes(searchQuery) ||
+        room.category?.toLowerCase().includes(searchQuery)
+    );
+    userRooms = userRooms.filter(
+      (room) =>
+        room.title?.toLowerCase().includes(searchQuery) ||
+        room.category?.toLowerCase().includes(searchQuery)
+    );
+  }
 
   // Group rooms by category
   const groupedRooms = rooms.reduce((acc: any[], room: any) => {

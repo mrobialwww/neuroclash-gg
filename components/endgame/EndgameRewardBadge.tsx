@@ -22,7 +22,7 @@ export function EndgameRewardBadge({
         border: "1px solid rgba(255,255,255,0.18)",
       }}
     >
-      <span className="text-center text-[10px] sm:text-xs md:text-sm font-semibold text-white/80">
+      <span className="text-center text-xs sm:text-xs md:text-sm font-semibold text-white/80">
         Hadiah Total Pertandingan
       </span>
 
@@ -42,7 +42,7 @@ export function EndgameRewardBadge({
             <span className="text-lg sm:text-2xl font-bold text-white">+{coinsEarned}</span>
           </div>
           {coinBoost > 0 && (
-            <span className="text-[10px] sm:text-xs font-semibold text-[#4ade80] -mt-0.5 sm:-mt-1">
+            <span className="text-[10px] md:text-sm font-semibold text-[#4ade80]">
               (+{coinBoost}%)
             </span>
           )}
@@ -66,7 +66,7 @@ export function EndgameRewardBadge({
             <span className="text-lg sm:text-2xl font-bold text-white">+{trophyWon}</span>
           </div>
           {trophyBoost > 0 && (
-            <span className="text-[10px] sm:text-xs font-semibold text-[#4ade80] -mt-0.5 sm:-mt-1">
+            <span className="text-xs md:text-sm font-semibold text-[#4ade80]">
               (+{trophyBoost}%)
             </span>
           )}

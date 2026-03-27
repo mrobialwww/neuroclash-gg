@@ -15,6 +15,7 @@ interface NavbarProps {
     username: string;
     coins: number;
     avatar: string;
+    baseCharacter: string;
   } | null;
 }
 
@@ -40,6 +41,7 @@ export function Navbar({ initialData }: NavbarProps) {
         username: initialData.username,
         coins: initialData.coins,
         avatar: initialData.avatar,
+        baseCharacter: initialData.baseCharacter,
       });
     }
   }, [initialData, isInitialized, setUserData]);
@@ -74,18 +76,21 @@ export function Navbar({ initialData }: NavbarProps) {
                   credentials: "include",
                 });
                 let avatar = "/default/Slime.webp";
+                let baseCharacter = "Slime";
                 if (charRes.ok) {
                   const charResult = await charRes.json();
                   const charData = Array.isArray(charResult.data)
                     ? charResult.data[0]
                     : charResult.data;
                   avatar = charData?.image_url || avatar;
+                  baseCharacter = charData?.base_character || baseCharacter;
                 }
 
                 setUserData({
                   username: userData.username || "Guest",
                   coins: userData.coin || 0,
                   avatar,
+                  baseCharacter,
                 });
               }
             }

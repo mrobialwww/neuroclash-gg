@@ -89,30 +89,34 @@ export function LeaderboardClient() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
+                  {/* Show "Me" at TOP if not in current page and rank is higher */}
+                  {myEntry &&
+                    entries.length > 0 &&
+                    myEntry.position < entries[0].position &&
+                    !entries.some((e) => e.user_id === myEntry.user_id) && (
+                      <div className="mb-2">
+                        <LeaderboardRow entry={myEntry} isMe />
+                        <div className="mt-2 h-px w-full bg-white/10" />
+                      </div>
+                    )}
+
                   {entries.map((entry) => {
                     const isMe = myEntry?.user_id === entry.user_id;
                     return (
                       <LeaderboardRow key={entry.user_id} entry={entry} isMe={isMe} />
                     );
                   })}
-                </div>
-              )}
 
-              {/* Divider */}
-              {!loading && myEntry && (
-                <div className="my-[4px]" />
-              )}
-
-              {/* My Position Row */}
-              {!loading && myEntry && (
-                <div>
-                  {/* Show "Me" only if not already visible on current page */}
-                  {!entries.some((e) => e.user_id === myEntry.user_id) && (
-                    <LeaderboardRow
-                      entry={myEntry.position > 0 ? myEntry : { ...myEntry, position: 0 }}
-                      isMe
-                    />
-                  )}
+                  {/* Show "Me" at BOTTOM if not in current page and rank is lower */}
+                  {myEntry &&
+                    entries.length > 0 &&
+                    myEntry.position > entries[entries.length - 1].position &&
+                    !entries.some((e) => e.user_id === myEntry.user_id) && (
+                      <div className="mt-2">
+                        <div className="mb-2 h-px w-full bg-white/10" />
+                        <LeaderboardRow entry={myEntry} isMe />
+                      </div>
+                    )}
                 </div>
               )}
             </div>

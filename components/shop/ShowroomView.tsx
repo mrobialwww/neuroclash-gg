@@ -71,7 +71,7 @@ export default function ShowroomView({
 
       // Update avatar global segera
       if (selectedItem.image_url) {
-        updateAvatar(selectedItem.image_url);
+        updateAvatar(selectedItem.image_url, selectedItem.base_character);
       }
 
       toast.success("Karakter berhasil dikenakan!");

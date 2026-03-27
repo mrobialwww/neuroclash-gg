@@ -19,9 +19,7 @@ const steps = [
   { id: "treasure", icon: "/icons/treasure.svg" },
 ];
 
-/** Durasi timer per giliran (ms) — habis = auto-pick random */
-const TURN_DURATION_MS = 3000;
-/** Interval update progress bar (ms) */
+const TURN_DURATION_MS = 4000;
 const PROGRESS_TICK_MS = 50;
 
 export default function StarboxPage() {
@@ -69,13 +67,31 @@ export default function StarboxPage() {
   const isMyTurn = roomInfo?.max_player !== 1 && currentTurnIndex < players.length && !!players[currentTurnIndex]?.isMe;
   const iHavePicked = myPlayerId ? pickedPlayerIds.includes(myPlayerId) : false;
 
-  // ── 3. Per-turn timer: 3 detik per giliran, auto-pick random jika habis ─
+  const [isPreDelay, setIsPreDelay] = useState(true);
+  const [preCountdown, setPreCountdown] = useState(3);
   const [progress, setProgress] = useState(0);
   const [turnCountdown, setTurnCountdown] = useState(TURN_DURATION_MS / 1000);
   const autoPickedThisTurn = useRef(false);
 
+  // Initial delay timer
   useEffect(() => {
-    if (allTurnsDone || isLoading) {
+    if (isLoading || !isPreDelay) return;
+    const timer = setInterval(() => {
+      setPreCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsPreDelay(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isLoading, isPreDelay]);
+
+  // Turn timer
+  useEffect(() => {
+    if (isPreDelay || allTurnsDone || isLoading) {
       setProgress(0);
       setTurnCountdown(TURN_DURATION_MS / 1000);
       return;
@@ -98,24 +114,15 @@ export default function StarboxPage() {
       if (elapsed >= TURN_DURATION_MS && !autoPickedThisTurn.current) {
         autoPickedThisTurn.current = true;
 
-        const state = useStarboxStore.getState();
-        const currentPlayer = state.players[state.currentTurnIndex];
-        if (!currentPlayer) return;
-
-        // Hanya user yang sedang giliran yang menjalankan auto-pick
-        if (currentPlayer.isMe) {
-          const available = state.abilities.filter((a) => a.stock > 0);
-          if (available.length > 0) {
-            const randomAbility = available[Math.floor(Math.random() * available.length)];
-            console.log(`[Starbox] Auto-pick: ${randomAbility.name} untuk ${currentPlayer.name}`);
-            state.selectAbility(roomId, randomAbility.id, currentPlayer.id);
-          }
+        // Hanya host yang skip turn jika waku habis untuk menjaga konsistensi state terpusat
+        if (useStarboxStore.getState().isHost) {
+          useStarboxStore.getState().triggerSkipTurn();
         }
       }
     }, PROGRESS_TICK_MS);
 
     return () => clearInterval(interval);
-  }, [currentTurnIndex, allTurnsDone, isLoading, roomId]);
+  }, [currentTurnIndex, allTurnsDone, isLoading, roomId, isPreDelay]);
 
   // ── 4. Auto-transition: semua giliran selesai → redirect
   const autoAssignDone = useRef(false);
@@ -149,8 +156,9 @@ export default function StarboxPage() {
       }
 
       if (isMyTurn && !iHavePicked) {
-        autoPickedThisTurn.current = true; // Cegah auto-pick setelah user sudah pilih manual
+        autoPickedThisTurn.current = true; // Mark that manual pick done
         selectAbility(roomId, abilityId, players[currentTurnIndex]?.id);
+        // We NO LONGER call triggerSkipTurn here to allow timer to finish
       }
     },
     [abilities, pickingAbilityId, roomInfo, roomId, players, currentTurnIndex, selectAbility, handleNextRound, isMyTurn, iHavePicked],
@@ -158,7 +166,7 @@ export default function StarboxPage() {
 
   const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
   const activeStepIndex = 6;
-  const canPickAbility = roomInfo?.max_player === 1 || (isMyTurn && !iHavePicked && !pickingAbilityId);
+  const canPickAbility = roomInfo?.max_player === 1 || (!isPreDelay && isMyTurn && !iHavePicked && !pickingAbilityId);
 
   // ── Loading screen
   if (isLoading) {
@@ -229,9 +237,6 @@ export default function StarboxPage() {
                   <span className={players[currentTurnIndex]?.isMe ? "text-[#22C55E]" : "text-[#FFCB66]"}>
                     {players[currentTurnIndex]?.isMe ? "Kamu" : players[currentTurnIndex]?.name}
                   </span>
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white">
-                    ⏱ {turnCountdown}s
-                  </span>
                   <span className="ml-2 text-sm text-white/60">(HP terendah memilih lebih awal)</span>
                 </p>
               ) : (
@@ -275,8 +280,25 @@ export default function StarboxPage() {
         {/* Player Grid Container (Multiplayer only) */}
         {roomInfo?.max_player !== 1 && (
           <div className="relative mt-4 w-full overflow-visible rounded-2xl border border-white/10 bg-[#D9D9D9]/20 px-4 py-8 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
-            {/* Turn Badge Overlay */}
-            {isMyTurn && !iHavePicked ? (
+            {isPreDelay ? (
+              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
+                <div className="relative flex h-auto w-full items-center justify-center">
+                  <NextImage
+                    src="/dashboard/trophy-badge.webp"
+                    alt="Badge Background"
+                    width={400}
+                    height={70}
+                    className="-z-10 block h-full w-full object-contain drop-shadow-xl"
+                    priority
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center px-4 md:px-8">
+                    <span className="text-center text-xs font-bold uppercase leading-tight text-white drop-shadow-md sm:text-sm md:text-base">
+                      Bersiap Mengambil Item... {preCountdown}s
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : isMyTurn && !iHavePicked ? (
               <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
                 <div className="relative flex h-auto w-full items-center justify-center">
                   <NextImage
@@ -299,17 +321,17 @@ export default function StarboxPage() {
             <div className="grid grid-cols-5 items-start justify-items-center gap-x-3 gap-y-12 md:grid-cols-8 md:gap-x-5 md:gap-y-16 lg:grid-cols-10">
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
-                const hasPicked = pickedPlayerIds.includes(player.id) || idx < currentTurnIndex;
+                const hasPicked = pickedPlayerIds.includes(player.id);
 
                 return (
                   <div key={`${player.id}-${idx}`} className="w-full">
                     <PlayerGridCard
                       player={player}
-                      hideHealthBar={true}
+                      hideHealthBar={false}
                       highlight={player.isMe ? "self" : undefined}
                       hasPicked={hasPicked}
-                      isActiveTurn={isActiveTurn && !allTurnsDone}
-                      progress={isActiveTurn && !allTurnsDone ? progress : 0}
+                      isActiveTurn={isActiveTurn && !allTurnsDone && !isPreDelay}
+                      progress={isActiveTurn && !allTurnsDone && !isPreDelay ? progress : 0}
                       progressColor={player.isMe ? "bg-[#D46B1D]/80" : "bg-[#FDBB38]/80"}
                     />
                   </div>

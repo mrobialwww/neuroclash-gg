@@ -9,8 +9,8 @@ import { battleRoomService, BattleRoom } from "@/services/battleRoomService";
 
 const supabase = createClient();
 
-export const SECONDS_PER_ROUND = 10;
-export const STARBOX_INTERVAL = 1;
+export const SECONDS_PER_ROUND = 20;
+export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
 
 export interface MatchState {
@@ -821,16 +821,15 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Update state dengan data first answer
         if (result.success) {
+          const correctOpt = state.currentQuestion?.options.find((o) => o.isCorrect);
           set({
+            lastAnswerCorrect: result.is_correct ?? false,
+            correctAnswerId: correctOpt?.id ?? null,
             firstAnswerPlayerId: state.currentUser?.id || null,
             firstAnswerId: answerId,
           });
-
-          // Sync players to get updated health from database (ONLY ONCE)
-          // Real-time subscription will handle subsequent updates
-          console.log(
-            "[MatchStore] Syncing players after answer submission..."
-          );
+          
+          console.log("[MatchStore] Syncing players after answer submission...");
           await get().syncPlayersFromDB(state.gameRoomId);
         }
       }

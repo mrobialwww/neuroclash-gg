@@ -521,7 +521,7 @@ export const roundManagementService = {
    */
   calculateDamage(roundNumber: number, totalQuestions: number): number {
     if (!totalQuestions || totalQuestions === 0) return 20;
-    const damage = 50 + (roundNumber / totalQuestions) * 20;
+    const damage = 5 + (roundNumber / totalQuestions) * 20;
     return Math.floor(damage);
   },
 
@@ -643,136 +643,7 @@ export const roundManagementService = {
     const totalPlayers = players?.length || 0;
     console.log(`[RoundService] Found ${totalPlayers} players in game_players`);
 
-    // 3. Update user_games with trophy/coins based on placement
-    if (players && players.length > 0) {
-      console.log(`[RoundService] Final standings for game ${gameId}:`);
-
-      // Calculate B = 3/4 of total players (rounded)
-      const B = Math.ceil(totalPlayers * 0.75);
-      console.log(
-        `[RoundService] Trophy formula: B=${B}, totalPlayers=${totalPlayers}`
-      );
-
-      for (let i = 0; i < players.length; i++) {
-        const player = players[i];
-
-        // Calculate placement based on elimination order
-        // First in list (i=0) = first eliminated = last place
-        // Last in list (i=totalPlayers-1) = last survivor = 1st place
-        const placement = totalPlayers - i;
-        const R = placement;
-        const N = totalPlayers;
-
-        // Calculate trophy based on formula
-        let trophy_won = 0;
-
-        if (R <= B) {
-          // Winning ranks
-          if (B === 1) {
-            trophy_won = 100;
-          } else {
-            trophy_won = Math.round(100 - (R - 1) * (90 / (B - 1)));
-          }
-        } else {
-          // Losing ranks
-          const losingPlayers = N - B;
-          if (losingPlayers === 1) {
-            trophy_won = -100;
-          } else {
-            trophy_won = Math.round(-10 - (R - (B + 1)) * (90 / (N - (B + 1))));
-          }
-        }
-
-        // Calculate coins = trophy + (3/4 * trophy)
-        const coins_earned = Math.round(trophy_won + trophy_won * 0.75);
-
-        // Calculate lose = eliminated_at - win (for died players)
-        const winCount = player.win || 0;
-        const loseCount = player.eliminated_at
-          ? Math.max(0, player.eliminated_at - winCount)
-          : 0;
-
-        const statusLabel =
-          player.status === "alive" ? "SURVIVOR" : "ELIMINATED";
-        console.log(
-          `[RoundService] ${placement}. [${statusLabel}] User ${player.user_id.substring(
-            0,
-            8
-          )} - ` +
-            `Wins: ${winCount}, Lose: ${loseCount}, Health: ${player.health}, eliminated_at: ${player.eliminated_at} -> ` +
-            `Trophy: ${trophy_won}, Coins: ${coins_earned}`
-        );
-
-        // Cek apakah record user_games sudah ada
-        console.log(
-          `[RoundService] Checking user_games for user=${player.user_id.substring(
-            0,
-            8
-          )}, room=${gameId.substring(0, 8)}`
-        );
-
-        const { data: existingRecords } = await supabase
-          .from("user_games")
-          .select("user_game_id")
-          .eq("game_room_id", gameId)
-          .eq("user_id", player.user_id);
-
-        console.log(`[RoundService] Existing records:`, existingRecords);
-
-        // Update atau Insert user_games
-        let updateError;
-
-        if (existingRecords && existingRecords.length > 0) {
-          // Record exists, update it
-          console.log(`[RoundService] Updating existing user_games record...`);
-          const { error } = await supabase
-            .from("user_games")
-            .update({
-              trophy_won,
-              coins_earned,
-              win: winCount,
-              lose: loseCount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("game_room_id", gameId)
-            .eq("user_id", player.user_id);
-
-          updateError = error;
-        } else {
-          // Record doesn't exist, insert it
-          console.log(`[RoundService] Creating new user_games record...`);
-          const { error } = await supabase.from("user_games").insert({
-            game_room_id: gameId,
-            user_id: player.user_id,
-            trophy_won,
-            coins_earned,
-            win: winCount,
-            lose: loseCount,
-          });
-
-          updateError = error;
-        }
-
-        if (updateError) {
-          console.error(
-            `[RoundService] Error updating user_games for ${player.user_id.substring(
-              0,
-              8
-            )}:`,
-            updateError
-          );
-        } else {
-          console.log(
-            `[RoundService] ✅ Updated user_games for ${player.user_id.substring(
-              0,
-              8
-            )}`
-          );
-        }
-      }
-    }
-
-    // 4. Broadcast game end to all clients via realtime
+    // 3. Broadcast game end to all clients via realtime
     const channel = supabase.channel(`room:${gameId}`);
     await channel.send({
       type: "broadcast",
@@ -784,8 +655,7 @@ export const roundManagementService = {
       },
     });
 
-    // 5. Delete game_players data
-    await supabase.from("game_players").delete().eq("game_room_id", gameId);
+    // NOTE: game_players is deliberately NOT deleted here so the endgame stats page can fetch players.
 
     console.log(
       `[RoundService] ==================================================`

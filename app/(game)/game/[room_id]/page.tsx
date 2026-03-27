@@ -9,6 +9,7 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 import { EliminationOverlay } from "@/components/game/EliminationOverlay";
+import NextImage from "next/image";
 
 import {
   useMatchStore,
@@ -38,6 +39,8 @@ export default function GamePage() {
     lose: number;
     trophyWon: number;
     coinsEarned: number;
+    coinBoost: number;
+    trophyBoost: number;
     survivalTime: string;
     isWinner: boolean;
   } | null>(null);
@@ -133,52 +136,40 @@ export default function GamePage() {
         // Show loading state, then fetch data after delay to ensure user_games is updated
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
-        // Calculate placement based on elimination order from game_players
-        const { data: allPlayers } = await supabase
-          .from("game_players")
-          .select("user_id, status, eliminated_at")
-          .eq("game_room_id", gameRoomId)
-          .order("eliminated_at", { ascending: true, nullsFirst: false });
+        // Fetch live results from API instead of direct DB query to avoid race conditions
+        console.log(`[GamePage] Fetching live results for elimination: ${gameRoomId}`);
+        const res = await fetch(`/api/endgame/${gameRoomId}`, { cache: "no-store" });
+        const json = await res.json();
 
-        const totalPlayers = allPlayers?.length || 0;
-        const myIndex =
-          allPlayers?.findIndex((p) => p.user_id === currentUser.id) ?? 0;
-        const placement = totalPlayers - myIndex;
-
-        // Get user_games data for stats (should be updated by now)
-        const { data: userGameData, error: userGameError } = await supabase
-          .from("user_games")
-          .select("win, lose, trophy_won, coins_earned, created_at, updated_at")
-          .eq("game_room_id", gameRoomId)
-          .eq("user_id", currentUser.id)
-          .single();
-
-        console.log("[GamePage] user_games data:", userGameData);
-        if (userGameError) {
-          console.error("[GamePage] Error fetching user_games:", userGameError);
+        if (!json.success || !json.data) {
+          throw new Error("Failed to fetch live endgame results");
         }
 
-        // Calculate survival time
-        let survivalTime = "00:00";
-        if (userGameData?.created_at && userGameData?.updated_at) {
-          const createdAt = new Date(userGameData.created_at).getTime();
-          const updatedAt = new Date(userGameData.updated_at).getTime();
-          const diffSeconds = Math.floor((updatedAt - createdAt) / 1000);
-          const minutes = Math.floor(diffSeconds / 60);
-          const seconds = diffSeconds % 60;
-          survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds
-            .toString()
-            .padStart(2, "0")}`;
+        const allResults = json.data;
+        const myResult = allResults.find((r: any) => r.userId === currentUser.id);
+
+        if (!myResult) {
+          throw new Error("User results not found in live data");
         }
+
+        // Calculate survival time (approximate based on current time or final answer)
+        // For simplicity and since it's just a display stat, we use duration since start
+        const startTime = roomInfo?.created_at ? new Date(roomInfo.created_at).getTime() : Date.now();
+        const diffSeconds = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(diffSeconds / 60);
+        const seconds = diffSeconds % 60;
+        const survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
         setEliminationData({
-          placement,
-          win: userGameData?.win || 0,
-          lose: userGameData?.lose || 0,
-          trophyWon: userGameData?.trophy_won || 0,
-          coinsEarned: userGameData?.coins_earned || 0,
+          placement: myResult.placement,
+          win: myResult.win,
+          lose: myResult.lose,
+          trophyWon: myResult.trophyWon,
+          coinsEarned: myResult.coinsEarned,
+          coinBoost: myResult.coinBoost || 0,
+          trophyBoost: myResult.trophyBoost || 0,
           survivalTime,
-          isWinner: placement === 1,
+          isWinner: myResult.placement === 1,
         });
 
         setShowEliminationOverlay(true);
@@ -207,54 +198,38 @@ export default function GamePage() {
     if (!currentUser || !gameRoomId || eliminationData) return;
 
     try {
-      const supabase = createClient();
+      // Fetch live results from API
+      console.log(`[GamePage] Fetching live results for end game: ${gameRoomId}`);
+      const res = await fetch(`/api/endgame/${gameRoomId}`, { cache: "no-store" });
+      const json = await res.json();
 
-      // Get user_games data for stats
-      const { data: userGameData } = await supabase
-        .from("user_games")
-        .select("win, lose, trophy_won, coins_earned, created_at, updated_at")
-        .eq("game_room_id", gameRoomId)
-        .eq("user_id", currentUser.id)
-        .single();
+      if (!json.success || !json.data) return;
 
-      // Calculate survival time
-      let survivalTime = "00:00";
-      if (userGameData?.created_at && userGameData?.updated_at) {
-        const createdAt = new Date(userGameData.created_at).getTime();
-        const updatedAt = new Date(userGameData.updated_at).getTime();
-        const diffSeconds = Math.floor((updatedAt - createdAt) / 1000);
-        const minutes = Math.floor(diffSeconds / 60);
-        const seconds = diffSeconds % 60;
-        survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds
-          .toString()
-          .padStart(2, "0")}`;
-      }
+      const myResult = json.data.find((r: any) => r.userId === currentUser.id);
+      if (!myResult) return;
 
-      // Calculate placement based on elimination order
-      const { data: allPlayers } = await supabase
-        .from("game_players")
-        .select("user_id, status, eliminated_at")
-        .eq("game_room_id", gameRoomId)
-        .order("eliminated_at", { ascending: true, nullsFirst: false });
-
-      const totalPlayers = allPlayers?.length || 0;
-      const myIndex =
-        allPlayers?.findIndex((p) => p.user_id === currentUser.id) ?? 0;
-      const placement = totalPlayers - myIndex;
+      // Calculate time
+      const startTime = roomInfo?.created_at ? new Date(roomInfo.created_at).getTime() : Date.now();
+      const diffSeconds = Math.floor((Date.now() - startTime) / 1000);
+      const minutes = Math.floor(diffSeconds / 60);
+      const seconds = diffSeconds % 60;
+      const survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
       setEliminationData({
-        placement,
-        win: userGameData?.win || 0,
-        lose: userGameData?.lose || 0,
-        trophyWon: userGameData?.trophy_won || 0,
-        coinsEarned: userGameData?.coins_earned || 0,
+        placement: myResult.placement,
+        win: myResult.win,
+        lose: myResult.lose,
+        trophyWon: myResult.trophyWon,
+        coinsEarned: myResult.coinsEarned,
+        coinBoost: myResult.coinBoost || 0,
+        trophyBoost: myResult.trophyBoost || 0,
         survivalTime,
-        isWinner: placement === 1,
+        isWinner: myResult.placement === 1,
       });
     } catch (err) {
       console.error("Error fetching end game data:", err);
     }
-  }, [currentUser, gameRoomId, eliminationData]);
+  }, [currentUser, gameRoomId, eliminationData, roomInfo]);
 
   useEffect(() => {
     if (isFinished && !eliminationData) {
@@ -375,8 +350,34 @@ export default function GamePage() {
     }
   };
 
+  // Tampilan ketika Error
+  if (error) {
+    return (
+      <main className="flex min-h-screen w-full items-center justify-center bg-[#0B0D14] px-6">
+        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619] border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-8 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-500/20 bg-red-500/10">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-extrabold uppercase tracking-wider text-white">
+              Terjadi Kesalahan
+            </h2>
+            <p className="text-sm font-medium text-white/60">{error}</p>
+          </div>
+          <MainButton
+            variant="blue"
+            className="h-12 w-full font-bold uppercase tracking-wider"
+            onClick={() => window.location.reload()}
+          >
+            Coba Lagi
+          </MainButton>
+        </div>
+      </main>
+    );
+  }
+
   // Tampilan ketika Loading Data
-  if (isLoadingQuestion && !currentQuestion && !error) {
+  if (isLoadingQuestion && !currentQuestion) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
@@ -390,15 +391,19 @@ export default function GamePage() {
   // Tampilan ketika Menunggu Semua Battle Room Selesai
   if (isWaitingForAllBattles && !error) {
     return (
-      <div className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14]/95 backdrop-blur-sm">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
-        <div className="space-y-2 text-center">
-          <p className="animate-pulse text-2xl font-bold text-white">
-            Menunggu semua pertempuran selesai...
-          </p>
-          <p className="text-white/60">
-            Ronde {currentOrder} akan segera berakhir
-          </p>
+      <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
+        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619] border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_20px_rgba(61,121,243,0.3)]" />
+          <div className="space-y-3">
+            <p className="text-xl md:text-2xl font-extrabold text-white uppercase tracking-tighter italic">
+              Menunggu...
+            </p>
+            <p className="text-sm md:text-base text-white/60 font-medium">
+              Ronde {currentOrder} segera berakhir.
+              <br />
+              Pertempuran lain masih berlangsung!
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -406,120 +411,101 @@ export default function GamePage() {
 
   // Tampilan Layar Kemenangan / Selesai
   if (isFinished) {
+    const isWinner = eliminationData?.isWinner;
+    const finalImage = isWinner ? "/mascot/mascot-match.webp" : "/mascot/mascot-failed.webp";
+    const titleColor = isWinner ? "text-white" : "text-[#FF0000] drop-shadow-[0_2px_4px_rgba(255,0,0,0.3)]";
+
     return (
-      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6 bg-[#0B0D14] px-4">
+      <main className="flex min-h-screen w-full items-center justify-center bg-[#0B0D14] px-4 relative overflow-hidden">
+        {/* Background Decorative Elements */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-        {/* Icon */}
-        <p className="text-5xl">{eliminationData?.isWinner ? "🏆" : "🎮"}</p>
+        <div className="relative w-full max-w-[440px] rounded-3xl bg-[#040619] border-2 border-[#383347] shadow-[0_20px_60px_rgba(0,0,0,0.9)] p-8 md:p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-300">
 
-        {/* Title */}
-        <h1 className="text-center text-3xl font-extrabold text-white">
-          {eliminationData?.isWinner ? "SELAMAT!" : "Quiz Selesai!"}
-        </h1>
+          {/* Title */}
+          <h1 className={`text-3xl md:text-4xl font-extrabold uppercase ${titleColor}`}>
+            {isWinner ? "SELAMAT!" : "Quiz Selesai!"}
+          </h1>
 
-        {/* Subtitle */}
-        <p className="text-center text-lg text-white/60">
-          {eliminationData?.isWinner
-            ? "Anda memenangkan pertandingan!"
-            : `Kamu telah menyelesaikan semua ${
-                totalQuestions ?? currentOrder - 1
-              } soal.`}
-        </p>
+          {/* Icon/Mascot */}
+          <div className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+            <NextImage
+              src={finalImage}
+              alt="Result Mascot"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
 
-        {/* Stats Box */}
-        {eliminationData && (
-          <div className="w-full max-w-sm rounded-xl bg-white/5 p-4">
-            <div className="grid grid-cols-4 gap-3">
-              {/* Win */}
-              <div className="flex flex-col items-center">
-                <span className="text-2xl font-bold text-green-400">
-                  {eliminationData.win}
-                </span>
-                <span className="mt-1 text-xs text-white/60">WIN</span>
-              </div>
+          {/* Subtitle */}
+          <div className="space-y-2">
+            <p className="text-white text-base md:text-xl font-bold leading-tight">
+              {isWinner
+                ? "Kamu memenangkan pertandingan!"
+                : `Pertandingan telah berakhir!`}
+            </p>
+            <p className="text-white/50 text-sm md:text-base font-medium">
+              Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.
+            </p>
+          </div>
 
-              {/* Lose */}
-              <div className="flex flex-col items-center">
-                <span className="text-2xl font-bold text-red-400">
-                  {eliminationData.lose}
-                </span>
-                <span className="mt-1 text-xs text-white/60">LOSE</span>
-              </div>
-
-              {/* Trophy */}
-              <div className="flex flex-col items-center">
-                <span
-                  className={`text-2xl font-bold ${
-                    eliminationData.trophyWon >= 0
-                      ? "text-yellow-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {eliminationData.trophyWon >= 0 ? "+" : ""}
-                  {eliminationData.trophyWon}
-                </span>
-                <span className="mt-1 text-xs text-white/60">TROPHY</span>
-              </div>
-
-              {/* Coins */}
-              <div className="flex flex-col items-center">
-                <span
-                  className={`text-2xl font-bold ${
-                    eliminationData.coinsEarned >= 0
-                      ? "text-amber-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {eliminationData.coinsEarned >= 0 ? "+" : ""}
-                  {eliminationData.coinsEarned}
-                </span>
-                <span className="mt-1 text-xs text-white/60">COINS</span>
+          {/* Stats Box */}
+          {eliminationData && (
+            <div className="w-full rounded-2xl bg-white/5 p-5 border border-white/10 shadow-inner">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="flex flex-col items-center">
+                  <span className="text-lg md:text-xl font-extrabold text-[#4ade80]">{eliminationData.win}</span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">WIN</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-lg md:text-xl font-extrabold text-[#f87171]">{eliminationData.lose}</span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">LOSE</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className={`text-lg md:text-xl font-extrabold ${eliminationData.trophyWon >= 0 ? "text-[#FFC300]" : "text-[#f87171]"}`}>
+                    {eliminationData.trophyWon >= 0 ? "+" : ""}{eliminationData.trophyWon}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">TROPHY</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className={`text-lg md:text-xl font-extrabold ${eliminationData.coinsEarned >= 0 ? "text-[#fbbf24]" : "text-[#f87171]"}`}>
+                    {eliminationData.coinsEarned >= 0 ? "+" : ""}{eliminationData.coinsEarned}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">COINS</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Survival Time */}
-        {eliminationData && (
-          <div className="flex items-center gap-2">
-            <span className="text-white/60">Waktu Bertahan:</span>
-            <span className="text-xl font-bold text-blue-400">
-              {eliminationData.survivalTime}
-            </span>
-          </div>
-        )}
+          {/* Placement & Time Badge */}
+          {eliminationData && (
+            <div className="flex flex-col items-center gap-3 w-full">
+              <div className="px-6 py-2 rounded-full bg-linear-to-r from-[#658BFF] to-[#3D79F3] shadow-lg shadow-blue-500/20">
+                <span className="text-lg font-extrabold text-white uppercase italic tracking-tighter">
+                  PERINGKAT #{eliminationData.placement}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-white/40">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Survival Time</span>
+                <span className="text-white font-extrabold">{eliminationData.survivalTime}</span>
+              </div>
+            </div>
+          )}
 
-        {/* Placement Badge */}
-        {eliminationData && (
-          <div
-            className={`rounded-full px-6 py-2 ${
-              eliminationData.isWinner
-                ? "bg-gradient-to-r from-yellow-500 to-amber-500"
-                : eliminationData.placement === 2
-                ? "bg-gradient-to-r from-gray-400 to-gray-500"
-                : eliminationData.placement === 3
-                ? "bg-gradient-to-r from-amber-600 to-amber-700"
-                : "bg-gradient-to-r from-gray-600 to-gray-700"
-            }`}
+          {/* Action Button */}
+          <MainButton
+            variant="blue"
+            size="lg"
+            hasShadow
+            className="w-full h-14 md:h-16 text-lg md:text-xl font-extrabold uppercase tracking-wider mt-2"
+            onClick={handleGoToEndgame}
+            isLoading={isProcessingEndgame}
+            disabled={isProcessingEndgame}
           >
-            <span className="text-lg font-bold text-white">
-              PERINGKAT {eliminationData.placement}
-            </span>
-          </div>
-        )}
-
-        {/* Back to Dashboard Button */}
-
-        <MainButton
-          variant="green"
-          hasShadow
-          className="rounded-xl px-10 py-4 text-lg font-bold"
-          onClick={handleGoToEndgame}
-          isLoading={isProcessingEndgame}
-          disabled={isProcessingEndgame}
-        >
-          Lihat Hasil
-        </MainButton>
+            Lihat Hasil
+          </MainButton>
+        </div>
       </main>
     );
   }
@@ -655,6 +641,8 @@ export default function GamePage() {
           lose={eliminationData?.lose || 0}
           trophyWon={eliminationData?.trophyWon || 0}
           coinsEarned={eliminationData?.coinsEarned || 0}
+          coinBoost={eliminationData?.coinBoost || 0}
+          trophyBoost={eliminationData?.trophyBoost || 0}
           survivalTime={eliminationData?.survivalTime || "00:00"}
           isWinner={eliminationData?.isWinner || false}
           isLoading={isLoadingEliminationData}

@@ -26,97 +26,10 @@ export async function PATCH(
   { params }: { params: Promise<{ game_room_id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-
-    const body = await request.json();
-
-    const { game_room_id } = await params;
-
-    // Menggunakan logika dari playerElimination, namun menggunakan server client untuk keamanan SSR
-    const { data: abilities } = await supabase
-      .from("ability_players")
-      .select("ability_id, stock")
-      .eq("game_room_id", game_room_id)
-      .eq("user_id", body.user_id);
-
-    let finalTrophy = Number(body.trophy_won);
-    let finalCoin = Number(body.coins_earned);
-
-    if (abilities) {
-      const ability5 = abilities.find((a) => a.ability_id === 5); // PIALA KEJAYAAN
-      if (ability5) {
-        finalTrophy += Math.floor((finalTrophy * 5) / 100) * ability5.stock;
-      }
-      const ability6 = abilities.find((a) => a.ability_id === 6); // KANTONG HARTA
-      if (ability6) {
-        finalCoin += Math.floor((finalCoin * 5) / 100) * ability6.stock;
-      }
-    }
-
-    // 1. Update ke tabel user_games
-    const win = body.win || 0;
-    const lose = body.lose || 0;
-    const { error: ugError } = await supabase
-      .from("user_games")
-      .update({
-        trophy_won: Math.round(finalTrophy),
-        coins_earned: Math.round(finalCoin),
-        win: win,
-        lose: lose,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", body.user_id)
-      .eq("game_room_id", game_room_id);
-
-    if (ugError) {
-      console.error("Gagal mengupdate user_games:", ugError);
-      return NextResponse.json(
-        { error: `Gagal mengupdate user_games: ${ugError.message}` },
-        { status: 400 }
-      );
-    }
-
-    // 2. Ambil data current state dari tabel users
-    const { data: userData, error: fetchError } = await supabase
-      .from("users")
-      .select("total_trophy, coin, total_match, total_rank_1")
-      .eq("user_id", body.user_id)
-      .single();
-
-    if (fetchError || !userData) {
-      console.error("Gagal mengambil data user:", fetchError);
-      return NextResponse.json(
-        { error: `Gagal mengambil data user: ${fetchError?.message}` },
-        { status: 400 }
-      );
-    }
-
-    // 3. Update ke tabel users
-    const newTotalTrophy =
-      (userData.total_trophy || 0) + Math.round(finalTrophy);
-    const newTotalCoin = (userData.coin || 0) + Math.round(finalCoin);
-    const newTotalMatch = (userData.total_match || 0) + 1;
-    const newTotalRank1 =
-      (userData.total_rank_1 || 0) + (body.placement === 1 ? 1 : 0);
-
-    const { error: uError } = await supabase
-      .from("users")
-      .update({
-        total_trophy: newTotalTrophy,
-        coin: newTotalCoin,
-        total_match: newTotalMatch,
-        total_rank_1: newTotalRank1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", body.user_id);
-
-    if (uError) {
-      console.error("Gagal mengupdate users:", uError);
-      return NextResponse.json(
-        { error: `Gagal mengupdate users: ${uError.message}` },
-        { status: 400 }
-      );
-    }
+    // NOTE: Reward calculation and database updates (user_games and users)
+    // are now handled centrally by endgameService.processCentralizedRewards
+    // when the round ends logic triggers. This endpoint now simply returns success
+    // to avoid duplicating rewards and overlapping database transactions.
 
     return NextResponse.json({
       message: "Berhasil mengupdate statistik pemain",

@@ -8,9 +8,26 @@ export interface UserGameHistory {
   user_id: string;
   trophy_won: number;
   coins_earned: number;
+  placement: number | null;
+  win: number;
+  lose: number;
   created_at: string;
   updated_at: string;
   user_game_id: string;
+  game_rooms?: {
+    title: string;
+    category: string;
+  };
+}
+
+export interface PaginatedUserGameHistory {
+  history: HistoryItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface UserGameHistoryWithStats {
@@ -24,8 +41,10 @@ export interface UserGameHistoryWithStats {
 }
 
 // Cache untuk history data — berlaku untuk session
-let historyCache: Map<string, { data: HistoryItem[]; timestamp: number }> =
-  new Map();
+let historyCache: Map<
+  string,
+  { data: PaginatedUserGameHistory; timestamp: number }
+> = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
 
 /**
@@ -34,27 +53,41 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
  * @returns HistoryItem yang siap ditampilkan
  */
 function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
-  const date = new Date(rawData.created_at);
-  const timeStr = date.toLocaleTimeString("id-ID", {
+  // Convert UTC to WIB (ICT, +7)
+  const utcDate = new Date(rawData.created_at);
+  const wibDate = new Date(utcDate.getTime()); // JS Date auto-handles local if configured, but let's be explicit for id-ID ICT
+
+  const timeStr = wibDate.toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h12",
+    hourCycle: "h23",
+    timeZone: "Asia/Jakarta",
   });
-  const dateStr = date.toLocaleDateString("id-ID", {
+
+  const dateStr = wibDate.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "Asia/Jakarta",
   });
+
+  // Simplified: we'll use a fixed placeholder or fetch character later.
+  // For now, let's at least show the win/loss as material fallback if empty
+  const material = rawData.game_rooms?.category || "Quiz Umum";
+  const title = rawData.game_rooms?.title || "Match";
+  const placement = rawData.placement ? `${rawData.placement}` : "-";
 
   return {
     id: rawData.user_game_id,
-    avatar: "/default/Slime.webp", // Default avatar, bisa dikembangkan untuk fetch character avatar
+    avatar: "", // Will be mapped in HistoryTable using current equipped avatar
     time: timeStr,
     date: dateStr,
-    material: "Quiz", // Bisa dikembangkan untuk fetch material dari game_room
-    rank: "-", // Bisa dikembangkan untuk fetch rank dari game_room
+    material: `${title} (${material})`,
+    rank: placement,
     trophy: rawData.trophy_won,
     coin: rawData.coins_earned,
+    win: rawData.win,
+    lose: rawData.lose,
   };
 }
 
@@ -62,18 +95,33 @@ function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
  * Fetch user game history berdasarkan user_id dengan caching
  *
  * @param userId - ID user yang akan diquery
- * @returns Array dari history items
+ * @param page - Halaman yang diminta (default 1)
+ * @param limit - Jumlah item per halaman (default 10)
+ * @returns Array dari history items dan metadata pagination
  */
 export async function getUserGameHistory(
-  userId: string
-): Promise<HistoryItem[]> {
-  if (!userId) return [];
+  userId: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<PaginatedUserGameHistory> {
+  if (!userId) {
+    return {
+      history: [],
+      pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    };
+  }
   try {
+    const cacheKey = `${userId}_p${page}_l${limit}`;
     // Cek cache
-    const cached = historyCache.get(userId);
+    const cached = historyCache.get(cacheKey);
     const now = Date.now();
     if (cached && now - cached.timestamp < CACHE_DURATION) {
-      console.log("[Cache] Using cached history for user:", userId);
+      console.log(
+        "[Cache] Using cached history for user:",
+        userId,
+        "page:",
+        page
+      );
       return cached.data;
     }
 
@@ -84,6 +132,8 @@ export async function getUserGameHistory(
         ? process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         : window.location.origin
     );
+    url.searchParams.set("page", page.toString());
+    url.searchParams.set("limit", limit.toString());
 
     const response = await fetch(url.toString(), {
       credentials: "include",
@@ -95,13 +145,24 @@ export async function getUserGameHistory(
 
     const result = await response.json();
     const rawHistoryData: UserGameHistory[] = result.data || [];
+    const pagination = result.pagination || {
+      total: rawHistoryData.length,
+      page,
+      limit,
+      totalPages: 1,
+    };
 
     // Transform ke HistoryItem
     const historyItems = rawHistoryData.map(transformToHistoryItem);
 
+    const paginatedResult = {
+      history: historyItems,
+      pagination,
+    };
+
     // Simpan ke cache
-    historyCache.set(userId, {
-      data: historyItems,
+    historyCache.set(cacheKey, {
+      data: paginatedResult,
       timestamp: now,
     });
 
@@ -109,12 +170,13 @@ export async function getUserGameHistory(
       "[Cache] History data cached until",
       new Date(now + CACHE_DURATION)
     );
-    return historyItems;
+    return paginatedResult;
   } catch (error) {
     console.error("Error fetching user game history:", error);
 
-    // Fallback ke cache lama jika masih ada
-    const cached = historyCache.get(userId);
+    const cacheKey = `${userId}_p${page}_l${limit}`;
+    // Fallback ke cache lama jika masih ada (any page might do if current fails, but ideally same key)
+    const cached = historyCache.get(cacheKey);
     if (cached) {
       console.warn("[Cache] Using stale cache due to fetch error");
       return cached.data;

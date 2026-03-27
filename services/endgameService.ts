@@ -141,18 +141,14 @@ export const endgameService = {
         (a: any) => a.user_id === p.user_id
       );
 
-      let winCount = playerWins.get(p.user_id) || 0;
-      let loseCount = playerLosses.get(p.user_id) || 0;
-
-      // Solo mode: Use raw answer correctness directly
-      if (totalPlayers === 1) {
-        winCount = pAnswers.filter((a: any) => {
-          const ansData = a.answers || a.answer;
-          const ans = Array.isArray(ansData) ? ansData[0] : ansData;
-          return ans?.is_correct === true;
-        }).length;
-        loseCount = Math.max(0, N - winCount);
-      }
+      // Calculate win/loss based on answer correctness for all modes (Solo and Multiplayer)
+      // This ensures "17 Menang - 3 Kalah" consistency as requested by the user.
+      let winCount = pAnswers.filter((a: any) => {
+        const ansData = a.answers || a.answer;
+        const ans = Array.isArray(ansData) ? ansData[0] : ansData;
+        return ans?.is_correct === true;
+      }).length;
+      let loseCount = Math.max(0, N - winCount);
 
       let deathRound = 999;
       if (p.status !== "alive") {
@@ -161,6 +157,13 @@ export const endgameService = {
             ? Math.max(...pAnswers.map((a: any) => a.round_number))
             : 0;
       }
+
+      const totalSeconds = (deathRound !== 999 ? deathRound : N) * 20; // Assuming 20 seconds per round
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      const survivalTime = `${mins.toString().padStart(2, "0")}:${secs
+        .toString()
+        .padStart(2, "0")}`;
 
       const userObj = Array.isArray(p.users) ? p.users[0] : p.users;
       const cData = charMap.get(p.user_id);
@@ -177,6 +180,7 @@ export const endgameService = {
         answerCount: pAnswers.length,
         win: winCount,
         lose: loseCount,
+        survivalTime, // Add survivalTime here
       };
     });
 
@@ -197,18 +201,18 @@ export const endgameService = {
     // 6. Final reward calculation loop
     return playersStats.map((p, index) => {
       const Rank = index + 1;
-      let finalCoin = 0;
-      let finalTrophy = 0;
+      let baseCoin = 0;
+      let baseTrophy = 0;
 
       if (totalPlayers === 1) {
         // Solo Mode Rewards
-        finalCoin = p.win * 15 + p.lose * 5;
-        finalTrophy = Math.round(Math.max(0, p.win * 1.2 - p.lose * 0.5));
+        baseCoin = p.win * 15 + p.lose * 5;
+        baseTrophy = Math.round(Math.max(0, p.win * 1.2 - p.lose * 0.5));
       } else {
         // Multiplayer Rewards
         const BaseCoin =
           200 + (600 * (totalPlayers - Rank)) / (totalPlayers - 1);
-        finalCoin = Math.round(BaseCoin * Ef);
+        baseCoin = Math.round(BaseCoin * Ef);
 
         const dynamicScale = Math.max(2, 10 - Math.floor(totalPlayers / 5));
         const boundary = Math.floor(totalPlayers / 2);
@@ -216,7 +220,7 @@ export const endgameService = {
           Rank <= boundary
             ? 20 + (boundary - Rank) * dynamicScale
             : -(15 + (Rank - boundary - 1) * dynamicScale);
-        finalTrophy = Math.round(TrophyBase * Ef);
+        baseTrophy = Math.round(TrophyBase * Ef);
       }
 
       // Apply Ability Boosts (Multiplier)
@@ -235,10 +239,15 @@ export const endgameService = {
       const kantong = pAbilities.find((a: any) => a.ability_id === 6);
       if (kantong) coinBoost = Math.round(kantong.stock * 5); // 5% per stock
 
-      if (trophyBoost > 0)
-        finalTrophy = Math.round(finalTrophy * (1 + trophyBoost / 100));
-      if (coinBoost > 0)
-        finalCoin = Math.round(finalCoin * (1 + coinBoost / 100));
+      // If trophy/coin is negative, boost should REDUCE the penalty (make it closer to 0)
+      // Formula: final = base + abs(base * boost/100)
+      const finalTrophy = baseTrophy >= 0
+        ? Math.round(baseTrophy * (1 + trophyBoost / 100))
+        : Math.round(baseTrophy + Math.abs(baseTrophy * (trophyBoost / 100)));
+
+      const finalCoin = baseCoin >= 0
+        ? Math.round(baseCoin * (1 + coinBoost / 100))
+        : Math.round(baseCoin + Math.abs(baseCoin * (coinBoost / 100)));
 
       return {
         userId: p.userId,
@@ -315,6 +324,7 @@ export const endgameService = {
               coins_earned: finalCoin,
               win: player.win,
               lose: player.lose,
+              placement: player.placement,
             },
             adminSupabase
           );

@@ -12,50 +12,47 @@ export const abilityRoomRepository = {
   ) {
     const supabase = createClient();
     if (shouldResetDb) {
-      const initialAbilities = [
-        {
-          game_room_id: gameRoomId,
-          ability_id: "1",
-          stock: Math.ceil(
-            (15 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
-        {
-          game_room_id: gameRoomId,
-          ability_id: "2",
-          stock: Math.ceil(
-            (10 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
-        {
-          game_room_id: gameRoomId,
-          ability_id: "3",
-          stock: Math.ceil(
-            (10 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
-        {
-          game_room_id: gameRoomId,
-          ability_id: "4",
-          stock: Math.ceil(
-            (20 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
-        {
-          game_room_id: gameRoomId,
-          ability_id: "5",
-          stock: Math.ceil(
-            (30 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
-        {
-          game_room_id: gameRoomId,
-          ability_id: "6",
-          stock: Math.ceil(
-            (10 / 100) * Math.ceil(totalPlayer + totalPlayer / 5)
-          ),
-        },
+      const totalItems = totalPlayer + Math.ceil(totalPlayer / 5);
+      const percentages = [
+        { id: "1", pct: 15 },
+        { id: "2", pct: 10 },
+        { id: "3", pct: 10 },
+        { id: "4", pct: 20 },
+        { id: "5", pct: 30 },
+        { id: "6", pct: 10 },
       ];
+
+      const initialAbilitiesTemp = percentages.map((p) => {
+        const exact = (p.pct / 100) * totalItems;
+        const base = Math.floor(exact);
+        return {
+          game_room_id: gameRoomId,
+          ability_id: p.id,
+          exact,
+          stock: base,
+          remainder: exact - base,
+        };
+      });
+
+      let remaining =
+        totalItems - initialAbilitiesTemp.reduce((sum, a) => sum + a.stock, 0);
+
+      // Distribute remaining based on largest remainder
+      initialAbilitiesTemp.sort((a, b) => b.remainder - a.remainder);
+      let idx = 0;
+      while (remaining > 0) {
+        initialAbilitiesTemp[idx % initialAbilitiesTemp.length].stock += 1;
+        remaining -= 1;
+        idx += 1;
+      }
+
+      const initialAbilities = initialAbilitiesTemp
+        .sort((a, b) => Number(a.ability_id) - Number(b.ability_id))
+        .map((a) => ({
+          game_room_id: a.game_room_id,
+          ability_id: a.ability_id,
+          stock: a.stock,
+        }));
 
       const { error: upsertErr } = await supabase
         .from("ability_rooms")

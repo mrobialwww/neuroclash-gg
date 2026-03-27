@@ -7,4 +7,7 @@ export interface HistoryItem {
   rank: string;
   trophy: number;
   coin: number;
+  win?: number;
+  lose?: number;
+  baseCharacter?: string;
 }

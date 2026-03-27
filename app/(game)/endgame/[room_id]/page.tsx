@@ -63,7 +63,7 @@ export default function EndgamePage({ params }: { params: Promise<{ room_id: str
     username: r.username,
     baseCharacter: r.baseCharacter,
     characterImage: r.characterImage,
-    playTime: r.deathRound > 0 ? `Ronde ${r.deathRound}` : (r.isAlive ? "Bertahan" : "-"),
+    playTime: r.survivalTime || (r.isAlive ? "Bertahan" : "-"),
     wins: r.win || 0,
     losses: r.lose || 0,
   }));
