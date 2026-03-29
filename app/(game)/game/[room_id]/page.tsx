@@ -9,6 +9,7 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { BuffList } from "@/components/match/BuffList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 import { EliminationOverlay } from "@/components/game/EliminationOverlay";
+import { BuffEffectOverlay, BuffEffectType } from "@/components/match/BuffEffectOverlay";
 import NextImage from "next/image";
 
 import {
@@ -47,6 +48,9 @@ export default function GamePage() {
   const [hasShownOverlay, setHasShownOverlay] = useState(false);
   const [isLoadingEliminationData, setIsLoadingEliminationData] =
     useState(false);
+
+  // State untuk animasi buff ability
+  const [buffEffect, setBuffEffect] = useState<BuffEffectType>(null);
 
   const {
     roomCode,
@@ -266,7 +270,7 @@ export default function GamePage() {
           id: p.id,
           name: p.name,
           character: p.character || "Slime",
-          image: p.avatar,
+          image: p.image,
           health: p.health,
           maxHealth: 100,
         }
@@ -304,7 +308,7 @@ export default function GamePage() {
         id: p.id,
         name: p.name,
         character: p.character || "Slime",
-        image: p.avatar,
+        image: p.image,
         health: p.health,
         maxHealth: 100,
         isMe: p.id === currentUser?.id,
@@ -550,7 +554,11 @@ export default function GamePage() {
           <div className="order-1 flex h-full flex-col justify-end gap-4 self-stretch lg:order-1">
             <div className="relative hidden min-h-[160px] flex-1 overflow-hidden lg:block">
               <div className="absolute inset-0">
-                <BuffList buffs={myInventory} className="h-full" />
+                <BuffList
+                  buffs={myInventory}
+                  className="h-full"
+                  onAbilityUsed={(type) => setBuffEffect(type)}
+                />
               </div>
             </div>
             <div className="w-full max-w-[320px] shrink-0 lg:max-w-none">
@@ -648,6 +656,12 @@ export default function GamePage() {
           isLoading={isLoadingEliminationData}
         />
       )}
+
+      {/* Buff Ability Animation Overlay */}
+      <BuffEffectOverlay
+        type={buffEffect}
+        onComplete={() => setBuffEffect(null)}
+      />
     </main>
   );
 }

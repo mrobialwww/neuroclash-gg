@@ -25,7 +25,7 @@ export interface UserAnswer {
 export interface PlayerMatchState {
   id: string;
   name: string;
-  avatar: string;
+  image: string;
   character: string;
   health: number; // Default 100
   is_alive: boolean;
