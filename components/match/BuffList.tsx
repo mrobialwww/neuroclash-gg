@@ -19,6 +19,7 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
   const [selectedAbility, setSelectedAbility] = React.useState<PickedAbility | null>(null);
 
   const refreshMyInventory = useStarboxStore((s) => s.refreshMyInventory);
+  const decrementLocalStock = useStarboxStore((s) => s.decrementLocalStock);
 
   const handleBuffClick = (buff: PickedAbility) => {
     if (buff.ability_id === 1) {
@@ -82,7 +83,11 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
           const { game_room_id, user_id, ability_id } = selectedAbility;
 
           if (ability_id === 2 || ability_id === 4) {
-            await abilityPlayerRepository.userAttackorShieldAbility(game_room_id, user_id, ability_id);
+            // [BARU] Jangan potong stock di DB. Kurangi stock di local store saja (Optimistic UI)
+            // agar item langsung hilang dari BuffList. Backend akan potong DB saat damage dihitung.
+            decrementLocalStock(ability_id);
+            setSelectedAbility(null);
+            return;
           } else if (ability_id === 3) {
             await abilityPlayerRepository.userHealAbility(game_room_id, user_id);
           }
