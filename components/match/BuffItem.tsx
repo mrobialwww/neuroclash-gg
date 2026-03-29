@@ -7,11 +7,6 @@ import { PickedAbility } from "@/store/useStarboxStore";
 
 interface BuffItemProps {
   buff: PickedAbility;
-  // {
-  //   name: string;
-  //   image: string;
-  //   label: string;
-  // };
   onClick?: () => void;
 }
 
@@ -35,6 +30,17 @@ export const BuffItem = ({ buff, onClick }: BuffItemProps) => {
           sizes="(max-width: 768px) 48px, 56px"
           className="relative z-10 object-contain drop-shadow-md"
         />
+
+        {/* Badge Jumlah Stock — tampil selalu agar player tahu sisa item */}
+        <motion.span
+          key={buff.stock}
+          initial={{ scale: 1.4 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          className="absolute -right-2 top-0 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-black bg-yellow-400 text-xs font-black leading-none text-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+        >
+          {buff.stock}
+        </motion.span>
       </div>
 
       {/* Label Text */}

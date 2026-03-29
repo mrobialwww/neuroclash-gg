@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
+const { createAdminClient } = await import("@/lib/supabase/admin");
 
 export const gamePlayerRepository = {
   /**
    * Insert semua pemain saat match dimulai dengan health 100
    */
   async insertPlayers(roomId: string, userIds: string[]) {
-    console.log(
-      `[GamePlayerRepo] insertPlayers called for roomId: ${roomId}, userIds: ${userIds.length}`
-    );
+    console.log(`[GamePlayerRepo] insertPlayers called for roomId: ${roomId}, userIds: ${userIds.length}`);
 
     const supabase = await createClient();
 
@@ -18,15 +17,9 @@ export const gamePlayerRepository = {
       status: "alive",
     }));
 
-    console.log(
-      `[GamePlayerRepo] Inserting ${players.length} players with initial data`
-    );
+    console.log(`[GamePlayerRepo] Inserting ${players.length} players with initial data`);
 
-    const { data, error } = await supabase
-      .from("game_players")
-      .insert(players)
-      .select()
-      .order("created_at", { ascending: true });
+    const { data, error } = await supabase.from("game_players").insert(players).select().order("created_at", { ascending: true });
 
     if (error) {
       console.error("[GamePlayerRepo] insertPlayers error:", error);
@@ -37,9 +30,7 @@ export const gamePlayerRepository = {
       throw error;
     }
 
-    console.log(
-      `[GamePlayerRepo] Successfully inserted ${data?.length || 0} players`
-    );
+    console.log(`[GamePlayerRepo] Successfully inserted ${data?.length || 0} players`);
 
     return data;
   },
@@ -62,111 +53,66 @@ export const gamePlayerRepository = {
     if (gamePlayersError) {
       console.error("[GamePlayerRepo] getPlayers error:", gamePlayersError);
       console.error("[GamePlayerRepo] Error code:", gamePlayersError.code);
-      console.error(
-        "[GamePlayerRepo] Error message:",
-        gamePlayersError.message
-      );
+      console.error("[GamePlayerRepo] Error message:", gamePlayersError.message);
       return [];
     }
 
-    console.log(
-      `[GamePlayerRepo] Found ${gamePlayers?.length || 0} game_players`
-    );
+    console.log(`[GamePlayerRepo] Found ${gamePlayers?.length || 0} game_players`);
 
     // Log raw data for debugging
-    console.log(
-      `[GamePlayerRepo] Raw game_players data:`,
-      JSON.stringify(gamePlayers, null, 2)
-    );
+    console.log(`[GamePlayerRepo] Raw game_players data:`, JSON.stringify(gamePlayers, null, 2));
 
     if (!gamePlayers || gamePlayers.length === 0) {
-      console.warn(
-        `[GamePlayerRepo] No players found in game_players for roomId: ${roomId}`
-      );
+      console.warn(`[GamePlayerRepo] No players found in game_players for roomId: ${roomId}`);
       return [];
     }
 
     // Step 2: Fetch all user data for these user_ids
     const userIds = gamePlayers.map((gp: any) => gp.user_id);
-    console.log(
-      `[GamePlayerRepo] Fetching user data for ${userIds.length} users`
-    );
+    console.log(`[GamePlayerRepo] Fetching user data for ${userIds.length} users`);
 
-    const { data: usersData, error: usersError } = await supabase
-      .from("users")
-      .select("user_id, username")
-      .in("user_id", userIds);
+    const { data: usersData, error: usersError } = await supabase.from("users").select("user_id, username").in("user_id", userIds);
 
     if (usersError) {
       console.error("[GamePlayerRepo] Error fetching users:", usersError);
       console.error("[GamePlayerRepo] Users error code:", usersError.code);
-      console.error(
-        "[GamePlayerRepo] Users error message:",
-        usersError.message
-      );
+      console.error("[GamePlayerRepo] Users error message:", usersError.message);
     }
 
     console.log(`[GamePlayerRepo] Fetched ${usersData?.length || 0} users`);
-    console.log(
-      `[GamePlayerRepo] Users data:`,
-      JSON.stringify(usersData, null, 2)
-    );
+    console.log(`[GamePlayerRepo] Users data:`, JSON.stringify(usersData, null, 2));
 
     // Create a map of user_id -> username for quick lookup
-    const userMap = new Map(
-      (usersData || []).map((u: any) => [u.user_id, u.username])
-    );
+    const userMap = new Map((usersData || []).map((u: any) => [u.user_id, u.username]));
 
     // Step 3: For each player, fetch equipped character using Supabase
     // Using same approach as lobby: query FROM characters and JOIN to user_characters
     const mappedPlayers = await Promise.all(
       gamePlayers.map(async (row: any, idx: number) => {
-        console.log(
-          `[GamePlayerRepo] Processing player ${
-            idx + 1
-          }: ${row.user_id.substring(0, 8)}`
-        );
+        console.log(`[GamePlayerRepo] Processing player ${idx + 1}: ${row.user_id.substring(0, 8)}`);
 
         try {
           // Get username from userMap
           const username = userMap.get(row.user_id);
-          console.log(
-            `[GamePlayerRepo] Username for user ${row.user_id.substring(
-              0,
-              8
-            )}:`,
-            username
-          );
+          console.log(`[GamePlayerRepo] Username for user ${row.user_id.substring(0, 8)}:`, username);
 
-          // Fetch equipped character using same approach as lobby
-          // Query FROM characters and JOIN to user_characters using !inner
-          const { data: charData, error: charError } = await supabase
+          // Fetch equipped character menggunakan admin client untuk mem-Bypass RLS
+          // (karena getPlayers dipanggil via server route tanpa cookie session)
+
+          const adminSupabase = createAdminClient();
+          const { data: charData, error: charError } = await adminSupabase
             .from("characters")
-            .select(
-              "skin_name, image_url, user_characters!inner(user_id, is_used)"
-            )
+            .select("skin_name, image_url, user_characters!inner(user_id, is_used)")
             .eq("user_characters.user_id", row.user_id)
             .eq("user_characters.is_used", true)
             .limit(1)
             .maybeSingle();
 
           if (charError) {
-            console.error(
-              `[GamePlayerRepo] ❌ Error fetching character for user ${row.user_id.substring(
-                0,
-                8
-              )}:`,
-              charError
-            );
+            console.error(`[GamePlayerRepo] ❌ Error fetching character for user ${row.user_id.substring(0, 8)}:`, charError);
           }
 
-          console.log(
-            `[GamePlayerRepo] Character data for user ${row.user_id.substring(
-              0,
-              8
-            )}:`,
-            JSON.stringify(charData, null, 2)
-          );
+          console.log(`[GamePlayerRepo] Character data for user ${row.user_id.substring(0, 8)}:`, JSON.stringify(charData, null, 2));
 
           // Extract character data - charData contains skin_name and image_url directly
           const skin_name = charData?.skin_name || "Slime";
@@ -175,9 +121,10 @@ export const gamePlayerRepository = {
           const mappedPlayer = {
             id: row.user_id,
             name: username || "Unknown",
-            avatar: image_url,
+            image: image_url, // Changed from avatar to image to match Player interface
             character: skin_name,
             health: row.health ?? 100,
+            maxHealth: 100, // Added maxHealth to fix NaN percentage in PlayerGridCard
             is_alive: row.status === "alive",
             score: 0,
           };
@@ -186,33 +133,30 @@ export const gamePlayerRepository = {
             id: mappedPlayer.id.substring(0, 8),
             name: mappedPlayer.name,
             character: mappedPlayer.character,
-            avatar: mappedPlayer.avatar,
+            image: mappedPlayer.image,
             health: mappedPlayer.health,
+            maxHealth: mappedPlayer.maxHealth,
           });
 
           return mappedPlayer;
         } catch (err) {
-          console.error(
-            `[GamePlayerRepo] ❌ Error fetching data for player ${idx + 1}:`,
-            err
-          );
+          console.error(`[GamePlayerRepo] ❌ Error fetching data for player ${idx + 1}:`, err);
           // Return default data if fetch fails
           return {
             id: row.user_id,
             name: "Unknown",
-            avatar: "/default/Slime.webp",
+            image: "/default/Slime.webp",
             character: "Slime",
             health: row.health ?? 100,
+            maxHealth: 100,
             is_alive: row.status === "alive",
             score: 0,
           };
         }
-      })
+      }),
     );
 
-    console.log(
-      `[GamePlayerRepo] Returning ${mappedPlayers.length} mapped players`
-    );
+    console.log(`[GamePlayerRepo] Returning ${mappedPlayers.length} mapped players`);
 
     return mappedPlayers;
   },
@@ -223,12 +167,7 @@ export const gamePlayerRepository = {
   async getPlayerHealth(userId: string, roomId: string): Promise<number> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("game_players")
-      .select("health")
-      .eq("game_room_id", roomId)
-      .eq("user_id", userId)
-      .single();
+    const { data, error } = await supabase.from("game_players").select("health").eq("game_room_id", roomId).eq("user_id", userId).single();
 
     if (error) {
       console.error("[GamePlayerRepo] getPlayerHealth error:", error);
@@ -243,22 +182,14 @@ export const gamePlayerRepository = {
    * Jika health <= 0, update status menjadi "died", catat round eliminasi,
    * dan update user_games dengan stats
    */
-  async updateHealth(
-    userId: string,
-    roomId: string,
-    newHealth: number,
-    roundNumber?: number
-  ) {
+  async updateHealth(userId: string, roomId: string, newHealth: number, roundNumber?: number) {
     const supabase = await createClient();
 
     console.log(
-      `[GamePlayerRepo] updateHealth called: userId=${userId.substring(
+      `[GamePlayerRepo] updateHealth called: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(
         0,
-        8
-      )}, roomId=${roomId.substring(
-        0,
-        8
-      )}, health=${newHealth}, round=${roundNumber}`
+        8,
+      )}, health=${newHealth}, round=${roundNumber}`,
     );
 
     // Jika health <= 0, set status ke "died" dan catat round eliminasi
@@ -272,18 +203,10 @@ export const gamePlayerRepository = {
     if (newHealth <= 0) {
       updateData.status = "died";
       updateData.eliminated_at = roundNumber || 0;
-      console.log(
-        `[GamePlayerRepo] Player will be marked as died at round ${roundNumber}`
-      );
+      console.log(`[GamePlayerRepo] Player will be marked as died at round ${roundNumber}`);
     }
 
-    const { data, error } = await supabase
-      .from("game_players")
-      .update(updateData)
-      .eq("user_id", userId)
-      .eq("game_room_id", roomId)
-      .select()
-      .single();
+    const { data, error } = await supabase.from("game_players").update(updateData).eq("user_id", userId).eq("game_room_id", roomId).select().single();
 
     if (error) {
       console.error("[GamePlayerRepo] updateHealth error:", error);
@@ -294,12 +217,7 @@ export const gamePlayerRepository = {
 
     // Log jika player mati
     if (newHealth <= 0) {
-      console.log(
-        `[GamePlayerRepo] Player ${userId.substring(
-          0,
-          8
-        )} has died at round ${roundNumber}`
-      );
+      console.log(`[GamePlayerRepo] Player ${userId.substring(0, 8)} has died at round ${roundNumber}`);
 
       // Update user_games dengan stats
       if (roundNumber) {
@@ -318,25 +236,14 @@ export const gamePlayerRepository = {
    * - trophy_won berdasarkan formula peringkat
    * - coins_earned = trophy_won + (3/4 * trophy_won)
    */
-  async updateUserGamesOnDeath(
-    userId: string,
-    roomId: string,
-    roundNumber: number
-  ) {
+  async updateUserGamesOnDeath(userId: string, roomId: string, roundNumber: number) {
     const supabase = await createClient();
 
+    console.log(`[GamePlayerRepo] ==================================================`);
     console.log(
-      `[GamePlayerRepo] ==================================================`
+      `[GamePlayerRepo] updateUserGamesOnDeath START: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(0, 8)}, round=${roundNumber}`,
     );
-    console.log(
-      `[GamePlayerRepo] updateUserGamesOnDeath START: userId=${userId.substring(
-        0,
-        8
-      )}, roomId=${roomId.substring(0, 8)}, round=${roundNumber}`
-    );
-    console.log(
-      `[GamePlayerRepo] ==================================================`
-    );
+    console.log(`[GamePlayerRepo] ==================================================`);
 
     // 1. Get win count dari game_players
     const { data: playerData, error: playerError } = await supabase
@@ -347,10 +254,7 @@ export const gamePlayerRepository = {
       .single();
 
     if (playerError) {
-      console.error(
-        "[GamePlayerRepo] Error fetching player data:",
-        playerError
-      );
+      console.error("[GamePlayerRepo] Error fetching player data:", playerError);
       return null;
     }
 
@@ -358,9 +262,7 @@ export const gamePlayerRepository = {
     const eliminatedAt = playerData?.eliminated_at || roundNumber;
     const loseCount = Math.max(0, eliminatedAt - winCount);
 
-    console.log(
-      `[GamePlayerRepo] Player stats from game_players: win=${winCount}, eliminated_at=${eliminatedAt}, calculated_lose=${loseCount}`
-    );
+    console.log(`[GamePlayerRepo] Player stats from game_players: win=${winCount}, eliminated_at=${eliminatedAt}, calculated_lose=${loseCount}`);
 
     // 2. Hitung placement saat ini (berapa player yang sudah mati)
     const { data: allPlayers } = await supabase
@@ -387,9 +289,7 @@ export const gamePlayerRepository = {
     // Placement: first eliminated = last place, last survivor = 1st place
     const placement = totalPlayers - playerIndex;
 
-    console.log(
-      `[GamePlayerRepo] Placement calculation: total=${totalPlayers}, playerIndex=${playerIndex}, placement=${placement}`
-    );
+    console.log(`[GamePlayerRepo] Placement calculation: total=${totalPlayers}, playerIndex=${playerIndex}, placement=${placement}`);
 
     // 3. Hitung trophy berdasarkan formula
     // B = 3/4 of total players (rounded)
@@ -419,17 +319,10 @@ export const gamePlayerRepository = {
     // 4. Hitung coins = trophy + (3/4 * trophy)
     const coins_earned = Math.round(trophy_won + trophy_won * 0.75);
 
-    console.log(
-      `[GamePlayerRepo] Trophy formula: B=${B}, R=${R}, N=${N}, trophy=${trophy_won}, coins=${coins_earned}`
-    );
+    console.log(`[GamePlayerRepo] Trophy formula: B=${B}, R=${R}, N=${N}, trophy=${trophy_won}, coins=${coins_earned}`);
 
     // 5. Cek apakah record user_games sudah ada
-    console.log(
-      `[GamePlayerRepo] Checking user_games record for user=${userId.substring(
-        0,
-        8
-      )}, room=${roomId.substring(0, 8)}`
-    );
+    console.log(`[GamePlayerRepo] Checking user_games record for user=${userId.substring(0, 8)}, room=${roomId.substring(0, 8)}`);
 
     const { data: existingRecords, error: checkError } = await supabase
       .from("user_games")
@@ -437,10 +330,7 @@ export const gamePlayerRepository = {
       .eq("game_room_id", roomId)
       .eq("user_id", userId);
 
-    console.log(
-      `[GamePlayerRepo] Existing user_games records:`,
-      existingRecords
-    );
+    console.log(`[GamePlayerRepo] Existing user_games records:`, existingRecords);
     console.log(`[GamePlayerRepo] Check error:`, checkError);
 
     // 6. Update atau Insert user_games
@@ -449,9 +339,7 @@ export const gamePlayerRepository = {
 
     if (existingRecords && existingRecords.length > 0) {
       // Record exists, update it
-      console.log(
-        `[GamePlayerRepo] Updating existing user_games record: ${existingRecords[0].user_game_id}`
-      );
+      console.log(`[GamePlayerRepo] Updating existing user_games record: ${existingRecords[0].user_game_id}`);
       const result = await supabase
         .from("user_games")
         .update({
@@ -471,9 +359,7 @@ export const gamePlayerRepository = {
       console.log(`[GamePlayerRepo] Update error:`, error);
     } else {
       // Record doesn't exist, insert it
-      console.log(
-        `[GamePlayerRepo] No existing record found, creating new user_games record...`
-      );
+      console.log(`[GamePlayerRepo] No existing record found, creating new user_games record...`);
       const result = await supabase
         .from("user_games")
         .insert({
@@ -497,13 +383,11 @@ export const gamePlayerRepository = {
     } else {
       console.log(`[GamePlayerRepo] Updated user_games SUCCESS:`, updateResult);
       console.log(
-        `[GamePlayerRepo] Final stats: Placement=${placement}, Win=${winCount}, Lose=${loseCount}, Trophy=${trophy_won}, Coins=${coins_earned}`
+        `[GamePlayerRepo] Final stats: Placement=${placement}, Win=${winCount}, Lose=${loseCount}, Trophy=${trophy_won}, Coins=${coins_earned}`,
       );
     }
 
-    console.log(
-      `[GamePlayerRepo] ==================================================`
-    );
+    console.log(`[GamePlayerRepo] ==================================================`);
 
     return {
       placement,
@@ -520,13 +404,7 @@ export const gamePlayerRepository = {
   async updateStatus(userId: string, roomId: string, status: string) {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("game_players")
-      .update({ status })
-      .eq("user_id", userId)
-      .eq("game_room_id", roomId)
-      .select()
-      .single();
+    const { data, error } = await supabase.from("game_players").update({ status }).eq("user_id", userId).eq("game_room_id", roomId).select().single();
 
     if (error) {
       console.error("[GamePlayerRepo] updateStatus error:", error);
@@ -542,12 +420,7 @@ export const gamePlayerRepository = {
   async incrementWin(userId: string, roomId: string) {
     const supabase = await createClient();
 
-    console.log(
-      `[GamePlayerRepo] incrementWin called: userId=${userId.substring(
-        0,
-        8
-      )}, roomId=${roomId.substring(0, 8)}`
-    );
+    console.log(`[GamePlayerRepo] incrementWin called: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(0, 8)}`);
 
     // First get current win count
     const { data: current, error: fetchError } = await supabase
@@ -564,9 +437,7 @@ export const gamePlayerRepository = {
 
     const newWin = (current?.win || 0) + 1;
 
-    console.log(
-      `[GamePlayerRepo] Current win: ${current?.win || 0}, New win: ${newWin}`
-    );
+    console.log(`[GamePlayerRepo] Current win: ${current?.win || 0}, New win: ${newWin}`);
 
     const { data, error } = await supabase
       .from("game_players")
@@ -582,12 +453,7 @@ export const gamePlayerRepository = {
     }
 
     console.log(`[GamePlayerRepo] incrementWin SUCCESS:`, data);
-    console.log(
-      `[GamePlayerRepo] Player ${userId.substring(
-        0,
-        8
-      )} won a battle! Win count: ${newWin}`
-    );
+    console.log(`[GamePlayerRepo] Player ${userId.substring(0, 8)} won a battle! Win count: ${newWin}`);
 
     return data;
   },
@@ -619,10 +485,7 @@ export const gamePlayerRepository = {
   async deletePlayers(roomId: string) {
     const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("game_players")
-      .delete()
-      .eq("game_room_id", roomId);
+    const { error } = await supabase.from("game_players").delete().eq("game_room_id", roomId);
 
     if (error) {
       console.error("[GamePlayerRepo] deletePlayers error:", error);

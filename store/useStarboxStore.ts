@@ -82,20 +82,14 @@ export interface StarboxState extends PersistedStarboxSlice {
   pickedPlayerIds: string[];
   attackorShield: number;
 
-  initGameData: (
-    code: string,
-    roomId: string,
-    nextRound: string
-  ) => Promise<void>;
-  selectAbility: (
-    roomId: string,
-    abilityId: string,
-    userId: string
-  ) => Promise<void>;
+  initGameData: (code: string, roomId: string, nextRound: string) => Promise<void>;
+  selectAbility: (roomId: string, abilityId: string, userId: string) => Promise<void>;
   autoAssignRemaining: (roomId: string) => Promise<void>;
   setupRealtimeSubscription: (roomId: string) => void;
   useHeal: (roomId: string, userId: string) => Promise<void>;
   useAttackorShield: (roomId: string, userId: string, abilityId: number) => Promise<void>;
+  /** Kurangi stock ability di local Zustand store tanpa menyentuh DB (Optimistic UI). */
+  decrementLocalStock: (abilityId: number) => void;
   refreshMyInventory: (roomId: string, userId: string) => Promise<void>;
   cleanup: () => void;
   reset: () => void;
@@ -130,9 +124,7 @@ export const useStarboxStore = create<StarboxState>()(
        */
       initGameData: async (code: string, roomId: string, nextRound: string) => {
         const state = get();
-        const isNewPhase =
-          state.roomPersistedId !== roomId ||
-          state.activeStarboxRound !== nextRound;
+        const isNewPhase = state.roomPersistedId !== roomId || state.activeStarboxRound !== nextRound;
 
         if (isNewPhase) {
           set({
@@ -169,11 +161,8 @@ export const useStarboxStore = create<StarboxState>()(
           }
 
           // Cek apakah user adalah host room ini — host yang mengontrol restock ability.
-          const currentUser =
-            await userClientService.getCurrentUserNavbarData();
-          const isHost = Boolean(
-            currentUser && currentUser.id === roomConfig.user_id
-          );
+          const currentUser = await userClientService.getCurrentUserNavbarData();
+          const isHost = Boolean(currentUser && currentUser.id === roomConfig.user_id);
 
           // Fetch semua peserta aktif di room. Fallback ke array kosong jika endpoint gagal
           // (misal: network error), agar proses tidak berhenti total.
@@ -197,54 +186,32 @@ export const useStarboxStore = create<StarboxState>()(
 
           // Host & fase baru → reset stok ke nilai awal (upsert semua ability_rooms).
           // Host fase lama / non-host → hanya baca stok yang sudah ada di DB.
-          let abilityRooms = await abilityRoomRepository.initialAbilites(
-            roomId,
-            totalPlayer,
-            isHost && isNewPhase
-          );
+          let abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, isHost && isNewPhase);
 
           // Non-host bisa tiba sebelum host selesai insert, sehingga stok masih 0.
           // Polling maks 5× (interval 1 s) sebelum menyerah dan lanjut dengan stok 0.
-          let totalStock =
-            abilityRooms?.reduce(
-              (sum: number, r: any) => sum + (r.stock || 0),
-              0
-            ) || 0;
+          let totalStock = abilityRooms?.reduce((sum: number, r: any) => sum + (r.stock || 0), 0) || 0;
           let retries = 5;
           while (!isHost && totalStock === 0 && retries > 0) {
-            console.log(
-              `[StarboxStore] Waiting for abilities... (${retries} retries left)`
-            );
+            console.log(`[StarboxStore] Waiting for abilities... (${retries} retries left)`);
             await new Promise((res) => setTimeout(res, 1000));
-            abilityRooms = await abilityRoomRepository.initialAbilites(
-              roomId,
-              totalPlayer,
-              false
-            );
-            totalStock =
-              abilityRooms?.reduce(
-                (sum: number, r: any) => sum + (r.stock || 0),
-                0
-              ) || 0;
+            abilityRooms = await abilityRoomRepository.initialAbilites(roomId, totalPlayer, false);
+            totalStock = abilityRooms?.reduce((sum: number, r: any) => sum + (r.stock || 0), 0) || 0;
             retries--;
           }
 
           // Normalisasi shape DB (ability_rooms JOIN abilities) → shape Ability yang dipakai UI.
-          const mappedAbilities: Ability[] = (abilityRooms ?? []).map(
-            (row: any) => {
-              const detail = Array.isArray(row.abilities)
-                ? row.abilities[0]
-                : row.abilities;
-              return {
-                id: String(row.ability_id),
-                name: detail?.name ?? "",
-                description: detail?.description ?? "",
-                stock: row.stock ?? 0,
-                image: detail?.image ?? "",
-                emptyImage: detail?.empty_image ?? "",
-              };
-            }
-          );
+          const mappedAbilities: Ability[] = (abilityRooms ?? []).map((row: any) => {
+            const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+            return {
+              id: String(row.ability_id),
+              name: detail?.name ?? "",
+              description: detail?.description ?? "",
+              stock: row.stock ?? 0,
+              image: detail?.image ?? "",
+              emptyImage: detail?.empty_image ?? "",
+            };
+          });
 
           // Commit ke store — komponen langsung render ulang dengan data real.
           // isLoading = false di sini mempersilakan UI Starbox tampil.
@@ -261,39 +228,28 @@ export const useStarboxStore = create<StarboxState>()(
           // snapshot tanpa ability_materials (data materi quiz). DB selalu jadi source of truth.
           if (currentUser?.id) {
             try {
-              const raw = await abilityPlayerRepository.getMyAbilities(
-                roomId,
-                currentUser.id
-              );
-              const myInventoryFromDb: PickedAbility[] = (raw ?? []).map(
-                (row: any) => {
-                  const detail = Array.isArray(row.abilities)
-                    ? row.abilities[0]
-                    : row.abilities;
-                  // ability_materials dipakai oleh OverlayMaterialCard (ability_id === 1).
-                  const material: AbilityMaterial | null =
-                    row.ability_materials ?? null;
-                  return {
-                    ability_player_id: row.ability_player_id,
-                    game_room_id: row.game_room_id,
-                    ability_id: row.ability_id,
-                    stock: row.stock,
-                    user_id: row.user_id,
-                    name: detail?.name ?? "",
-                    description: detail?.description ?? "",
-                    image: detail?.image ?? "",
-                    empty_image: detail?.empty_image ?? "",
-                    ability_materials: material,
-                  };
-                }
-              );
+              const raw = await abilityPlayerRepository.getMyAbilities(roomId, currentUser.id);
+              const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
+                const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+                // ability_materials dipakai oleh OverlayMaterialCard (ability_id === 1).
+                const material: AbilityMaterial | null = row.ability_materials ?? null;
+                return {
+                  ability_player_id: row.ability_player_id,
+                  game_room_id: row.game_room_id,
+                  ability_id: row.ability_id,
+                  stock: row.stock,
+                  user_id: row.user_id,
+                  name: detail?.name ?? "",
+                  description: detail?.description ?? "",
+                  image: detail?.image ?? "",
+                  empty_image: detail?.empty_image ?? "",
+                  ability_materials: material,
+                };
+              });
               set({ myInventory: myInventoryFromDb });
             } catch (err) {
               // Jika fetch gagal, biarkan myInventory tetap dari sessionStorage (mungkin stale).
-              console.warn(
-                "[StarboxStore] Gagal hydrate myInventory dari DB, pakai sessionStorage:",
-                err
-              );
+              console.warn("[StarboxStore] Gagal hydrate myInventory dari DB, pakai sessionStorage:", err);
             }
           }
 
@@ -301,10 +257,7 @@ export const useStarboxStore = create<StarboxState>()(
           get().setupRealtimeSubscription(roomId);
         } catch (e: unknown) {
           const err = e as { message?: string; details?: string };
-          console.error(
-            "Error initializing starbox game data:",
-            err?.message || err?.details || JSON.stringify(e)
-          );
+          console.error("Error initializing starbox game data:", err?.message || err?.details || JSON.stringify(e));
           set({ isLoading: false });
         }
       },
@@ -331,14 +284,12 @@ export const useStarboxStore = create<StarboxState>()(
                 const isOwnPick = state.pickingAbilityId !== null;
                 return {
                   abilities: state.abilities.map((ability) =>
-                    ability.id === String(updatedAbility.ability_id)
-                      ? { ...ability, stock: updatedAbility.stock }
-                      : ability
+                    ability.id === String(updatedAbility.ability_id) ? { ...ability, stock: updatedAbility.stock } : ability,
                   ),
                   pickingAbilityId: null,
                 };
               });
-            }
+            },
           )
           .on("broadcast", { event: "player_picked" }, (payload) => {
             const userId = payload.payload.userId;
@@ -380,10 +331,10 @@ export const useStarboxStore = create<StarboxState>()(
                         health: updated.health,
                         is_alive: updated.status === "alive",
                       }
-                    : p
+                    : p,
                 ),
               }));
-            }
+            },
           )
           .subscribe();
       },
@@ -403,22 +354,15 @@ export const useStarboxStore = create<StarboxState>()(
       /**
        * Dipanggil saat user klik AbilityCard.
        */
-      selectAbility: async (
-        roomId: string,
-        abilityId: string,
-        userId: string
-      ) => {
+      selectAbility: async (roomId: string, abilityId: string, userId: string) => {
         const state = get();
-        if (state.pickedPlayerIds.includes(userId) || state.pickingAbilityId)
-          return;
+        if (state.pickedPlayerIds.includes(userId) || state.pickingAbilityId) return;
 
         const chosenAbility = state.abilities.find((a) => a.id === abilityId);
 
         set((s) => ({
           pickingAbilityId: abilityId,
-          abilities: s.abilities.map((a) =>
-            a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a
-          ),
+          abilities: s.abilities.map((a) => (a.id === abilityId && a.stock > 0 ? { ...a, stock: a.stock - 1 } : a)),
           pickedPlayerIds: [...s.pickedPlayerIds, userId],
           // currentTurnIndex is now handled only by timer expiration in page.tsx
           myPickedAbility: chosenAbility
@@ -438,9 +382,7 @@ export const useStarboxStore = create<StarboxState>()(
           myInventory: chosenAbility
             ? (() => {
                 const prev = s.myInventory;
-                const existingIdx = prev.findIndex(
-                  (a) => a.ability_id === Number(chosenAbility.id)
-                );
+                const existingIdx = prev.findIndex((a) => a.ability_id === Number(chosenAbility.id));
                 if (existingIdx !== -1) {
                   const updated = [...prev];
                   updated[existingIdx] = {
@@ -478,23 +420,14 @@ export const useStarboxStore = create<StarboxState>()(
         }
 
         try {
-          const result = await abilityPlayerRepository.insertPlayerAbility(
-            roomId,
-            abilityId,
-            userId
-          );
+          const result = await abilityPlayerRepository.insertPlayerAbility(roomId, abilityId, userId);
           // Isi ability_player_id dengan UUID asli dari DB jika RPC mengembalikannya
-          if (
-            result &&
-            typeof result === "object" &&
-            "ability_player_id" in result
-          ) {
+          if (result && typeof result === "object" && "ability_player_id" in result) {
             set((s) => ({
               myPickedAbility: s.myPickedAbility
                 ? {
                     ...s.myPickedAbility,
-                    ability_player_id: (result as AbilityPlayer)
-                      .ability_player_id,
+                    ability_player_id: (result as AbilityPlayer).ability_player_id,
                   }
                 : null,
             }));
@@ -506,14 +439,10 @@ export const useStarboxStore = create<StarboxState>()(
             pickingAbilityId: null,
             myPickedAbility: null,
             pickedPlayerIds: s.pickedPlayerIds.filter((id) => id !== userId),
-            abilities: s.abilities.map((a) =>
-              a.id === abilityId ? { ...a, stock: a.stock + 1 } : a
-            ),
+            abilities: s.abilities.map((a) => (a.id === abilityId ? { ...a, stock: a.stock + 1 } : a)),
             myInventory: (() => {
               const prev = s.myInventory;
-              const idx = prev.findIndex(
-                (a) => a.ability_id === Number(abilityId)
-              );
+              const idx = prev.findIndex((a) => a.ability_id === Number(abilityId));
               if (idx === -1) return prev;
               if (prev[idx].stock <= 1) return prev.filter((_, i) => i !== idx);
               const updated = [...prev];
@@ -532,9 +461,7 @@ export const useStarboxStore = create<StarboxState>()(
         const { players, abilities, pickedPlayerIds } = get();
 
         // Hitung pemain yang benar-benar belum memilih (menggunakan state yang sudah tersinkron via broadcast)
-        const unpickedPlayerIds = players
-          .map((p) => p.id)
-          .filter((id) => !pickedPlayerIds.includes(id));
+        const unpickedPlayerIds = players.map((p) => p.id).filter((id) => !pickedPlayerIds.includes(id));
 
         if (unpickedPlayerIds.length === 0) return;
 
@@ -558,19 +485,13 @@ export const useStarboxStore = create<StarboxState>()(
         const updatedAbilities = [...abilities];
         const newPickedPlayerIds = [...pickedPlayerIds];
 
-        for (
-          let i = 0;
-          i < unpickedPlayerIds.length && i < abilityPool.length;
-          i++
-        ) {
+        for (let i = 0; i < unpickedPlayerIds.length && i < abilityPool.length; i++) {
           const playerId = unpickedPlayerIds[i];
           const abilityId = abilityPool[i];
 
           assignments.push({ playerId, abilityId });
 
-          const abilityIndex = updatedAbilities.findIndex(
-            (a) => a.id === abilityId
-          );
+          const abilityIndex = updatedAbilities.findIndex((a) => a.id === abilityId);
           if (abilityIndex !== -1 && updatedAbilities[abilityIndex].stock > 0) {
             updatedAbilities[abilityIndex] = {
               ...updatedAbilities[abilityIndex],
@@ -597,10 +518,7 @@ export const useStarboxStore = create<StarboxState>()(
             throw new Error(errData.error || "Gagal auto-assign dari server");
           }
         } catch (error: any) {
-          console.error(
-            "Gagal bulk auto-assign ability:",
-            error?.message || JSON.stringify(error)
-          );
+          console.error("Gagal bulk auto-assign ability:", error?.message || JSON.stringify(error));
         }
       },
 
@@ -613,28 +531,31 @@ export const useStarboxStore = create<StarboxState>()(
         try {
           await abilityPlayerRepository.userHealAbility(roomId, userId);
           set((state) => ({
-            players: state.players.map((p) =>
-              p.id === userId
-                ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) }
-                : p
-            ),
-            myInventory: state.myInventory
-              .map((a) =>
-                a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a
-              )
-              .filter((a) => a.stock > 0),
+            players: state.players.map((p) => (p.id === userId ? { ...p, health: Math.min((p.health ?? 100) + 20, 100) } : p)),
+            myInventory: state.myInventory.map((a) => (a.ability_id === 3 ? { ...a, stock: a.stock - 1 } : a)).filter((a) => a.stock > 0),
           }));
         } catch (error) {
-          console.error(
-            "[StarboxStore] Gagal menggunakan Ramuan Penyembuh:",
-            error
-          );
+          console.error("[StarboxStore] Gagal menggunakan Ramuan Penyembuh:", error);
         }
       },
 
       useAttackorShield: async (roomId: string, userId: string, abilityId: number) => {
         await abilityPlayerRepository.userAttackorShieldAbility(roomId, userId, abilityId);
         set({ attackorShield: abilityId });
+      },
+
+      /**
+       * Kurangi stock ability di local store (Optimistic UI) — tidak menyentuh DB.
+       * Digunakan saat player klik 'Aktifkan' untuk Attack/Shield agar ikon langsung hilang
+       * dari BuffList, sementara DB dikurangi server saat damage ronde dihitung.
+       */
+      decrementLocalStock: (abilityId: number) => {
+        set((state) => ({
+          myInventory: state.myInventory
+            .map((a) => (a.ability_id === abilityId ? { ...a, stock: a.stock - 1 } : a))
+            .filter((a) => a.stock > 0),
+          attackorShield: abilityId, // Tandai buff aktif untuk sesi ini
+        }));
       },
 
       /**
@@ -645,34 +566,26 @@ export const useStarboxStore = create<StarboxState>()(
         try {
           // Query JOIN ke tabel `ability_players`, `abilities`, dan `ability_materials`.
           // Dipisah dari initGameData agar bisa dipanggil kapan saja tanpa re-init penuh.
-          const raw = await abilityPlayerRepository.getMyAbilities(
-            roomId,
-            userId
-          );
+          const raw = await abilityPlayerRepository.getMyAbilities(roomId, userId);
 
-          const myInventoryFromDb: PickedAbility[] = (raw ?? []).map(
-            (row: any) => {
-              const detail = Array.isArray(row.abilities)
-                ? row.abilities[0]
-                : row.abilities;
-              // ability_materials hanya ada untuk ability_id === 1 (Kitab Pengetahuan).
-              // Null untuk ability lain — tidak perlu overlay materi.
-              const material: AbilityMaterial | null =
-                row.ability_materials ?? null;
-              return {
-                ability_player_id: row.ability_player_id,
-                game_room_id: row.game_room_id,
-                ability_id: row.ability_id,
-                stock: row.stock,
-                user_id: row.user_id,
-                name: detail?.name ?? "",
-                description: detail?.description ?? "",
-                image: detail?.image ?? "",
-                empty_image: detail?.empty_image ?? "",
-                ability_materials: material,
-              };
-            }
-          );
+          const myInventoryFromDb: PickedAbility[] = (raw ?? []).map((row: any) => {
+            const detail = Array.isArray(row.abilities) ? row.abilities[0] : row.abilities;
+            // ability_materials hanya ada untuk ability_id === 1 (Kitab Pengetahuan).
+            // Null untuk ability lain — tidak perlu overlay materi.
+            const material: AbilityMaterial | null = row.ability_materials ?? null;
+            return {
+              ability_player_id: row.ability_player_id,
+              game_room_id: row.game_room_id,
+              ability_id: row.ability_id,
+              stock: row.stock,
+              user_id: row.user_id,
+              name: detail?.name ?? "",
+              description: detail?.description ?? "",
+              image: detail?.image ?? "",
+              empty_image: detail?.empty_image ?? "",
+              ability_materials: material,
+            };
+          });
 
           // Override myInventory sepenuhnya — bukan merge — karena DB selalu lebih akurat
           // dari sessionStorage yang mungkin menyimpan data sebelum RPC selesai.
@@ -737,6 +650,6 @@ export const useStarboxStore = create<StarboxState>()(
         myPickedAbility: state.myPickedAbility,
         myInventory: state.myInventory,
       }),
-    }
-  )
+    },
+  ),
 );
