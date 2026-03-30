@@ -8,17 +8,20 @@ import { OverlayMaterialCard } from "./OverlayMaterialCard";
 import { OverlayAbilityCard } from "./OverlayAbilityCard";
 import { PickedAbility, useStarboxStore } from "@/store/useStarboxStore";
 import { abilityPlayerRepository } from "@/repository/abilityPlayerRepository";
+import { BuffEffectType } from "./BuffEffectOverlay";
 
 interface BuffListProps {
   buffs?: PickedAbility[];
   className?: string;
+  onAbilityUsed?: (type: BuffEffectType) => void;
 }
 
-export const BuffList = ({ buffs = [], className }: BuffListProps) => {
+export const BuffList = ({ buffs = [], className, onAbilityUsed }: BuffListProps) => {
   const [selectedMaterial, setSelectedMaterial] = React.useState<PickedAbility | null>(null);
   const [selectedAbility, setSelectedAbility] = React.useState<PickedAbility | null>(null);
 
   const refreshMyInventory = useStarboxStore((s) => s.refreshMyInventory);
+  const decrementLocalStock = useStarboxStore((s) => s.decrementLocalStock);
 
   const handleBuffClick = (buff: PickedAbility) => {
     if (buff.ability_id === 1) {
@@ -27,6 +30,7 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
       setSelectedAbility(buff);
     }
   };
+
   return (
     <>
       <div
@@ -81,15 +85,33 @@ export const BuffList = ({ buffs = [], className }: BuffListProps) => {
 
           const { game_room_id, user_id, ability_id } = selectedAbility;
 
-          if (ability_id === 2 || ability_id === 4) {
-            await abilityPlayerRepository.userAttackorShieldAbility(game_room_id, user_id, ability_id);
-          } else if (ability_id === 3) {
-            await abilityPlayerRepository.userHealAbility(game_room_id, user_id);
+          if (ability_id === 2) {
+            // Attack: kurangi stock lokal (optimistic), tutup overlay, lalu animasi
+            decrementLocalStock(ability_id);
+            setSelectedAbility(null);
+            onAbilityUsed?.("attack");
+            return;
           }
 
-          // Sync myInventory dari DB agar stock terbaru langsung terefleksi di BuffList.
-          await refreshMyInventory(game_room_id, user_id);
+          if (ability_id === 4) {
+            // Shield: kurangi stock lokal (optimistic), tutup overlay, lalu animasi
+            decrementLocalStock(ability_id);
+            setSelectedAbility(null);
+            onAbilityUsed?.("shield");
+            return;
+          }
 
+          if (ability_id === 3) {
+            // Heal: panggil RPC ke DB, refresh inventory, lalu animasi
+            await abilityPlayerRepository.userHealAbility(game_room_id, user_id);
+            await refreshMyInventory(game_room_id, user_id);
+            setSelectedAbility(null);
+            onAbilityUsed?.("heal");
+            return;
+          }
+
+          // Fallback untuk ability lain yang mungkin ditambah di masa depan
+          await refreshMyInventory(game_room_id, user_id);
           setSelectedAbility(null);
         }}
       />

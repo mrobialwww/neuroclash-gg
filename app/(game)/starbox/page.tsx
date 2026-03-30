@@ -90,6 +90,7 @@ export default function StarboxPage() {
   }, [isLoading, isPreDelay]);
 
   // Turn timer
+  const turnSkippedThisRender = useRef(false);
   useEffect(() => {
     if (isPreDelay || allTurnsDone || isLoading) {
       setProgress(0);
@@ -101,6 +102,7 @@ export default function StarboxPage() {
     setProgress(0);
     setTurnCountdown(TURN_DURATION_MS / 1000);
     autoPickedThisTurn.current = false;
+    turnSkippedThisRender.current = false;
     const startTime = Date.now();
 
     const interval = setInterval(() => {
@@ -110,9 +112,9 @@ export default function StarboxPage() {
       setProgress(pct);
       setTurnCountdown(remaining);
 
-      // Timer habis → auto-pick random untuk giliran saya
-      if (elapsed >= TURN_DURATION_MS && !autoPickedThisTurn.current) {
-        autoPickedThisTurn.current = true;
+      // Timer habis → lanjut giliran berikutnya (paksa host trigger broadcast skip turn)
+      if (elapsed >= TURN_DURATION_MS && !turnSkippedThisRender.current) {
+        turnSkippedThisRender.current = true; // Tanda giliran sudah di-skip untuk interval ini
 
         // Hanya host yang skip turn jika waku habis untuk menjaga konsistensi state terpusat
         if (useStarboxStore.getState().isHost) {

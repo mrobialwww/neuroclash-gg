@@ -15,14 +15,8 @@ export const matchRepository = {
   /**
    * Simpan jawaban user ke tabel user_answers.
    */
-  async submitAnswer(
-    userId: string,
-    answerId: string,
-    roomId: string,
-    roundNumber: number
-  ) {
+  async submitAnswer(userId: string, answerId: string, roomId: string, roundNumber: number) {
     const supabase = await createClient();
-
 
     const { data, error } = await supabase
       .from("user_answers")
@@ -46,27 +40,14 @@ export const matchRepository = {
   /**
    * Update health user di tabel game_players.
    */
-  async updateHealth(
-    userId: string,
-    roomId: string,
-    newHealth: number,
-    roundNumber?: number
-  ) {
+  async updateHealth(userId: string, roomId: string, newHealth: number, roundNumber?: number) {
     console.log(
-      `[MatchRepo] updateHealth called: userId=${userId.substring(
+      `[MatchRepo] updateHealth called: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(
         0,
-        8
-      )}, roomId=${roomId.substring(
-        0,
-        8
-      )}, health=${newHealth}, round=${roundNumber}`
+        8,
+      )}, health=${newHealth}, round=${roundNumber}`,
     );
-    return gamePlayerRepository.updateHealth(
-      userId,
-      roomId,
-      newHealth,
-      roundNumber
-    );
+    return gamePlayerRepository.updateHealth(userId, roomId, newHealth, roundNumber);
   },
 
   /**
@@ -81,11 +62,7 @@ export const matchRepository = {
    */
   async getAnswerDetail(answerId: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("answers")
-      .select("is_correct, question_id")
-      .eq("answer_id", answerId)
-      .single();
+    const { data, error } = await supabase.from("answers").select("is_correct, question_id").eq("answer_id", answerId).single();
 
     if (error) {
       console.error("[MatchRepo] getAnswerDetail error:", error);
@@ -116,7 +93,7 @@ export const matchRepository = {
           is_correct,
           question_id
         )
-      `
+      `,
       )
       .eq("answer.question_id", questionId)
       .order("created_at", { ascending: true });
@@ -143,9 +120,10 @@ export const matchRepository = {
       .select("ability_id, stock")
       .eq("game_room_id", roomId)
       .eq("user_id", userId)
-      // Hanya cek ability_id yang relevan: 2 = Attack, 4 = Shield
       .in("ability_id", [2, 4])
       .gt("stock", 0);
+
+    console.log(data);
 
     if (error) {
       console.error("[MatchRepo] getActiveAbilityBuff error:", error);
@@ -162,18 +140,9 @@ export const matchRepository = {
    * Memberikan statistik akhir dari player ketika sudah tereliminasi dari room
    * Terdapat pengecekan apakah user memiliki ability boost coin/trophy
    */
-  async playerElimination(
-    roomId: string,
-    userId: string,
-    totalTrophy: number,
-    totalCoin: number,
-    placement: number
-  ) {
+  async playerElimination(roomId: string, userId: string, totalTrophy: number, totalCoin: number, placement: number) {
     const supabase = createClient();
-    const abilities = await abilityPlayerRepository.getMyAbilities(
-      roomId,
-      userId
-    );
+    const abilities = await abilityPlayerRepository.getMyAbilities(roomId, userId);
 
     // Cek apakah user memiliki ability "PIALA KEJAYAAN"
     const ability5 = abilities?.find((a) => a.ability_id === 5);
