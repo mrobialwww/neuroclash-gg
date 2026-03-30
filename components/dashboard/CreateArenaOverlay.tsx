@@ -78,8 +78,8 @@ function SearchIcon() {
 // ── Materi Icon Component ─────────────────────────────────────────────────
 function MateriIcon({ id, title }: { id: CategoryType; title: string }) {
   const [imgError, setImgError] = useState(false);
-  const imageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${id}.webp`;
-  const fallbackUrl = "/quiz-category/pemrograman.webp";
+  const imageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${id}2.webp`;
+  const fallbackUrl = "/quiz-category/default.webp";
 
   return (
     <div className="relative shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden">

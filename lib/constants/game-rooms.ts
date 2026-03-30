@@ -14,7 +14,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "mudah",
-    image_url: "/quiz-category/pemrograman.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -49,7 +49,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "mudah",
-    image_url: "/quiz-category/pemrograman.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -84,7 +84,7 @@ export const GAME_ROOMS = [
     total_question: 15,
     total_round: 3,
     difficulty: "sedang",
-    image_url: "/quiz-category/pemrograman.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -124,7 +124,7 @@ export const GAME_ROOMS = [
     total_question: 25,
     total_round: 5,
     difficulty: "sulit",
-    image_url: "/quiz-category/pemrograman.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -159,7 +159,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "mudah",
-    image_url: "/quiz-category/biologi.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -199,7 +199,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "sedang",
-    image_url: "/quiz-category/biologi.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -239,7 +239,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "sedang",
-    image_url: "/quiz-category/biologi.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [
@@ -279,7 +279,7 @@ export const GAME_ROOMS = [
     total_question: 20,
     total_round: 5,
     difficulty: "sedang",
-    image_url: "/quiz-category/biologi.webp",
+    image_url: "/quiz-category/default.webp",
     room_status: "open",
     room_visibility: "public",
     players: [

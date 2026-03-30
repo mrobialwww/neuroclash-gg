@@ -92,7 +92,35 @@ export async function POST(req: Request) {
     const targetCount = round + Math.ceil(round / 10);
     const abilityMaterials = Math.round(0.2 * (maxPlayer + maxPlayer / 5));
 
-    const result = await ai.models.generateContent({
+    // Helper function for retry logic with exponential backoff
+    const generateWithRetry = async (params: any, retries = 3) => {
+      let lastError: any = null;
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await ai.models.generateContent(params);
+        } catch (error: any) {
+          lastError = error;
+          const isRetryable =
+            error.message.includes("503") ||
+            error.message.includes("UNAVAILABLE") ||
+            error.message.includes("429") ||
+            error.message.includes("RESOURCE_EXHAUSTED");
+
+          if (isRetryable && i < retries - 1) {
+            const delay = Math.pow(2, i + 1) * 1000;
+            console.warn(
+              `[API Quiz] Attempt ${i + 1} failed. Retrying in ${delay}ms...`
+            );
+            await new Promise((res) => setTimeout(res, delay));
+            continue;
+          }
+          throw error;
+        }
+      }
+      throw lastError;
+    };
+
+    const result = await generateWithRetry({
       model: "gemini-3.1-flash-lite-preview",
       contents: [
         `Buatkan ${targetCount} ${

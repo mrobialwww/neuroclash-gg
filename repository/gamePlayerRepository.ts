@@ -117,98 +117,40 @@ export const gamePlayerRepository = {
       (usersData || []).map((u: any) => [u.user_id, u.username])
     );
 
-    // Step 3: For each player, fetch equipped character using Supabase
-    // Using same approach as lobby: query FROM characters and JOIN to user_characters
-    const mappedPlayers = await Promise.all(
-      gamePlayers.map(async (row: any, idx: number) => {
-        console.log(
-          `[GamePlayerRepo] Processing player ${
-            idx + 1
-          }: ${row.user_id.substring(0, 8)}`
-        );
+    // Step 3: Fetch all equipped characters for these user_ids in ONE query
+    const { data: charsData, error: charsError } = await supabase
+      .from("user_characters")
+      .select("user_id, characters!inner(skin_name, image_url)")
+      .in("user_id", userIds)
+      .eq("is_used", true);
 
-        try {
-          // Get username from userMap
-          const username = userMap.get(row.user_id);
-          console.log(
-            `[GamePlayerRepo] Username for user ${row.user_id.substring(
-              0,
-              8
-            )}:`,
-            username
-          );
+    if (charsError) {
+      console.error("[GamePlayerRepo] Error fetching characters:", charsError);
+    }
 
-          // Fetch equipped character using same approach as lobby
-          // Query FROM characters and JOIN to user_characters using !inner
-          const { data: charData, error: charError } = await supabase
-            .from("characters")
-            .select(
-              "skin_name, image_url, user_characters!inner(user_id, is_used)"
-            )
-            .eq("user_characters.user_id", row.user_id)
-            .eq("user_characters.is_used", true)
-            .limit(1)
-            .maybeSingle();
+    const charMap = new Map();
+    (charsData || []).forEach((c: any) => {
+      const charDetail = Array.isArray(c.characters)
+        ? c.characters[0]
+        : c.characters;
+      charMap.set(c.user_id, charDetail);
+    });
 
-          if (charError) {
-            console.error(
-              `[GamePlayerRepo] ❌ Error fetching character for user ${row.user_id.substring(
-                0,
-                8
-              )}:`,
-              charError
-            );
-          }
+    // Step 4: Map everything together
+    const mappedPlayers = gamePlayers.map((row: any) => {
+      const username = userMap.get(row.user_id);
+      const charDetail = charMap.get(row.user_id);
 
-          console.log(
-            `[GamePlayerRepo] Character data for user ${row.user_id.substring(
-              0,
-              8
-            )}:`,
-            JSON.stringify(charData, null, 2)
-          );
-
-          // Extract character data - charData contains skin_name and image_url directly
-          const skin_name = charData?.skin_name || "Slime";
-          const image_url = charData?.image_url || "/default/Slime.webp";
-
-          const mappedPlayer = {
-            id: row.user_id,
-            name: username || "Unknown",
-            avatar: image_url,
-            character: skin_name,
-            health: row.health ?? 100,
-            is_alive: row.status === "alive",
-            score: 0,
-          };
-
-          console.log(`[GamePlayerRepo] ✅ Mapped player ${idx + 1}:`, {
-            id: mappedPlayer.id.substring(0, 8),
-            name: mappedPlayer.name,
-            character: mappedPlayer.character,
-            avatar: mappedPlayer.avatar,
-            health: mappedPlayer.health,
-          });
-
-          return mappedPlayer;
-        } catch (err) {
-          console.error(
-            `[GamePlayerRepo] ❌ Error fetching data for player ${idx + 1}:`,
-            err
-          );
-          // Return default data if fetch fails
-          return {
-            id: row.user_id,
-            name: "Unknown",
-            avatar: "/default/Slime.webp",
-            character: "Slime",
-            health: row.health ?? 100,
-            is_alive: row.status === "alive",
-            score: 0,
-          };
-        }
-      })
-    );
+      return {
+        id: row.user_id,
+        name: username || "Pemain",
+        avatar: charDetail?.image_url || "/default/Slime.webp",
+        character: charDetail?.skin_name || "Slime",
+        health: row.health ?? 100,
+        is_alive: row.status === "alive",
+        score: 0,
+      };
+    });
 
     console.log(
       `[GamePlayerRepo] Returning ${mappedPlayers.length} mapped players`

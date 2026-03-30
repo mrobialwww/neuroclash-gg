@@ -63,7 +63,9 @@ export function EndgameRewardBadge({
                 className="object-contain"
               />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-white">+{trophyWon}</span>
+            <span className="text-lg sm:text-2xl font-bold text-white">
+              {trophyWon > 0 ? `+${trophyWon}` : trophyWon}
+            </span>
           </div>
           {trophyBoost > 0 && (
             <span className="text-xs md:text-sm font-semibold text-[#4ade80]">

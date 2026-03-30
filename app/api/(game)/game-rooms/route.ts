@@ -101,24 +101,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       questions: listQuestions,
     } = body as any;
 
-    const finalCategory = listQuestions?.theme_materials || category || "General";
-    const enumCategories = ["bahasaindonesia", "bahasainggris", "biologi", "pancasila", "pemrograman", "sejarah"];
-    
-    let generatedImageUrl = "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/biologi.webp";
-    const formattedCat = String(finalCategory).toLowerCase().replace(/\s+/g, '');
+    const finalCategory =
+      listQuestions?.theme_materials || category || "General";
+    const enumCategories = [
+      "bahasaindonesia",
+      "bahasainggris",
+      "biologi",
+      "pancasila",
+      "pemrograman",
+      "sejarah",
+    ];
+
+    const formattedCat = String(finalCategory)
+      .toLowerCase()
+      .replace(/\s+/g, "");
+
+    let imageName = "default2.webp";
     if (enumCategories.includes(formattedCat)) {
-      generatedImageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${formattedCat}.webp`;
+      imageName = `${formattedCat}2.webp`;
     }
 
-    const finalRoomCode = room_code || Math.random().toString(36).substring(2, 10).toUpperCase();
+    const generatedImageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${imageName}`;
+
+    const finalRoomCode =
+      room_code || Math.random().toString(36).substring(2, 10).toUpperCase();
 
     // ── Validate required fields ──────────────────────────────────────────
-    if (
-      !user_id ||
-      !finalCategory ||
-      !max_player ||
-      !total_round
-    ) {
+    if (!user_id || !finalCategory || !max_player || !total_round) {
       return NextResponse.json(
         {
           error:
@@ -158,7 +167,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Insert Questions and Answers
-    if (listQuestions?.list_questions && listQuestions.list_questions.length > 0) {
+    if (
+      listQuestions?.list_questions &&
+      listQuestions.list_questions.length > 0
+    ) {
       const MappedQuestions = listQuestions.list_questions.map((q: any) => ({
         question_order: q.order || q.question_order,
         question_text: q.question || q.question_text,
@@ -168,12 +180,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           key: opt.key,
         })),
       }));
-      await gameRoomRepository.insertQuestionsWithAnswers(room.game_room_id, MappedQuestions);
+      await gameRoomRepository.insertQuestionsWithAnswers(
+        room.game_room_id,
+        MappedQuestions
+      );
     }
 
     // Insert Ability Materials
-    if (listQuestions?.ability_materials && listQuestions.ability_materials.length > 0) {
-      await gameRoomRepository.insertAbilityMaterials(room.game_room_id, listQuestions.ability_materials);
+    if (
+      listQuestions?.ability_materials &&
+      listQuestions.ability_materials.length > 0
+    ) {
+      await gameRoomRepository.insertAbilityMaterials(
+        room.game_room_id,
+        listQuestions.ability_materials
+      );
     }
 
     console.log("[API] POST /api/game-rooms SUCCESS:", room.game_room_id);

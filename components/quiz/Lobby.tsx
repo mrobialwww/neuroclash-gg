@@ -92,7 +92,7 @@ export function LobbyRoom({
             variant="white"
             onClick={onLeave}
             disabled={isLeaving}
-            className="px-4 md:px-6 h-9 lg:h-10 text-sm md:text-base font-bold"
+            className="px-4 md:px-6 h-9 lg:h-10 text-sm md:text-base font-bold cursor-pointer"
           >
             {isLeaving ? "Keluar..." : "Keluar"}
           </MainButton>
