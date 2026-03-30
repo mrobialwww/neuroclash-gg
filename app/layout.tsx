@@ -14,6 +14,9 @@ const baloo2 = Baloo_2({
 export const metadata: Metadata = {
   title: "NeuroClash GG",
   description: "NeuroClash GG - AI-powered quiz platform",
+  icons: {
+    icon: "/common/logo_browser.svg",
+  },
 };
 
 export default function RootLayout({

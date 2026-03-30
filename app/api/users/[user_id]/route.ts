@@ -40,3 +40,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ user_id: string }> }) {
+  try {
+    const { user_id } = await params;
+    const { username } = await request.json();
+
+    if (!username || username.trim().length < 3) {
+      return NextResponse.json({ success: false, error: "Username must be at least 3 characters long" }, { status: 400 });
+    }
+
+    const { userRepository } = await import("@/repository/userRepository");
+    const updatedUser = await userRepository.updateUsername(user_id, username);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Username updated successfully",
+        data: updatedUser,
+      },
+      { status: 200 },
+    );
+  } catch (error: any) {
+    console.error("API Error updating username:", error);
+    return NextResponse.json({ success: false, error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}

@@ -4,12 +4,14 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "../common/Searchbar";
 import axios from "axios";
 import { useUserStore } from "@/store/useUserStore";
 import { Suspense } from "react";
+
+import { motion } from "motion/react";
 
 interface NavbarProps {
   initialData?: {
@@ -24,8 +26,6 @@ export function Navbar({ initialData }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { coins: storeCoins, avatar: storeAvatar, username: storeUsername, isInitialized, setUserData } = useUserStore();
 
@@ -95,35 +95,6 @@ export function Navbar({ initialData }: NavbarProps) {
     }
   }, [isInitialized, initialData, setUserData]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".avatar-dropdown-container")) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    if (isDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isDropdownOpen]);
-
-  const handleSignOut = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
-    try {
-      await axios.post("/api/auth/signout");
-      window.location.href = "/signin";
-    } catch (err) {
-      console.error("Logout failed:", err);
-      setIsLoggingOut(false);
-    }
-  };
-
   // Gunakan data dari global store, fallback seperlunya
   const user = {
     username: storeUsername,
@@ -143,7 +114,7 @@ export function Navbar({ initialData }: NavbarProps) {
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-stretch justify-between px-4 md:px-8 lg:gap-4 lg:px-12">
         {/* Left: Logo & Search */}
         <div className="flex flex-1 items-center gap-8 lg:flex-none">
-          <Link href="/" className="flex shrink-0 items-center">
+          <Link href="/" className="flex shrink-0 items-center transition-opacity hover:opacity-80">
             <Image
               src="/icons/neuroclash.svg"
               alt="Neuroclash Logo"
@@ -170,7 +141,7 @@ export function Navbar({ initialData }: NavbarProps) {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "group relative flex h-full items-center gap-2 px-4 transition-all duration-200",
+                  "group relative flex h-full items-center gap-2 px-4 transition-all duration-300 ease-in-out",
                   isActive ? "text-[#256AF4]" : "text-[#A1A1A1] hover:text-[#555555]",
                 )}
               >
@@ -184,11 +155,18 @@ export function Navbar({ initialData }: NavbarProps) {
                       WebkitMaskRepeat: "no-repeat",
                       maskSize: "contain",
                       WebkitMaskSize: "contain",
+                      transition: "background-color 0.3s ease-in-out",
                     }}
                   />
                 </div>
-                <span className="text-md whitespace-nowrap font-semibold">{link.name}</span>
-                {isActive && <div className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]" />}
+                <span className="text-md whitespace-nowrap font-semibold transition-colors duration-300">{link.name}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="navbar-active-tab"
+                    className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
               </Link>
             );
           })}
@@ -196,42 +174,12 @@ export function Navbar({ initialData }: NavbarProps) {
 
         {/* Right: User Stats */}
         <div className="flex flex-1 items-center justify-end gap-4 md:gap-6 lg:flex-none">
-          <div className="avatar-dropdown-container relative">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-full md:h-12 md:w-12"
-            >
-              <Image src={user.avatar} alt={`${user.username}'s Avatar`} fill sizes="(max-width: 768px) 40px, 48px" className="object-contain" />
-            </button>
-
-            {/* Avatar Dropdown Menu */}
-            {isDropdownOpen && (
-              <div className="animate-in fade-in zoom-in-95 z-100 absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white py-2 shadow-xl duration-200">
-                <div className="mb-1 border-b border-gray-50 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Akun Anda</p>
-                  <p className="truncate text-sm font-bold text-gray-800">{user.username}</p>
-                </div>
-
-                <Link
-                  href="/profile"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
-                >
-                  <UserIcon size={18} className="text-gray-400" />
-                  <span>Profil</span>
-                </Link>
-
-                <button
-                  onClick={handleSignOut}
-                  disabled={isLoggingOut}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
-                >
-                  <LogOut size={18} />
-                  <span>{isLoggingOut ? "Keluar..." : "Keluar"}</span>
-                </button>
-              </div>
-            )}
-          </div>
+          <Link
+            href="/profile"
+            className="avatar-link relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-full transition-all duration-500 ease-in-out active:scale-90 md:h-12 md:w-12 hover:ring-4 hover:ring-blue-100 hover:shadow-lg"
+          >
+            <Image src={user.avatar} alt={`${user.username}'s Avatar`} fill sizes="(max-width: 768px) 40px, 48px" className="object-contain transition-transform duration-500 hover:scale-110" />
+          </Link>
 
           <div className="flex items-center gap-2 rounded-full border border-[#DFB200] bg-[#F9DA61]/50 py-1 pl-1 pr-4 shadow-sm">
             <div className="relative h-7 w-7 md:h-8 md:w-8">

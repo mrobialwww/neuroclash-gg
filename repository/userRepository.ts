@@ -30,4 +30,23 @@ export const userRepository = {
 
     return data;
   },
+
+  async updateUsername(userId: string, username: string) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("users")
+      .update({ username, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error("[Repo] Error updating username:", error.message);
+      throw error;
+    }
+
+    return data;
+  },
 };

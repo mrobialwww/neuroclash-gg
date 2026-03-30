@@ -4,6 +4,7 @@ export interface HistoryItem {
   time: string;
   date: string;
   material: string;
+  category: string;
   rank: string;
   trophy: number;
   coin: number;

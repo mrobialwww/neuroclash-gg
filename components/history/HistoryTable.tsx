@@ -37,24 +37,52 @@ export function HistoryTable({
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Waktu</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Tanggal</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Materi</th>
+                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Kategori</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Menang</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Kalah</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Tropi</th>
                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Coin</th>
-                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">Aksi</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="py-20 text-center text-gray-400">
-                    Memuat data...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="flex justify-end">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 md:h-12 md:w-12"></div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-4 w-16 rounded bg-gray-100 md:h-5 md:w-20"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="h-4 w-28 rounded bg-gray-100 md:h-5 md:w-36"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-4 w-20 rounded bg-gray-100 md:h-5 md:w-24"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-5 w-6 rounded bg-gray-100 md:h-6 md:w-8"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-5 w-6 rounded bg-gray-100 md:h-6 md:w-8"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                    </td>
+                  </tr>
+                ))
               ) : historyData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-gray-400">
+                  <td colSpan={9} className="py-20 text-center text-gray-400">
                     Belum ada riwayat pertandingan.
                   </td>
                 </tr>
@@ -104,6 +132,13 @@ export function HistoryTable({
                       </span>
                     </td>
 
+                    {/* Kategori */}
+                    <td className="px-4 py-3 md:px-6 md:py-5">
+                      <span className="whitespace-nowrap text-sm font-medium text-[#555555] md:text-base">
+                        {item.category?.toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) || "-"}
+                      </span>
+                    </td>
+
                     {/* Menang */}
                     <td className="px-4 py-3 md:px-6 md:py-5">
                       <span className="text-base font-bold text-green-600 md:text-lg">
@@ -140,16 +175,6 @@ export function HistoryTable({
                           {item.coin >= 0 ? "+" : ""}{item.coin}
                         </span>
                       </div>
-                    </td>
-
-                    {/* Aksi */}
-                    <td className="px-4 py-3 md:px-6 md:py-5">
-                      <MainButton
-                        variant="blue"
-                        className="h-auto cursor-pointer rounded-lg border-none bg-[#658BFF] px-4 py-1.5 text-xs font-bold shadow-none hover:bg-[#3D79F3] md:px-5 md:text-sm"
-                      >
-                        Lihat Detail
-                      </MainButton>
                     </td>
                   </tr>
                 ))

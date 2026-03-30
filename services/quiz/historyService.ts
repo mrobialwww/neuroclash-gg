@@ -73,8 +73,8 @@ function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
 
   // Simplified: we'll use a fixed placeholder or fetch character later.
   // For now, let's at least show the win/loss as material fallback if empty
-  const material = rawData.game_rooms?.category || "Quiz Umum";
-  const title = rawData.game_rooms?.title || "Match";
+  const category = rawData.game_rooms?.category || "umum";
+  const title = rawData.game_rooms?.title || "Pertandingan";
   const placement = rawData.placement ? `${rawData.placement}` : "-";
 
   return {
@@ -82,7 +82,8 @@ function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
     avatar: "", // Will be mapped in HistoryTable using current equipped avatar
     time: timeStr,
     date: dateStr,
-    material: `${title} (${material})`,
+    material: title,
+    category: category,
     rank: placement,
     trophy: rawData.trophy_won,
     coin: rawData.coins_earned,

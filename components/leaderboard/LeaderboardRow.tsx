@@ -64,7 +64,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
       </div>
 
       {/* Rank */}
-      <div className="flex items-center gap-1.5 sm:gap-2 justify-start min-w-[80px] sm:min-w-[100px]">
+      <div className="flex items-center gap-1.5 sm:gap-2 justify-center min-w-[80px] sm:min-w-[100px]">
         {entry.rank ? (
           <>
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 shrink-0">
@@ -86,7 +86,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
       </div>
 
       {/* Trophy */}
-      <div className="flex items-center gap-1.5 justify-start min-w-[70px] sm:min-w-[90px]">
+      <div className="flex items-center gap-1.5 justify-center min-w-[70px] sm:min-w-[80px]">
         <div className="relative w-5 h-5 sm:w-6 sm:h-6 shrink-0">
           <Image
             src="/icons/trophy-color.svg"
