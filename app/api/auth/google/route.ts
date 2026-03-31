@@ -19,12 +19,18 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 401 }
+      );
     }
 
     return NextResponse.json({ success: true, url: data.url }, { status: 200 });
   } catch (err) {
     console.error("❌ Error:", err);
-    return NextResponse.json({ success: false, message: "Server error", error: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Server error", error: String(err) },
+      { status: 500 }
+    );
   }
 }

@@ -1,4 +1,5 @@
 import { HistoryItem } from "@/types/HistoryItem";
+import { formatToWIBTime, formatToWIBDate } from "@/lib/utils/dateUtils";
 
 /**
  * API Response dari user-game/history endpoint
@@ -28,6 +29,12 @@ export interface PaginatedUserGameHistory {
     limit: number;
     totalPages: number;
   };
+  stats: {
+    totalMatches: number;
+    winRate: string;
+    averageRank: string;
+    firstPlaces: number;
+  };
 }
 
 export interface UserGameHistoryWithStats {
@@ -53,28 +60,13 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
  * @returns HistoryItem yang siap ditampilkan
  */
 function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
-  // Convert UTC to WIB (ICT, +7)
-  const utcDate = new Date(rawData.created_at);
-  const wibDate = new Date(utcDate.getTime()); // JS Date auto-handles local if configured, but let's be explicit for id-ID ICT
-
-  const timeStr = wibDate.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: "Asia/Jakarta",
-  });
-
-  const dateStr = wibDate.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  });
+  const timeStr = formatToWIBTime(rawData.created_at);
+  const dateStr = formatToWIBDate(rawData.created_at);
 
   // Simplified: we'll use a fixed placeholder or fetch character later.
   // For now, let's at least show the win/loss as material fallback if empty
-  const material = rawData.game_rooms?.category || "Quiz Umum";
-  const title = rawData.game_rooms?.title || "Match";
+  const category = rawData.game_rooms?.category || "umum";
+  const title = rawData.game_rooms?.title || "Pertandingan";
   const placement = rawData.placement ? `${rawData.placement}` : "-";
 
   return {
@@ -82,7 +74,8 @@ function transformToHistoryItem(rawData: UserGameHistory): HistoryItem {
     avatar: "", // Will be mapped in HistoryTable using current equipped avatar
     time: timeStr,
     date: dateStr,
-    material: `${title} (${material})`,
+    material: title,
+    category: category,
     rank: placement,
     trophy: rawData.trophy_won,
     coin: rawData.coins_earned,
@@ -108,6 +101,12 @@ export async function getUserGameHistory(
     return {
       history: [],
       pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
+      stats: {
+        totalMatches: 0,
+        winRate: "0%",
+        averageRank: "0",
+        firstPlaces: 0,
+      },
     };
   }
   try {
@@ -158,6 +157,7 @@ export async function getUserGameHistory(
     const paginatedResult = {
       history: historyItems,
       pagination,
+      stats: result.stats,
     };
 
     // Simpan ke cache
@@ -184,43 +184,6 @@ export async function getUserGameHistory(
 
     throw error;
   }
-}
-
-/**
- * Calculate statistics dari history data
- *
- * @param historyItems - Array dari history items
- * @returns Object berisi statistics
- */
-export function calculateHistoryStats(historyItems: HistoryItem[]) {
-  const totalMatches = historyItems.length;
-  const firstPlaces = historyItems.filter(
-    (item) => item.rank === "1" || item.rank.startsWith("1/")
-  ).length;
-  const winRate =
-    totalMatches > 0
-      ? ((firstPlaces / totalMatches) * 100).toFixed(2) + "%"
-      : "0%";
-
-  // Extract numeric rank untuk average calculation
-  const ranks = historyItems
-    .map((item) => {
-      const match = item.rank.match(/^(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    })
-    .filter((rank) => rank > 0);
-
-  const averageRank =
-    ranks.length > 0
-      ? (ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(2)
-      : "0";
-
-  return {
-    totalMatches,
-    winRate,
-    averageRank,
-    firstPlaces,
-  };
 }
 
 /**

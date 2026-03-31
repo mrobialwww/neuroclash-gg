@@ -185,6 +185,25 @@ export async function POST(
       `[DUPLICATE] ✅ Questions copied: ${result.questionsInserted}, Answers copied: ${result.answersInserted}`
     );
 
+    // ── Step 4: Duplicate Ability Materials ─────────────────────────────
+    const { data: originalMaterials } = await supabase
+      .from("ability_materials")
+      .select("*")
+      .eq("game_room_id", gameRoomId);
+
+    if (originalMaterials && originalMaterials.length > 0) {
+      console.log(
+        `[DUPLICATE] Found ${originalMaterials.length} materials. Copying...`
+      );
+      const materialsCount = await gameRoomRepository.insertAbilityMaterials(
+        newRoom.game_room_id,
+        originalMaterials
+      );
+      console.log(`[DUPLICATE] ✅ Materials copied: ${materialsCount}`);
+    } else {
+      console.log(`[DUPLICATE] ⚠️ No materials found to copy.`);
+    }
+
     console.log(
       "\n[DUPLICATE] =================================================="
     );

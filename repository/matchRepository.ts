@@ -8,26 +8,35 @@ export const matchRepository = {
    * Ambil semua partisipan dalam suatu game room dari tabel game_players.
    * Melakukan join dengan tabel characters dan users untuk data UI.
    */
-  async getParticipants(roomId: string): Promise<PlayerMatchState[]> {
-    return gamePlayerRepository.getPlayers(roomId);
+  async getParticipants(
+    roomId: string,
+    supabaseClient?: any
+  ): Promise<PlayerMatchState[]> {
+    return gamePlayerRepository.getPlayers(roomId, supabaseClient);
   },
 
   /**
    * Simpan jawaban user ke tabel user_answers.
    */
-  async submitAnswer(userId: string, answerId: string, roomId: string, roundNumber: number) {
-    const supabase = await createClient();
+  async submitAnswer(
+    userId: string,
+    answer_id: string,
+    roomId: string,
+    roundNumber: number,
+    supabaseClient?: any
+  ) {
+    const supabase = supabaseClient || (await createClient());
 
     const { data, error } = await supabase
       .from("user_answers")
       .insert({
         user_id: userId,
-        answer_id: answerId,
+        answer_id: answer_id,
         game_room_id: roomId,
         round_number: roundNumber,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[MatchRepo] submitAnswer error:", error);
@@ -40,12 +49,25 @@ export const matchRepository = {
   /**
    * Update health user di tabel game_players.
    */
-  async updateHealth(userId: string, roomId: string, newHealth: number, roundNumber?: number) {
+  async updateHealth(
+    userId: string,
+    roomId: string,
+    newHealth: number,
+    roundNumber?: number,
+    supabaseClient?: any
+  ) {
     console.log(
       `[MatchRepo] updateHealth called: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(
         0,
-        8,
-      )}, health=${newHealth}, round=${roundNumber}`,
+        8
+      )}, health=${newHealth}, round=${roundNumber}`
+    );
+    return gamePlayerRepository.updateHealth(
+      userId,
+      roomId,
+      newHealth,
+      roundNumber,
+      supabaseClient
     );
     return gamePlayerRepository.updateHealth(userId, roomId, newHealth, roundNumber);
   },
@@ -53,16 +75,20 @@ export const matchRepository = {
   /**
    * Increment win count when user answers first and correctly
    */
-  async incrementWin(userId: string, roomId: string) {
-    return gamePlayerRepository.incrementWin(userId, roomId);
+  async incrementWin(userId: string, roomId: string, supabaseClient?: any) {
+    return gamePlayerRepository.incrementWin(userId, roomId, supabaseClient);
   },
 
   /**
    * Mendapatkan detail jawaban (apakah benar) dari answerId.
    */
-  async getAnswerDetail(answerId: string) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.from("answers").select("is_correct, question_id").eq("answer_id", answerId).single();
+  async getAnswerDetail(answer_id: string, supabaseClient?: any) {
+    const supabase = supabaseClient || (await createClient());
+    const { data, error } = await supabase
+      .from("answers")
+      .select("is_correct, question_id")
+      .eq("answer_id", answer_id)
+      .maybeSingle();
 
     if (error) {
       console.error("[MatchRepo] getAnswerDetail error:", error);
@@ -75,8 +101,8 @@ export const matchRepository = {
    * Mendapatkan semua jawaban untuk suatu pertanyaan tertentu di room tertentu.
    * Berguna untuk menentukan siapa yang tercepat.
    */
-  async getQuestionAnswers(questionId: string) {
-    const supabase = createClient();
+  async getQuestionAnswers(questionId: string, supabaseClient?: any) {
+    const supabase = supabaseClient || (await createClient());
     const { data, error } = await supabase
       .from("user_answers")
       .select("user_id, created_at, answer_id, answers(is_correct)")
@@ -112,8 +138,12 @@ export const matchRepository = {
    *
    * @returns 2 jika Attack aktif, 4 jika Shield aktif, null jika tidak ada.
    */
-  async getActiveAbilityBuff(roomId: string, userId: string): Promise<2 | 4 | null> {
-    const supabase = createClient();
+  async getActiveAbilityBuff(
+    roomId: string,
+    userId: string,
+    supabaseClient?: any
+  ): Promise<2 | 4 | null> {
+    const supabase = supabaseClient || (await createClient());
 
     const { data, error } = await supabase
       .from("ability_players")
@@ -131,8 +161,8 @@ export const matchRepository = {
     }
 
     // Shield diprioritaskan jika keduanya ada bersamaan
-    if (data?.some((r) => r.ability_id === 4)) return 4;
-    if (data?.some((r) => r.ability_id === 2)) return 2;
+    if (data?.some((r: any) => r.ability_id === 4)) return 4;
+    if (data?.some((r: any) => r.ability_id === 2)) return 2;
     return null;
   },
 

@@ -90,57 +90,72 @@ export async function POST(request: NextRequest) {
 
     const lockKey = `${game_room_id}_${round_number}`;
 
-    // Try to acquire lock first
-    const lockResult = tryAcquireLock(lockKey, requestId);
+    // Check if battle rooms already exist before doing anything (Idempotency)
+    const supabase = await (
+      await import("@/lib/supabase/server")
+    ).createClient();
 
-    // If lock is already held, check if battle rooms already exist
-    // If they do, return them immediately (idempotency)
-    if (!lockResult.acquired) {
+    const { data: existingBattleRooms } = await supabase
+      .from("battle_rooms")
+      .select("*")
+      .eq("game_room_id", game_room_id)
+      .eq("round_number", round_number);
+
+    if (existingBattleRooms && existingBattleRooms.length > 0) {
       console.log(
-        `[API][${requestId}] ⚠️ Lock not acquired, checking for existing battle rooms...`
+        `[API][${requestId}] ✅ Found ${existingBattleRooms.length} existing battle rooms, returning them (direct)`
       );
 
-      const supabase = await (
-        await import("@/lib/supabase/server")
-      ).createClient();
+      return NextResponse.json({
+        success: true,
+        battleRooms: existingBattleRooms,
+        message: `Round ${round_number} already started (returned existing battle rooms)`,
+      });
+    }
 
-      const { data: existingBattleRooms } = await supabase
+    // Try to acquire lock since rooms don't exist
+    const lockResult = tryAcquireLock(lockKey, requestId);
+
+    // If lock is already held by someone else, wait and retry
+    if (!lockResult.acquired) {
+      console.log(
+        `[API][${requestId}] ⚠️ Lock not acquired, waiting 2.5s for primary worker...`
+      );
+
+      // Wait longer (2.5s) to give the primary request time to finish generation
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      // Retry existence check
+      const { data: roomsAfterWait } = await supabase
         .from("battle_rooms")
         .select("*")
         .eq("game_room_id", game_room_id)
         .eq("round_number", round_number);
 
-      if (existingBattleRooms && existingBattleRooms.length > 0) {
-        console.log(
-          `[API][${requestId}] ✅ Found ${existingBattleRooms.length} existing battle rooms, returning them`
-        );
-
+      if (roomsAfterWait && roomsAfterWait.length > 0) {
         return NextResponse.json({
           success: true,
-          battleRooms: existingBattleRooms,
-          message: `Round ${round_number} already started (returned existing battle rooms)`,
+          battleRooms: roomsAfterWait,
+          message: `Round ${round_number} already started (returned after wait)`,
           fromLockWait: true,
         });
       }
 
-      // No existing battle rooms found, wait a bit and retry
-      console.log(
-        `[API][${requestId}] ⚠️ No existing battle rooms found, waiting 1s and retrying...`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       // Retry lock acquisition
-      const retryResult = tryAcquireLock(lockKey, requestId);
+      console.log(`[API][${requestId}] ⚠️ Retry lock acquisition...`);
+      let retryResult = tryAcquireLock(lockKey, requestId);
+
       if (!retryResult.acquired) {
         console.log(
-          `[API][${requestId}] ❌ Still cannot acquire lock, giving up`
+          `[API][${requestId}] ❌ Still cannot acquire lock after retries, giving up`
         );
         return NextResponse.json(
           {
             error: "Cannot acquire lock for battle room generation",
-            message: "Another request is currently generating battle rooms",
+            message:
+              "Another request is currently generating battle rooms. Please wait a moment and refresh.",
           },
-          { status: 429 }
+          { status: 423 } // Use 423 Locked instead of 429
         );
       }
     }
@@ -230,10 +245,15 @@ export async function POST(request: NextRequest) {
 
       let battleRooms;
       try {
+        const supabase = await (
+          await import("@/lib/supabase/server")
+        ).createClient();
+
         battleRooms = await roundManagementService.startRound(
           game_room_id,
           round_number,
-          [currentQuestion]
+          [currentQuestion],
+          supabase
         );
       } catch (roundError) {
         console.error(

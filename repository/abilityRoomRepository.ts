@@ -12,38 +12,61 @@ export const abilityRoomRepository = {
   ) {
     const supabase = createClient();
     if (shouldResetDb) {
-      const totalItems = totalPlayer + Math.ceil(totalPlayer / 5);
+      const calculatedTotal = totalPlayer + Math.ceil(totalPlayer / 5);
+      const totalItems = Math.max(6, calculatedTotal);
+      
       const percentages = [
         { id: "1", pct: 15 },
-        { id: "2", pct: 10 },
-        { id: "3", pct: 10 },
-        { id: "4", pct: 20 },
-        { id: "5", pct: 30 },
-        { id: "6", pct: 10 },
+        { id: "2", pct: 15 },
+        { id: "3", pct: 15 },
+        { id: "4", pct: 15 },
+        { id: "5", pct: 20 },
+        { id: "6", pct: 20 },
       ];
 
+      // Step 1: Give each ability at least 1 stock
       const initialAbilitiesTemp = percentages.map((p) => {
-        const exact = (p.pct / 100) * totalItems;
-        const base = Math.floor(exact);
         return {
           game_room_id: gameRoomId,
           ability_id: p.id,
-          exact,
-          stock: base,
-          remainder: exact - base,
+          stock: 1,
+          pct: p.pct,
+          exact_needed: (p.pct / 100) * totalItems
         };
       });
 
-      let remaining =
-        totalItems - initialAbilitiesTemp.reduce((sum, a) => sum + a.stock, 0);
+      // Step 2: Distribute the remaining stock based on percentages
+      let remaining = totalItems - 6;
+      
+      if (remaining > 0) {
+        // Calculate how many more each should get based on their pct
+        const additionalStock = initialAbilitiesTemp.map(a => {
+          const extra = (a.pct / 100) * totalItems - 1; // Subtract the 1 we already gave
+          const baseExtra = Math.max(0, Math.floor(extra));
+          return {
+            ...a,
+            extraStock: baseExtra,
+            remainder: extra - baseExtra
+          };
+        });
 
-      // Distribute remaining based on largest remainder
-      initialAbilitiesTemp.sort((a, b) => b.remainder - a.remainder);
-      let idx = 0;
-      while (remaining > 0) {
-        initialAbilitiesTemp[idx % initialAbilitiesTemp.length].stock += 1;
-        remaining -= 1;
-        idx += 1;
+        let secondRemaining = remaining - additionalStock.reduce((sum, a) => sum + a.extraStock, 0);
+        
+        // Add the base extra stock
+        additionalStock.forEach((a, i) => {
+          initialAbilitiesTemp[i].stock += a.extraStock;
+        });
+
+        // Distribute what's left based on largest remainders
+        additionalStock.sort((a, b) => b.remainder - a.remainder);
+        let idx = 0;
+        while (secondRemaining > 0) {
+          const abilityToGhost = additionalStock[idx % additionalStock.length];
+          const mainIdx = initialAbilitiesTemp.findIndex(ia => ia.ability_id === abilityToGhost.ability_id);
+          initialAbilitiesTemp[mainIdx].stock += 1;
+          secondRemaining -= 1;
+          idx += 1;
+        }
       }
 
       const initialAbilities = initialAbilitiesTemp

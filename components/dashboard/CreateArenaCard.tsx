@@ -12,21 +12,21 @@ import { Difficulty } from "@/types/enums";
 // ── Mapping category → kategori gambar room ──────────────────────────────
 const CATEGORY_IMAGE_MAP: Record<string, string> = {
   bahasaindonesia:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasaindonesia.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasaindonesia2.webp",
   bahasainggris:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasainggris.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasainggris2.webp",
   biologi:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/biologi.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/biologi2.webp",
   pancasila:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pancasila.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pancasila2.webp",
   pemrograman:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pemrograman.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pemrograman2.webp",
   sejarah:
-    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/sejarah.webp",
+    "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/sejarah2.webp",
 };
 
 const DEFAULT_IMAGE_URL =
-  "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pemrograman.webp";
+  "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/default2.webp";
 
 export function CreateArenaCard() {
   const router = useRouter();

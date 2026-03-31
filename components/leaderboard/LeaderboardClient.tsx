@@ -78,8 +78,36 @@ export function LeaderboardClient() {
 
               {/* Body */}
               {loading ? (
-                <div className="flex justify-center items-center py-20">
-                  <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: LIMIT }).map((_, i) => (
+                    <div
+                      key={`leaderboard-skeleton-${i}`}
+                      className="grid grid-cols-[80px_minmax(160px,1fr)_140px_140px] items-center gap-4 md:gap-8 px-6 py-3 transition-all duration-200 rounded-lg bg-white/5 animate-pulse"
+                    >
+                      {/* Position */}
+                      <div className="flex items-center justify-center">
+                        <div className="h-8 w-8 rounded bg-white/10"></div>
+                      </div>
+
+                      {/* Player */}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-white/10 shrink-0"></div>
+                        <div className="h-4 w-24 sm:w-32 rounded bg-white/10"></div>
+                      </div>
+
+                      {/* Rank */}
+                      <div className="flex items-center gap-3 justify-center">
+                        <div className="h-10 w-10 sm:h-11 sm:w-11 rounded bg-white/10 shrink-0"></div>
+                        <div className="h-4 w-16 sm:w-20 rounded bg-white/10"></div>
+                      </div>
+
+                      {/* Trophy */}
+                      <div className="flex items-center gap-2 justify-center">
+                        <div className="h-4 w-4 rounded bg-white/10 shrink-0"></div>
+                        <div className="h-4 w-8 sm:w-10 rounded bg-white/10"></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : error ? (
                 <div className="text-center py-16 text-white/60 text-sm">{error}</div>

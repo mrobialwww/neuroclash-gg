@@ -60,7 +60,7 @@ export const PlayerGridCard = ({
         lobbyMode ? "w-[100px] px-1 py-3 sm:w-[110px] md:w-[125px]" : "w-full min-w-[100px] px-1 py-3 md:min-w-[130px]",
         cardBgColor,
         hasPicked ? "opacity-60 grayscale" : "",
-        isActiveTurn ? "scale-105 ring-2 ring-white/50" : "border border-white/10",
+        isActiveTurn ? "ring-2 ring-white/50" : "border border-white/10",
         className,
       )}
     >

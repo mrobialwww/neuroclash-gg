@@ -6,7 +6,11 @@ export const abilityPlayerRepository = {
    * RPC dipakai (bukan query biasa) karena prosesnya atomik:
    * jika row sudah ada → increment `stock`, jika belum → INSERT baru.
    */
-  async insertPlayerAbility(gameRoomId: string, abilityId: string, userId: string) {
+  async insertPlayerAbility(
+    gameRoomId: string,
+    abilityId: string,
+    userId: string
+  ) {
     const supabase = createClient();
 
     const { data, error } = await supabase.rpc("increment_ability", {
@@ -40,7 +44,7 @@ export const abilityPlayerRepository = {
       stock,
       user_id,
       abilities(name, description, image, empty_image)
-    `,
+    `
       )
       .eq("game_room_id", gameRoomId)
       .eq("user_id", userId);
@@ -55,13 +59,20 @@ export const abilityPlayerRepository = {
       .eq("game_room_id", gameRoomId);
 
     if (amError) {
-      console.error("[AbilityPlayerRepo] getMyAbilities material error:", amError);
+      console.error(
+        "[AbilityPlayerRepo] getMyAbilities material error:",
+        amError
+      );
       throw amError;
     }
 
     // Gabungkan semua material menjadi satu objek untuk ditampilkan di overlay.
     // ability_materials bisa punya banyak row per room (1 per topik dari AI).
-    const combinedMaterial: { ability_materi_id: string; title: string; content: string } | null =
+    const combinedMaterial: {
+      ability_materi_id: string;
+      title: string;
+      content: string;
+    } | null =
       materials && materials.length > 0
         ? {
             ability_materi_id: materials[0].ability_materi_id,
@@ -97,8 +108,13 @@ export const abilityPlayerRepository = {
   /**
    * Menggunkaan ability Attack atua Shield
    */
-  async userAttackorShieldAbility(roomId: string, userId: string, abilityId: number) {
-    const supabase = createClient();
+  async userAttackorShieldAbility(
+    roomId: string,
+    userId: string,
+    abilityId: number,
+    supabaseClient?: any
+  ) {
+    const supabase = supabaseClient || createClient();
 
     const { error } = await supabase.rpc("use_attack_shield_ability", {
       p_game_room_id: roomId,
@@ -119,7 +135,10 @@ export const abilityPlayerRepository = {
   async deletePlayersAbilities(roomId: string) {
     const supabase = createClient();
 
-    const { error } = await supabase.from("ability_players").delete().eq("game_room_id", roomId);
+    const { error } = await supabase
+      .from("ability_players")
+      .delete()
+      .eq("game_room_id", roomId);
 
     if (error) {
       console.error("[AbilityPlayerRepo] deletePlayers error:", error);

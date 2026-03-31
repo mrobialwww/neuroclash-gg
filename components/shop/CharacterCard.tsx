@@ -1,6 +1,7 @@
 import React from "react";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/common/Skeleton";
 
 export type Level = "default" | "epic" | "legend";
 
@@ -120,6 +121,28 @@ export default function CharacterCard({
             </span>
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+export function CharacterCardSkeleton() {
+  return (
+    <div className="relative flex flex-col items-center rounded-xl overflow-hidden shadow-lg select-none group w-full aspect-[2/2.8] sm:aspect-2/3 bg-white/5 animate-pulse">
+      {/* Radial highlight */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_38%,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0)_70%)]"
+      />
+
+      {/* Character Image Placeholder */}
+      <div className="relative z-10 flex flex-1 items-center justify-center w-full px-3 pt-4 sm:px-4 sm:pt-6">
+        <div className="w-[75%] sm:w-[65%] aspect-square rounded-full bg-white/10" />
+      </div>
+
+      {/* Footer Placeholder */}
+      <div className="relative z-10 flex w-full flex-col items-center gap-3 sm:gap-4 px-3 pb-4 pt-1 sm:px-4 sm:pb-5 sm:pt-2">
+        <div className="h-4 w-24 sm:h-5 sm:w-32 rounded bg-white/10" />
+        <div className="h-8 w-full rounded-md bg-white/10" />
       </div>
     </div>
   );

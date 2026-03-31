@@ -78,8 +78,8 @@ function SearchIcon() {
 // ── Materi Icon Component ─────────────────────────────────────────────────
 function MateriIcon({ id, title }: { id: CategoryType; title: string }) {
   const [imgError, setImgError] = useState(false);
-  const imageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${id}.webp`;
-  const fallbackUrl = "/quiz-category/pemrograman.webp";
+  const imageUrl = `https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/${id}2.webp`;
+  const fallbackUrl = "/quiz-category/default.webp";
 
   return (
     <div className="relative shrink-0 w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden">
@@ -273,7 +273,7 @@ export default function CreateArenaModal({
                   ? <span className="text-green-400 font-bold block mb-1">{uploadedFile.name}</span>
                   : "Drag & drop PDF materi kamu di sini"}
               </p>
-              {!uploadedFile && <p className="text-white/60 text-[11px] mt-1 italic tracking-wide">Atau klik untuk memilih file dari perangkat</p>}
+              {!uploadedFile && <p className="text-white/60 text-[11px] mt-1  tracking-wide">Atau klik untuk memilih file dari perangkat</p>}
             </div>
             <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
           </div>

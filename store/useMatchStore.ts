@@ -10,7 +10,7 @@ import { battleRoomService, BattleRoom } from "@/services/battleRoomService";
 const supabase = createClient();
 
 export const SECONDS_PER_ROUND = 15;
-export const STARBOX_INTERVAL = 1;
+export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
 
 export interface MatchState {
@@ -43,7 +43,12 @@ export interface MatchState {
   isSyncingPlayers: boolean;
   lastAnswerCorrect: boolean | null;
   correctAnswerId: string | null;
-  initializeMatch: (roomCode: string, gameRoomId: string, initialRound: number) => Promise<void>;
+  matchStartTime: number | null;
+  initializeMatch: (
+    roomCode: string,
+    gameRoomId: string,
+    initialRound: number
+  ) => Promise<void>;
   loadQuestion: (gameRoomId: string, order: number) => Promise<void>;
   advanceRound: () => void;
   waitForAllBattlesAndAdvance: () => Promise<void>;
@@ -82,6 +87,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   isSyncingPlayers: false,
   lastAnswerCorrect: null,
   correctAnswerId: null,
+  matchStartTime: null,
 
   isOpponent: (playerId: string) => {
     return get().opponentIds.includes(playerId);
@@ -143,6 +149,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       opponentIds: [],
     });
 
+    // Capture match start time if it's the first round
+    if (initialRound === 1) {
+      set({ matchStartTime: Date.now() });
+    }
+
     try {
       // 1. Get Room Info first
       const room = await gameService.getGameRoomConfig(roomCode, gameRoomId);
@@ -198,7 +209,23 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             const result = await startRoundRes.json();
             console.log(`[MatchStore] Battle rooms ready for round ${initialRound}: ${result.battleRooms?.length || 0} rooms`);
           } else {
-            console.error(`[MatchStore] Failed to generate battle rooms:`, await startRoundRes.text());
+            const errorText = await startRoundRes.text();
+            // Handle common lock error as a warning (expected in concurrent join/refresh)
+            if (
+              errorText.includes(
+                "Another request is currently generating battle rooms"
+              ) ||
+              startRoundRes.status === 423
+            ) {
+              console.warn(
+                `[MatchStore] Battle room generation in progress by another request (Round ${initialRound}).`
+              );
+            } else {
+              console.error(
+                `[MatchStore] Failed to generate battle rooms:`,
+                errorText
+              );
+            }
           }
         } catch (err) {
           console.error(`[MatchStore] Error generating battle rooms for round ${initialRound}:`, err);
@@ -273,6 +300,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
     if (!gameRoomId || !currentUser) {
       console.log("[MatchStore] Cannot sync battle room - missing gameRoomId or currentUser");
+      return;
+    }
+
+    // Optimization: Skip sync if current player is eliminated
+    const currentPlayer = get().players.find((p) => p.id === currentUser.id);
+    if (currentPlayer && (!currentPlayer.is_alive || currentPlayer.health <= 0)) {
+      console.log(
+        `[MatchStore] Current player ${currentUser.id.substring(0, 8)} is eliminated - skipping battle room sync`
+      );
+      set({ currentBattleRoom: null, opponentIds: [] });
       return;
     }
 
@@ -486,21 +523,42 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`[MatchStore] Failed to start round ${nextOrder}:`, errorText);
 
-        // Try to parse error as JSON
-        try {
-          const errorJson = JSON.parse(errorText);
-          console.error(`[MatchStore] Parsed error:`, JSON.stringify(errorJson, null, 2));
+        // Handle common lock error gracefully
+        if (
+          res.status === 423 ||
+          errorText.includes("Another request is currently generating battle rooms")
+        ) {
+          console.warn(
+            `[MatchStore] Round ${nextOrder} is already being started by another player. Waiting to sync...`
+          );
+          // Wait a bit for the primary request to finish generation
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } else {
+          console.error(
+            `[MatchStore] Failed to start round ${nextOrder}:`,
+            errorText
+          );
 
-          // If it's a "question not found" error, finish the game
-          if (errorJson.error?.includes("Question not found")) {
-            console.log(`[MatchStore] Question not found for round ${nextOrder}, finishing game`);
-            set({ isFinished: true });
-            return;
+          // Try to parse error as JSON
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error(
+              `[MatchStore] Parsed error:`,
+              JSON.stringify(errorJson, null, 2)
+            );
+
+            // If it's a "question not found" error, finish the game
+            if (errorJson.error?.includes("Question not found")) {
+              console.log(
+                `[MatchStore] Question not found for round ${nextOrder}, finishing game`
+              );
+              set({ isFinished: true });
+              return;
+            }
+          } catch (e) {
+            console.error(`[MatchStore] Could not parse error as JSON:`, e);
           }
-        } catch (e) {
-          console.error(`[MatchStore] Could not parse error as JSON:`, e);
         }
       } else {
         const result = await res.json();
@@ -707,7 +765,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Update state dengan data first answer
         if (result.success) {
-          const correctOpt = state.currentQuestion?.options.find((o) => o.isCorrect);
+          const correctOpt = state.currentQuestion?.options.find(
+            (o) => o.isCorrect
+          );
           set({
             lastAnswerCorrect: result.is_correct ?? false,
             correctAnswerId: correctOpt?.id ?? null,
@@ -715,7 +775,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             firstAnswerId: answerId,
           });
 
-          console.log("[MatchStore] Syncing players after answer submission...");
+          console.log(
+            "[MatchStore] Syncing players after answer submission..."
+          );
           await get().syncPlayersFromDB(state.gameRoomId);
         }
       }
@@ -776,7 +838,19 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             console.log("[MatchStore] Syncing players after timeout damage...");
             await get().syncPlayersFromDB(gameRoomId);
           } else {
-            console.error(`[MatchStore] Failed to apply timeout damage:`, await res.text());
+            const errorText = await res.text();
+            // Battle room might have already been processed or deleted if someone else's timeout/answer triggered first
+            if (errorText.includes("Battle room not found")) {
+              console.warn(
+                `[MatchStore] Battle room not found for timeout damage (already processed?):`,
+                errorText
+              );
+            } else {
+              console.error(
+                `[MatchStore] Failed to apply timeout damage:`,
+                errorText
+              );
+            }
           }
         } catch (error) {
           console.error(`[MatchStore] Error calling timeout API:`, error);
@@ -818,6 +892,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       isSyncingPlayers: false,
       lastAnswerCorrect: null,
       correctAnswerId: null,
+      matchStartTime: null,
     });
   },
 }));

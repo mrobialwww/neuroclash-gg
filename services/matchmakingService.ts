@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getWIBNow } from "@/lib/utils/dateUtils";
 
 interface MatchRound {
   round_id: string;
@@ -137,7 +138,7 @@ export const matchmakingService = {
 
     const { data, error } = await supabase
       .from("match_rounds")
-      .update({ status: "ongoing", updated_at: new Date().toISOString() })
+      .update({ status: "ongoing", updated_at: getWIBNow() })
       .eq("game_room_id", roomId)
       .eq("round_number", roundNumber)
       .select()
@@ -167,7 +168,7 @@ export const matchmakingService = {
       .update({
         status: "finished",
         winner_id: winnerId,
-        updated_at: new Date().toISOString(),
+        updated_at: getWIBNow(),
       })
       .eq("game_room_id", roomId)
       .eq("round_number", roundNumber)

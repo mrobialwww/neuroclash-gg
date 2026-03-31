@@ -15,7 +15,7 @@ interface GameRoomCardProps {
   className?: string;
 }
 
-const FALLBACK_IMAGE = "/quiz-category/biologi.webp";
+const FALLBACK_IMAGE = "/quiz-category/default.webp";
 
 function resolveImage(src: string | null | undefined, error: boolean): string {
   return error || !src ? FALLBACK_IMAGE : src;

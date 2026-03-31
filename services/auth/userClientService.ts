@@ -30,7 +30,11 @@ export const userClientService = {
 
       // /api/user-character?is_used=true returns characters[] with user_characters joined
       // Each element is a `characters` row directly with image_url and name at root
-      let characterData: { name: string; image_url: string } | null = null;
+      let characterData: {
+        name: string;
+        image_url: string;
+        skin_name: string;
+      } | null = null;
       if (charRes.ok) {
         const charResult = await charRes.json();
         const raw = charResult.data;
@@ -41,7 +45,7 @@ export const userClientService = {
         id: user.id,
         username: userData?.username || "Guest",
         avatar: characterData?.image_url || "/default/Slime.webp",
-        character: (characterData as any)?.base_character || "Slime",
+        character: characterData?.skin_name || "Slime",
       };
     } catch (error) {
       console.error("Failed to fetch user:", error);
@@ -70,7 +74,11 @@ export const userClientService = {
         ? userResult.data[0]
         : userResult.data;
 
-      let characterData: { name: string; image_url: string } | null = null;
+      let characterData: {
+        name: string;
+        image_url: string;
+        skin_name: string;
+      } | null = null;
       if (charRes.ok) {
         const charResult = await charRes.json();
         const raw = charResult.data;
@@ -81,7 +89,7 @@ export const userClientService = {
         id: userId,
         username: userData?.username || "Pemain",
         avatar: characterData?.image_url || "/default/Slime.webp",
-        character: (characterData as any)?.base_character || "Slime",
+        character: characterData?.skin_name || "Slime",
       };
     } catch (error) {
       console.error("Failed to fetch user match data:", error);

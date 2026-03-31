@@ -4,6 +4,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { getWIBNow } from "@/lib/utils/dateUtils";
 
 export async function POST(
   request: NextRequest,
@@ -80,6 +81,7 @@ export async function POST(
       .insert({
         game_room_id: game_room_id,
         user_id: user_id,
+        created_at: getWIBNow(),
       })
       .select()
       .single();

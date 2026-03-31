@@ -151,8 +151,13 @@ export default function StarboxPage() {
       const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
       if (totalStock <= 0 || pickingAbilityId) return;
 
+      const soloUserId = myPlayerId || players[currentTurnIndex]?.id;
       if (roomInfo?.max_player === 1) {
-        selectAbility(roomId, abilityId, players[currentTurnIndex]?.id);
+        if (!soloUserId) {
+          console.warn("[StarboxPage] Solo mode missing user id for ability selection");
+          return;
+        }
+        selectAbility(roomId, abilityId, soloUserId);
         setTimeout(() => handleNextRound(), 800);
         return;
       }
@@ -163,7 +168,7 @@ export default function StarboxPage() {
         // We NO LONGER call triggerSkipTurn here to allow timer to finish
       }
     },
-    [abilities, pickingAbilityId, roomInfo, roomId, players, currentTurnIndex, selectAbility, handleNextRound, isMyTurn, iHavePicked],
+    [abilities, pickingAbilityId, roomInfo, roomId, players, currentTurnIndex, selectAbility, handleNextRound, isMyTurn, iHavePicked, myPlayerId],
   );
 
   const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
@@ -183,7 +188,7 @@ export default function StarboxPage() {
   // ── Main UI
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center overflow-x-hidden px-4 py-6 pt-4 md:px-8 md:pt-6 lg:px-12">
-      <div className="relative z-10 flex w-full max-w-[1400px] flex-col items-center gap-8 pb-8">
+      <div className="relative z-10 flex w-full max-w-350 flex-col items-center gap-8 pb-8">
         {/* Header */}
         <header className="mb-2 flex w-full items-center justify-between">
           <div className="rounded-lg bg-[#A6A6A6]/40 px-2 py-1.5 text-sm font-semibold text-white backdrop-blur-xl md:px-4 md:text-base lg:px-6">
@@ -264,7 +269,7 @@ export default function StarboxPage() {
           {abilities.map((ability) => {
             const isBeingPickedByBot = pickingAbilityId === ability.id;
             return (
-              <div key={ability.id} className="relative w-[160px] shrink-0 transition-all duration-300 md:w-[180px] lg:w-[200px]">
+              <div key={ability.id} className="relative w-40 shrink-0 transition-all duration-300 md:w-45 lg:w-50">
                 <AbilityCard
                   name={ability.name}
                   description={ability.description}
@@ -281,9 +286,9 @@ export default function StarboxPage() {
 
         {/* Player Grid Container (Multiplayer only) */}
         {roomInfo?.max_player !== 1 && (
-          <div className="relative mt-4 w-full overflow-visible rounded-2xl border border-white/10 bg-[#D9D9D9]/20 px-4 py-8 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
+          <div className="relative mt-8 w-full max-w-300 overflow-visible rounded-3xl border border-white/10 bg-white/5 px-6 py-10 shadow-2xl backdrop-blur-md sm:px-8 lg:px-12">
             {isPreDelay ? (
-              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
+              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-100 -translate-x-1/2 items-center justify-center px-4">
                 <div className="relative flex h-auto w-full items-center justify-center">
                   <NextImage
                     src="/dashboard/trophy-badge.webp"
@@ -301,7 +306,7 @@ export default function StarboxPage() {
                 </div>
               </div>
             ) : isMyTurn && !iHavePicked ? (
-              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
+              <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-100 -translate-x-1/2 items-center justify-center px-4">
                 <div className="relative flex h-auto w-full items-center justify-center">
                   <NextImage
                     src="/dashboard/trophy-badge.webp"
@@ -320,7 +325,10 @@ export default function StarboxPage() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-5 items-start justify-items-center gap-x-3 gap-y-12 md:grid-cols-8 md:gap-x-5 md:gap-y-16 lg:grid-cols-10">
+            <div
+              className="grid gap-x-4 gap-y-10 sm:gap-x-6 sm:gap-y-12"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+            >
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
                 const hasPicked = pickedPlayerIds.includes(player.id);

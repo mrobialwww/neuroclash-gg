@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { getWIBNow } from "@/lib/utils/dateUtils";
 
 /**
  * endgameRepository.ts
@@ -12,7 +13,9 @@ export const endgameRepository = {
   async getGamePlayers(roomId: string, supabase: SupabaseClient) {
     return supabase
       .from("game_players")
-      .select("user_id, health, status, users!inner(username, total_trophy)")
+      .select(
+        "user_id, health, status, win, created_at, updated_at, users!inner(username, total_trophy)"
+      )
       .eq("game_room_id", roomId);
   },
 
@@ -69,7 +72,7 @@ export const endgameRepository = {
   async getGameRoom(roomId: string, supabase: SupabaseClient) {
     return supabase
       .from("game_rooms")
-      .select("total_round, room_status")
+      .select("total_round, room_status, created_at, updated_at")
       .eq("game_room_id", roomId)
       .maybeSingle();
   },
@@ -106,9 +109,9 @@ export const endgameRepository = {
   async getUserData(userId: string, supabase: SupabaseClient) {
     return supabase
       .from("users")
-      .select("total_trophy, coin, total_match, total_rank_1")
+      .select("total_trophy, coin, total_match, total_rank_1, placement_ratio")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
   },
 
   /**
@@ -120,27 +123,36 @@ export const endgameRepository = {
     data: any,
     supabase: SupabaseClient
   ) {
+    console.log(
+      `[EndgameRepo] Upserting user_game for user=${userId}, room=${roomId}`
+    );
     return supabase
       .from("user_games")
-      .update({
-        ...data,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-      .eq("game_room_id", roomId);
+      .upsert(
+        {
+          user_id: userId,
+          game_room_id: roomId,
+          ...data,
+          updated_at: getWIBNow(),
+        },
+        { onConflict: "game_room_id, user_id" }
+      )
+      .select();
   },
 
   /**
    * Update a user's global statistics (trophy, coin, matches, etc.).
    */
   async updateUserStats(userId: string, data: any, supabase: SupabaseClient) {
+    console.log(`[EndgameRepo] Updating user_stats for user=${userId}`);
     return supabase
       .from("users")
       .update({
         ...data,
-        updated_at: new Date().toISOString(),
+        updated_at: getWIBNow(),
       })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .select();
   },
 
   /**
@@ -155,8 +167,21 @@ export const endgameRepository = {
       .from("game_rooms")
       .update({
         room_status: status,
-        updated_at: new Date().toISOString(),
+        updated_at: getWIBNow(),
       })
       .eq("game_room_id", roomId);
+  },
+
+  /**
+   * Get the start time of the first round for a more accurate match start.
+   */
+  async getEarliestRoundTime(roomId: string, supabase: SupabaseClient) {
+    return supabase
+      .from("match_rounds")
+      .select("created_at")
+      .eq("game_room_id", roomId)
+      .order("round_number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
   },
 };

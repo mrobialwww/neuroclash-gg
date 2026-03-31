@@ -14,6 +14,7 @@ interface UserState {
   }) => void;
   updateCoins: (coins: number) => void;
   updateAvatar: (avatar: string, baseCharacter?: string) => void;
+  updateUsername: (username: string) => void;
 }
 
 /**
@@ -34,4 +35,5 @@ export const useUserStore = create<UserState>((set) => ({
       avatar,
       baseCharacter: baseCharacter || state.baseCharacter,
     })),
+  updateUsername: (username) => set({ username }),
 }));

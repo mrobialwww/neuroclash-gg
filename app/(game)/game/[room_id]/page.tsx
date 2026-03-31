@@ -20,6 +20,7 @@ import {
 import { quizRepository } from "@/repository/quizRepository";
 import { createClient } from "@/lib/supabase/client";
 import { useStarboxStore } from "@/store/useStarboxStore";
+import { calculateDuration, parseDBDate } from "@/lib/utils/dateUtils";
 
 export default function GamePage() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function GamePage() {
     trophyBoost: number;
     survivalTime: string;
     isWinner: boolean;
+    deathRound?: number;
   } | null>(null);
   const [hasShownOverlay, setHasShownOverlay] = useState(false);
   const [isLoadingEliminationData, setIsLoadingEliminationData] =
@@ -156,13 +158,13 @@ export default function GamePage() {
           throw new Error("User results not found in live data");
         }
 
-        // Calculate survival time (approximate based on current time or final answer)
-        // For simplicity and since it's just a display stat, we use duration since start
-        const startTime = roomInfo?.created_at ? new Date(roomInfo.created_at).getTime() : Date.now();
-        const diffSeconds = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(diffSeconds / 60);
-        const seconds = diffSeconds % 60;
-        const survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        // Calculate survival time accurately from match start
+        // 1. Prefer matchStartTime from store (set when round 1 initializes)
+        // 2. Fallback to room's updated_at (start time)
+        // 3. Last fallback to now (0 duration)
+        const matchStartTime = useMatchStore.getState().matchStartTime;
+        const matchStart = matchStartTime ?? parseDBDate(roomInfo?.updated_at || roomInfo?.created_at);
+        const survivalTime = calculateDuration(matchStart, Date.now());
 
         setEliminationData({
           placement: myResult.placement,
@@ -172,8 +174,9 @@ export default function GamePage() {
           coinsEarned: myResult.coinsEarned,
           coinBoost: myResult.coinBoost || 0,
           trophyBoost: myResult.trophyBoost || 0,
-          survivalTime,
+          survivalTime: myResult.survivalTime || survivalTime,
           isWinner: myResult.placement === 1,
+          deathRound: myResult.deathRound,
         });
 
         setShowEliminationOverlay(true);
@@ -212,12 +215,10 @@ export default function GamePage() {
       const myResult = json.data.find((r: any) => r.userId === currentUser.id);
       if (!myResult) return;
 
-      // Calculate time
-      const startTime = roomInfo?.created_at ? new Date(roomInfo.created_at).getTime() : Date.now();
-      const diffSeconds = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = Math.floor(diffSeconds / 60);
-      const seconds = diffSeconds % 60;
-      const survivalTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      // Calculate time accurately
+      const matchStartTime = useMatchStore.getState().matchStartTime;
+      const matchStart = matchStartTime ?? parseDBDate(roomInfo?.updated_at || roomInfo?.created_at);
+      const survivalTime = calculateDuration(matchStart, Date.now());
 
       setEliminationData({
         placement: myResult.placement,
@@ -227,8 +228,9 @@ export default function GamePage() {
         coinsEarned: myResult.coinsEarned,
         coinBoost: myResult.coinBoost || 0,
         trophyBoost: myResult.trophyBoost || 0,
-        survivalTime,
+        survivalTime: myResult.survivalTime || survivalTime,
         isWinner: myResult.placement === 1,
+        deathRound: myResult.deathRound,
       });
     } catch (err) {
       console.error("Error fetching end game data:", err);
@@ -357,10 +359,13 @@ export default function GamePage() {
   // Tampilan ketika Error
   if (error) {
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-[#0B0D14] px-6">
-        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619] border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-8 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-500/20 bg-red-500/10">
-            <span className="text-3xl">⚠️</span>
+      <main className="flex min-h-screen w-full items-center justify-center px-6 relative overflow-hidden">
+        {/* Background Decorative */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619]/60 backdrop-blur-xl border-2 border-red-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-8 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-500/20 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+            <span className="text-3xl text-red-500">×</span>
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-extrabold uppercase tracking-wider text-white">
@@ -383,11 +388,14 @@ export default function GamePage() {
   // Tampilan ketika Loading Data
   if (isLoadingQuestion && !currentQuestion) {
     return (
-      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 bg-[#0B0D14]">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent" />
-        <p className="animate-pulse text-lg font-semibold text-white">
-          Memuat Arena...
-        </p>
+      <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-4 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="relative flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_15px_rgba(61,121,243,0.3)]" />
+          <p className="animate-pulse text-lg font-semibold text-white tracking-widest uppercase">
+            Memuat Arena...
+          </p>
+        </div>
       </main>
     );
   }
@@ -395,11 +403,11 @@ export default function GamePage() {
   // Tampilan ketika Menunggu Semua Battle Room Selesai
   if (isWaitingForAllBattles && !error) {
     return (
-      <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
-        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619] border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-md px-6">
+        <div className="relative w-full max-w-[400px] rounded-2xl bg-[#040619]/60 backdrop-blur-xl border-2 border-[#383347] shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_20px_rgba(61,121,243,0.3)]" />
           <div className="space-y-3">
-            <p className="text-xl md:text-2xl font-extrabold text-white uppercase tracking-tighter italic">
+            <p className="text-xl md:text-2xl font-extrabold text-white uppercase tracking-tighter ">
               Menunggu...
             </p>
             <p className="text-sm md:text-base text-white/60 font-medium">
@@ -420,21 +428,21 @@ export default function GamePage() {
     const titleColor = isWinner ? "text-white" : "text-[#FF0000] drop-shadow-[0_2px_4px_rgba(255,0,0,0.3)]";
 
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-[#0B0D14] px-4 relative overflow-hidden">
+      <main className="flex min-h-screen w-full items-center justify-center px-4 relative overflow-hidden">
         {/* Background Decorative Elements */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="relative w-full max-w-[440px] rounded-3xl bg-[#040619] border-2 border-[#383347] shadow-[0_20px_60px_rgba(0,0,0,0.9)] p-8 md:p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+        <div className="relative w-full max-w-[440px] rounded-3xl bg-[#040619]/60 backdrop-blur-xl border-2 border-[#383347] shadow-[0_20px_60px_rgba(0,0,0,0.9)] p-8 md:p-10 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in-95 duration-300">
 
           {/* Title */}
-          <h1 className={`text-3xl md:text-4xl font-extrabold uppercase ${titleColor}`}>
-            {isWinner ? "SELAMAT!" : "Quiz Selesai!"}
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+            Quiz Selesai!
           </h1>
 
           {/* Icon/Mascot */}
           <div className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
             <NextImage
-              src={finalImage}
+              src="/mascot/mascot-match.webp"
               alt="Result Mascot"
               fill
               className="object-contain"
@@ -444,13 +452,13 @@ export default function GamePage() {
 
           {/* Subtitle */}
           <div className="space-y-2">
-            <p className="text-white text-base md:text-xl font-bold leading-tight">
+            <p className="text-white text-base md:text-xl font-semibold leading-tight">
               {isWinner
                 ? "Kamu memenangkan pertandingan!"
                 : `Pertandingan telah berakhir!`}
             </p>
-            <p className="text-white/50 text-sm md:text-base font-medium">
-              Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.
+            <p className="text-white/70 text-sm md:text-base font-medium">
+              Kamu telah menyelesaikan {eliminationData?.deathRound ?? totalQuestions ?? currentOrder} soal.
             </p>
           </div>
 
@@ -459,24 +467,24 @@ export default function GamePage() {
             <div className="w-full rounded-2xl bg-white/5 p-5 border border-white/10 shadow-inner">
               <div className="grid grid-cols-4 gap-2">
                 <div className="flex flex-col items-center">
-                  <span className="text-lg md:text-xl font-extrabold text-[#4ade80]">{eliminationData.win}</span>
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">WIN</span>
+                  <span className="text-lg md:text-xl font-bold text-[#4ade80]">{eliminationData.win}</span>
+                  <span className="text-xs font-semibold text-white/70 tracking-wide">Menang</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className="text-lg md:text-xl font-extrabold text-[#f87171]">{eliminationData.lose}</span>
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">LOSE</span>
+                  <span className="text-lg md:text-xl font-bold text-[#f87171]">{eliminationData.lose}</span>
+                  <span className="text-xs font-semibold text-white/70 tracking-wide">Kalah</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className={`text-lg md:text-xl font-extrabold ${eliminationData.trophyWon >= 0 ? "text-[#FFC300]" : "text-[#f87171]"}`}>
+                  <span className={`text-lg md:text-xl font-bold ${eliminationData.trophyWon >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                     {eliminationData.trophyWon >= 0 ? "+" : ""}{eliminationData.trophyWon}
                   </span>
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">TROPHY</span>
+                  <span className="text-xs font-semibold text-white/70 tracking-wide">Trofi</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className={`text-lg md:text-xl font-extrabold ${eliminationData.coinsEarned >= 0 ? "text-[#fbbf24]" : "text-[#f87171]"}`}>
+                  <span className={`text-lg md:text-xl font-bold ${eliminationData.coinsEarned >= 0 ? "text-[#fbbf24]" : "text-[#f87171]"}`}>
                     {eliminationData.coinsEarned >= 0 ? "+" : ""}{eliminationData.coinsEarned}
                   </span>
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-wide">COINS</span>
+                  <span className="text-xs font-semibold text-white/70 tracking-wide">Koin</span>
                 </div>
               </div>
             </div>
@@ -486,13 +494,15 @@ export default function GamePage() {
           {eliminationData && (
             <div className="flex flex-col items-center gap-3 w-full">
               <div className="px-6 py-2 rounded-full bg-linear-to-r from-[#658BFF] to-[#3D79F3] shadow-lg shadow-blue-500/20">
-                <span className="text-lg font-extrabold text-white uppercase italic tracking-tighter">
-                  PERINGKAT #{eliminationData.placement}
+                <span className="text-lg font-bold text-white tracking-tight">
+                  Peringkat {eliminationData.placement}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-white/40">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Survival Time</span>
-                <span className="text-white font-extrabold">{eliminationData.survivalTime}</span>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-sm font-semibold text-white/70">Waktu Bertahan</span>
+                <span className="text-white font-bold text-xl">
+                  {Math.floor(parseInt(eliminationData.survivalTime.split(':')[0]))} Menit {parseInt(eliminationData.survivalTime.split(':')[1])} Detik
+                </span>
               </div>
             </div>
           )}
@@ -502,7 +512,7 @@ export default function GamePage() {
             variant="blue"
             size="lg"
             hasShadow
-            className="w-full h-14 md:h-16 text-lg md:text-xl font-extrabold uppercase tracking-wider mt-2"
+            className="w-full h-10 md:h-12 text-lg font-bold mt-2"
             onClick={handleGoToEndgame}
             isLoading={isProcessingEndgame}
             disabled={isProcessingEndgame}
