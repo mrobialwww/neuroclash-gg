@@ -57,16 +57,32 @@ export default function EndgamePage({ params }: { params: Promise<{ room_id: str
       characterImage: r.characterImage,
     }));
 
-  const tablePlayers: EndgamePlayer[] = results.map((r) => ({
-    id: r.userId,
-    position: r.placement,
-    username: r.username,
-    baseCharacter: r.baseCharacter,
-    characterImage: r.characterImage,
-    playTime: r.survivalTime || (r.isAlive ? "Bertahan" : "-"),
-    wins: r.win || 0,
-    losses: r.lose || 0,
-  }));
+  const tablePlayers: EndgamePlayer[] = results.map((r) => {
+    let formattedPlayTime = "-";
+    if (r.survivalTime) {
+      const parts = r.survivalTime.split(":");
+      if (parts.length === 2) {
+        const mins = parseInt(parts[0]);
+        const secs = parseInt(parts[1]);
+        formattedPlayTime = `${mins} Menit ${secs} Detik`;
+      } else {
+        formattedPlayTime = r.survivalTime;
+      }
+    } else if (r.isAlive) {
+      formattedPlayTime = "Bertahan";
+    }
+
+    return {
+      id: r.userId,
+      position: r.placement,
+      username: r.username,
+      baseCharacter: r.baseCharacter,
+      characterImage: r.characterImage,
+      playTime: formattedPlayTime,
+      wins: r.win || 0,
+      losses: r.lose || 0,
+    };
+  });
 
   if (loading) {
     return (

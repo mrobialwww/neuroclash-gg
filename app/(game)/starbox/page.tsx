@@ -281,7 +281,7 @@ export default function StarboxPage() {
 
         {/* Player Grid Container (Multiplayer only) */}
         {roomInfo?.max_player !== 1 && (
-          <div className="relative mt-4 w-full overflow-visible rounded-2xl border border-white/10 bg-[#D9D9D9]/20 px-4 py-8 shadow-2xl backdrop-blur-md sm:px-8 lg:px-10">
+          <div className="relative mt-8 w-full max-w-[1200px] overflow-visible rounded-3xl border border-white/10 bg-white/5 px-6 py-10 shadow-2xl backdrop-blur-md sm:px-8 lg:px-12">
             {isPreDelay ? (
               <div className="absolute -top-5 left-1/2 z-30 flex w-full max-w-[400px] -translate-x-1/2 items-center justify-center px-4">
                 <div className="relative flex h-auto w-full items-center justify-center">
@@ -320,7 +320,10 @@ export default function StarboxPage() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-5 items-start justify-items-center gap-x-3 gap-y-12 md:grid-cols-8 md:gap-x-5 md:gap-y-16 lg:grid-cols-10">
+            <div
+              className="grid gap-x-4 gap-y-10 sm:gap-x-6 sm:gap-y-12"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+            >
               {players.map((player, idx) => {
                 const isActiveTurn = currentTurnIndex === idx;
                 const hasPicked = pickedPlayerIds.includes(player.id);

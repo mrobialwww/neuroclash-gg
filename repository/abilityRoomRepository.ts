@@ -15,11 +15,11 @@ export const abilityRoomRepository = {
       const totalItems = totalPlayer + Math.ceil(totalPlayer / 5);
       const percentages = [
         { id: "1", pct: 15 },
-        { id: "2", pct: 10 },
-        { id: "3", pct: 10 },
-        { id: "4", pct: 20 },
-        { id: "5", pct: 30 },
-        { id: "6", pct: 10 },
+        { id: "2", pct: 15 },
+        { id: "3", pct: 15 },
+        { id: "4", pct: 15 },
+        { id: "5", pct: 20 },
+        { id: "6", pct: 20 },
       ];
 
       const initialAbilitiesTemp = percentages.map((p) => {

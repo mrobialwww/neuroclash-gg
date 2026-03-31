@@ -273,7 +273,7 @@ export default function CreateArenaModal({
                   ? <span className="text-green-400 font-bold block mb-1">{uploadedFile.name}</span>
                   : "Drag & drop PDF materi kamu di sini"}
               </p>
-              {!uploadedFile && <p className="text-white/60 text-[11px] mt-1 italic tracking-wide">Atau klik untuk memilih file dari perangkat</p>}
+              {!uploadedFile && <p className="text-white/60 text-[11px] mt-1  tracking-wide">Atau klik untuk memilih file dari perangkat</p>}
             </div>
             <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
           </div>

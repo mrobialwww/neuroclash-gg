@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getWIBNow } from "@/lib/utils/dateUtils";
 
 export interface BattleRoom {
   battle_room_id: string;
@@ -414,9 +415,10 @@ export const battleRoomService = {
   async generateBattleRooms(
     gameId: string,
     roundNumber: number,
-    questions: { question_id: string }[]
+    questions: { question_id: string }[],
+    supabaseClient?: any
   ): Promise<BattleRoom[]> {
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     console.log(
       `[BattleRoomService] ==================================================`
@@ -508,7 +510,7 @@ export const battleRoomService = {
     );
     console.log(
       `[BattleRoomService] Alive player IDs:`,
-      alivePlayers.map((p) => p.user_id.substring(0, 8))
+      alivePlayers.map((p: PlayerWithHealth) => p.user_id.substring(0, 8))
     );
 
     if (alivePlayers.length < 2) {
@@ -520,7 +522,7 @@ export const battleRoomService = {
 
     // 5. Generate round-robin pairings
     const pairings = this.generateRoundRobinPairings(
-      alivePlayers.map((p) => p.user_id),
+      alivePlayers.map((p: PlayerWithHealth) => p.user_id),
       gameId
     );
 
@@ -553,23 +555,14 @@ export const battleRoomService = {
         .from("battle_rooms")
         .insert(battleRoomData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (insertError) {
         console.error(
-          "[BattleRoomService] Error inserting battle room:",
+          `[BattleRoomService] ❌ Error inserting battle room for round ${roundNumber}:`,
           insertError
         );
         console.error("[BattleRoomService] Battle room data:", battleRoomData);
-        console.error("[BattleRoomService] Error code:", insertError.code);
-        console.error(
-          "[BattleRoomService] Error message:",
-          insertError.message
-        );
-        console.error(
-          "[BattleRoomService] Error details:",
-          insertError.details
-        );
 
         // Check for duplicate key error (23505 = unique_violation)
         if (insertError.code === "23505") {
@@ -585,7 +578,19 @@ export const battleRoomService = {
         );
       }
 
-      battleRooms.push(battleRoom);
+      if (battleRoom) {
+        console.log(
+          `[BattleRoomService] ✅ Successfully inserted battle room ${battleRoom.battle_room_id.substring(
+            0,
+            8
+          )}`
+        );
+        battleRooms.push(battleRoom);
+      } else {
+        console.warn(
+          `[BattleRoomService] ⚠️ Insert returned no data for room in round ${roundNumber} (possibly created by other client)`
+        );
+      }
       questionIndex++;
     }
 
@@ -633,7 +638,7 @@ export const battleRoomService = {
       );
 
       const roomPlayers = new Set<string>();
-      verifyData.forEach((room) => {
+      verifyData.forEach((room: any) => {
         roomPlayers.add(room.player1_id);
         roomPlayers.add(room.player2_id);
         if (room.player3_id) roomPlayers.add(room.player3_id);
@@ -657,7 +662,8 @@ export const battleRoomService = {
   async getBattleRoomForPlayer(
     gameId: string,
     userId: string,
-    roundNumber: number
+    roundNumber: number,
+    supabaseClient?: any
   ): Promise<BattleRoom | null> {
     console.log(
       `[BattleRoomService] Getting battle room for user ${userId.substring(
@@ -666,7 +672,7 @@ export const battleRoomService = {
       )} in game ${gameId.substring(0, 8)}, round ${roundNumber}`
     );
 
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     // Fix: Try multiple approaches to find the battle room
     // Approach 1: Use .or() with proper syntax
@@ -703,7 +709,7 @@ export const battleRoomService = {
       const allRooms = allResult.data || [];
       data =
         allRooms.find(
-          (br) =>
+          (br: BattleRoom) =>
             br.player1_id === userId ||
             br.player2_id === userId ||
             br.player3_id === userId
@@ -735,7 +741,7 @@ export const battleRoomService = {
 
       console.log(
         `[BattleRoomService] All battle rooms for round ${roundNumber}:`,
-        allRooms?.map((br) => ({
+        allRooms?.map((br: BattleRoom) => ({
           id: br.battle_room_id.substring(0, 8),
           p1: br.player1_id.substring(0, 8),
           p2: br.player2_id.substring(0, 8),
@@ -746,7 +752,7 @@ export const battleRoomService = {
 
       // Check if userId is in any of the battle rooms
       const userIdInRooms = allRooms?.some(
-        (br) =>
+        (br: BattleRoom) =>
           br.player1_id === userId ||
           br.player2_id === userId ||
           br.player3_id === userId
@@ -758,21 +764,41 @@ export const battleRoomService = {
         )} found in any battle room: ${userIdInRooms}`
       );
 
-      // If user is NOT in any battle room, this is a BUG
-      if (!userIdInRooms && allRooms && allRooms.length > 0) {
+      // Check player status before calling it a bug
+      const { data: playerStatus } = await supabase
+        .from("game_players")
+        .select("status, health")
+        .eq("game_room_id", gameId)
+        .eq("user_id", userId)
+        .single();
+
+      const isAlive =
+        playerStatus &&
+        playerStatus.status === "alive" &&
+        playerStatus.health > 0;
+
+      // If user is ALIVE but NOT in any battle room, this is a BUG
+      if (isAlive && !userIdInRooms && allRooms && allRooms.length > 0) {
         console.error(
           `[BattleRoomService] ❌ BUG DETECTED: User ${userId.substring(
             0,
             8
-          )} is NOT in any battle room for round ${roundNumber}!`
+          )} is ALIVE but NOT in any battle room for round ${roundNumber}!`
         );
         console.error(
           `[BattleRoomService] All player IDs in round ${roundNumber}:`,
-          allRooms.flatMap((br) => [
+          allRooms.flatMap((br: BattleRoom) => [
             br.player1_id.substring(0, 8),
             br.player2_id.substring(0, 8),
             br.player3_id?.substring(0, 8) || null,
           ])
+        );
+      } else if (!isAlive) {
+        console.log(
+          `[BattleRoomService] User ${userId.substring(
+            0,
+            8
+          )} is eliminated. Correct behavior: no battle room assigned.`
         );
       }
     } else {
@@ -792,13 +818,18 @@ export const battleRoomService = {
    */
   async areAllBattlesFinished(
     gameId: string,
-    roundNumber: number
+    roundNumber: number,
+    supabaseClient?: any
   ): Promise<boolean> {
     console.log(
       `[BattleRoomService] Checking if all battles finished for game ${gameId}, round ${roundNumber}`
     );
 
-    const battleRooms = await this.getBattleRoomsForRound(gameId, roundNumber);
+    const battleRooms = await this.getBattleRoomsForRound(
+      gameId,
+      roundNumber,
+      supabaseClient
+    );
 
     console.log(`[BattleRoomService] Found ${battleRooms.length} battle rooms`);
     console.log(
@@ -828,9 +859,10 @@ export const battleRoomService = {
    */
   async getBattleRoomsForRound(
     gameId: string,
-    roundNumber: number
+    roundNumber: number,
+    supabaseClient?: any
   ): Promise<BattleRoom[]> {
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     const { data, error } = await supabase
       .from("battle_rooms")
@@ -852,7 +884,8 @@ export const battleRoomService = {
    */
   async updateBattleRoomStatus(
     battleRoomId: string,
-    status: "waiting" | "ongoing" | "finished" | "timeout"
+    status: "waiting" | "ongoing" | "finished" | "timeout",
+    supabaseClient?: any
   ): Promise<void> {
     console.log(
       `[BattleRoomService] Updating battle room ${battleRoomId.substring(
@@ -861,13 +894,13 @@ export const battleRoomService = {
       )} status to ${status}`
     );
 
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     const { error, data } = await supabase
       .from("battle_rooms")
       .update({
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: getWIBNow(),
       })
       .eq("battle_room_id", battleRoomId)
       .select()
@@ -898,16 +931,17 @@ export const battleRoomService = {
   async recordFirstAnswer(
     battleRoomId: string,
     userId: string,
-    answerId: string
+    answerId: string,
+    supabaseClient?: any
   ): Promise<void> {
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     const { error } = await supabase
       .from("battle_rooms")
       .update({
         first_answer_user_id: userId,
         first_answer_id: answerId,
-        updated_at: new Date().toISOString(),
+        updated_at: getWIBNow(),
       })
       .eq("battle_room_id", battleRoomId);
 

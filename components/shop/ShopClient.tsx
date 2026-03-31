@@ -341,7 +341,7 @@ export default function ShopClient({ userId }: Props) {
               <>
                 {displayed.length === 0 ? (
                   <div className="py-20 text-center">
-                    <p className="text-white/30 text-lg font-medium italic">Tidak ada {filter} untuk ditampilkan</p>
+                    <p className="text-white/30 text-lg font-medium ">Tidak ada {filter} untuk ditampilkan</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

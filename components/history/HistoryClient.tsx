@@ -5,7 +5,6 @@ import { StatisticCard } from "@/components/history/StatisticCard";
 import { HistoryTable } from "@/components/history/HistoryTable";
 import {
   getUserGameHistory,
-  calculateHistoryStats,
   type HistoryItem,
 } from "@/services/quiz/historyService";
 
@@ -41,20 +40,7 @@ export default function HistoryClient({ userId }: Props) {
       const result = await getUserGameHistory(userId, page);
       setHistory(result.history);
       setPagination(result.pagination);
-
-      // Calculate stats based on ALL historical data might be expensive,
-      // but for now historyService.calculateHistoryStats expects an array.
-      // If the API only returns a page, we might need a separate API for stats.
-      // However, the current calculateHistoryStats is used for the summary cards.
-      // For now, we'll just use the first page's stats or assume we need a full fetch for stats.
-      // Looking at historyService, it doesn't have a "get stats" API yet.
-      // Let's stick to what we have or just use the total from pagination for "Total Pertandingan".
-
-      const calculatedStats = calculateHistoryStats(result.history);
-      setStats({
-        ...calculatedStats,
-        totalMatches: result.pagination.total // Use actual total from DB
-      });
+      setStats(result.stats);
     } catch (err) {
       console.error("Error loading history:", err);
       setError(

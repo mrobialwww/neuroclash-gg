@@ -1,16 +1,18 @@
 import { createClient } from "@/lib/supabase/client";
 const { createAdminClient } = await import("@/lib/supabase/admin");
+import { calculateRewards } from "@/lib/game/rewardCalculator";
+import { getWIBNow } from "@/lib/utils/dateUtils";
 
 export const gamePlayerRepository = {
   /**
    * Insert semua pemain saat match dimulai dengan health 100
    */
-  async insertPlayers(roomId: string, userIds: string[]) {
+  async insertPlayers(roomId: string, userIds: string[], supabaseClient?: any) {
     console.log(
       `[GamePlayerRepo] insertPlayers called for roomId: ${roomId}, userIds: ${userIds.length}`
     );
 
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     const players = userIds.map((user_id) => ({
       game_room_id: roomId,
@@ -49,10 +51,10 @@ export const gamePlayerRepository = {
    * Fetch semua pemain + health untuk ditampilkan di UI
    * Uses Supabase client directly to fetch user and character data
    */
-  async getPlayers(roomId: string) {
+  async getPlayers(roomId: string, supabaseClient?: any) {
     console.log(`[GamePlayerRepo] getPlayers called for roomId: ${roomId}`);
 
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     // Step 1: Fetch game_players (without join first)
     const { data: gamePlayers, error: gamePlayersError } = await supabase
@@ -234,7 +236,7 @@ export const gamePlayerRepository = {
       .select("health")
       .eq("game_room_id", roomId)
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[GamePlayerRepo] getPlayerHealth error:", error);
@@ -253,9 +255,10 @@ export const gamePlayerRepository = {
     userId: string,
     roomId: string,
     newHealth: number,
-    roundNumber?: number
+    roundNumber?: number,
+    supabaseClient?: any
   ) {
-    const supabase = await createClient();
+    const supabase = supabaseClient || (await createClient());
 
     console.log(
       `[GamePlayerRepo] updateHealth called: userId=${userId.substring(
@@ -289,7 +292,7 @@ export const gamePlayerRepository = {
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[GamePlayerRepo] updateHealth error:", error);
@@ -344,13 +347,13 @@ export const gamePlayerRepository = {
       `[GamePlayerRepo] ==================================================`
     );
 
-    // 1. Get win count dari game_players
+    // 1. Get win count dari game_players and room info
     const { data: playerData, error: playerError } = await supabase
       .from("game_players")
-      .select("win, eliminated_at")
+      .select("win, eliminated_at, game_rooms(total_round)")
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
-      .single();
+      .maybeSingle();
 
     if (playerError) {
       console.error(
@@ -361,11 +364,11 @@ export const gamePlayerRepository = {
     }
 
     const winCount = playerData?.win || 0;
-    const eliminatedAt = playerData?.eliminated_at || roundNumber;
-    const loseCount = Math.max(0, eliminatedAt - winCount);
+    const totalRounds = (playerData as any)?.game_rooms?.total_round || 15;
+    const loseCount = Math.max(0, totalRounds - winCount);
 
     console.log(
-      `[GamePlayerRepo] Player stats from game_players: win=${winCount}, eliminated_at=${eliminatedAt}, calculated_lose=${loseCount}`
+      `[GamePlayerRepo] Player stats: win=${winCount}, total_round=${totalRounds}, calculated_lose=${loseCount}`
     );
 
     // 2. Hitung placement saat ini (berapa player yang sudah mati)
@@ -397,36 +400,39 @@ export const gamePlayerRepository = {
       `[GamePlayerRepo] Placement calculation: total=${totalPlayers}, playerIndex=${playerIndex}, placement=${placement}`
     );
 
-    // 3. Hitung trophy berdasarkan formula
-    // B = 3/4 of total players (rounded)
-    const B = Math.ceil(totalPlayers * 0.75);
-    const R = placement; // Rank (1 = best, N = worst)
-    const N = totalPlayers;
+    // 3. Hitung trophy dan koin menggunakan shared calculator
+    // Reuse totalRounds from line 366
 
-    let trophy_won = 0;
+    // Fetch ability boosts
+    const { data: abilityPlayers } = await supabase
+      .from("ability_players")
+      .select("ability_id, stock")
+      .eq("user_id", userId)
+      .eq("game_room_id", roomId);
 
-    if (R <= B) {
-      // Winning ranks
-      if (B === 1) {
-        trophy_won = 100;
-      } else {
-        trophy_won = Math.round(100 - (R - 1) * (90 / (B - 1)));
-      }
-    } else {
-      // Losing ranks
-      const losingPlayers = N - B;
-      if (losingPlayers === 1) {
-        trophy_won = -100;
-      } else {
-        trophy_won = Math.round(-10 - (R - (B + 1)) * (90 / (N - (B + 1))));
-      }
+    let trophyBoost = 0;
+    let coinBoost = 0;
+
+    if (abilityPlayers) {
+      const piala = abilityPlayers.find((a: any) => a.ability_id === 5);
+      if (piala) trophyBoost = Math.round(piala.stock * 5);
+
+      const kantong = abilityPlayers.find((a: any) => a.ability_id === 6);
+      if (kantong) coinBoost = Math.round(kantong.stock * 5);
     }
 
-    // 4. Hitung coins = trophy + (3/4 * trophy)
-    const coins_earned = Math.round(trophy_won + trophy_won * 0.75);
+    const { trophyWon, coinsEarned } = calculateRewards({
+      rank: placement,
+      totalPlayers,
+      totalRounds,
+      wins: winCount,
+      losses: loseCount,
+      trophyBoost,
+      coinBoost,
+    });
 
     console.log(
-      `[GamePlayerRepo] Trophy formula: B=${B}, R=${R}, N=${N}, trophy=${trophy_won}, coins=${coins_earned}`
+      `[GamePlayerRepo] Shared Calculator: Rank=${placement}, trophy=${trophyWon}, coins=${coinsEarned}`
     );
 
     // 5. Cek apakah record user_games sudah ada
@@ -463,9 +469,9 @@ export const gamePlayerRepository = {
         .update({
           win: winCount,
           lose: loseCount,
-          trophy_won,
-          coins_earned,
-          updated_at: new Date().toISOString(),
+          trophy_won: trophyWon,
+          coins_earned: coinsEarned,
+          updated_at: getWIBNow(),
         })
         .eq("game_room_id", roomId)
         .eq("user_id", userId)
@@ -487,8 +493,8 @@ export const gamePlayerRepository = {
           user_id: userId,
           win: winCount,
           lose: loseCount,
-          trophy_won,
-          coins_earned,
+          trophy_won: trophyWon,
+          coins_earned: coinsEarned,
         })
         .select();
 
@@ -503,7 +509,7 @@ export const gamePlayerRepository = {
     } else {
       console.log(`[GamePlayerRepo] Updated user_games SUCCESS:`, updateResult);
       console.log(
-        `[GamePlayerRepo] Final stats: Placement=${placement}, Win=${winCount}, Lose=${loseCount}, Trophy=${trophy_won}, Coins=${coins_earned}`
+        `[GamePlayerRepo] Final stats: Placement=${placement}, Win=${winCount}, Lose=${loseCount}, Trophy=${trophyWon}, Coins=${coinsEarned}`
       );
     }
 
@@ -515,8 +521,8 @@ export const gamePlayerRepository = {
       placement,
       win: winCount,
       lose: loseCount,
-      trophy_won,
-      coins_earned,
+      trophy_won: trophyWon,
+      coins_earned: coinsEarned,
     };
   },
 
@@ -532,7 +538,7 @@ export const gamePlayerRepository = {
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[GamePlayerRepo] updateStatus error:", error);
@@ -545,8 +551,8 @@ export const gamePlayerRepository = {
   /**
    * Increment win count when user answers first and correctly
    */
-  async incrementWin(userId: string, roomId: string) {
-    const supabase = await createClient();
+  async incrementWin(userId: string, roomId: string, supabaseClient?: any) {
+    const supabase = supabaseClient || (await createClient());
 
     console.log(
       `[GamePlayerRepo] incrementWin called: userId=${userId.substring(
@@ -561,11 +567,18 @@ export const gamePlayerRepository = {
       .select("win")
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) {
       console.error("[GamePlayerRepo] incrementWin fetch error:", fetchError);
       throw fetchError;
+    }
+
+    if (!current) {
+      console.error(
+        `[GamePlayerRepo] No player record found to increment win: user=${userId}, room=${roomId}`
+      );
+      return null;
     }
 
     const newWin = (current?.win || 0) + 1;
@@ -580,7 +593,7 @@ export const gamePlayerRepository = {
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[GamePlayerRepo] incrementWin update error:", error);
@@ -601,15 +614,19 @@ export const gamePlayerRepository = {
   /**
    * Get player data including win count
    */
-  async getPlayerWithWins(userId: string, roomId: string) {
-    const supabase = await createClient();
+  async getPlayerWithWins(
+    userId: string,
+    roomId: string,
+    supabaseClient?: any
+  ) {
+    const supabase = supabaseClient || (await createClient());
 
     const { data, error } = await supabase
       .from("game_players")
       .select("user_id, health, status, win")
       .eq("user_id", userId)
       .eq("game_room_id", roomId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[GamePlayerRepo] getPlayerWithWins error:", error);
@@ -622,8 +639,8 @@ export const gamePlayerRepository = {
   /**
    * Delete semua pemain di room saat match selesai
    */
-  async deletePlayers(roomId: string) {
-    const supabase = await createClient();
+  async deletePlayers(roomId: string, supabaseClient?: any) {
+    const supabase = supabaseClient || (await createClient());
 
     const { error } = await supabase
       .from("game_players")

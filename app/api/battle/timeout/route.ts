@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
     await roundManagementService.handleTimeout(
       battle_room_id,
       game_room_id,
-      round_number
+      round_number,
+      supabase
     );
 
     console.log(`[API] Timeout handled for battle room ${battle_room_id}`);

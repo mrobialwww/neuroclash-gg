@@ -1,3 +1,5 @@
+import { getWIBNow } from "@/lib/utils/dateUtils";
+
 export const userRepository = {
   async getUserWithActiveCharacter(userId: string) {
     // Dynamic import to avoid bundling server-only supabase/server on the client
@@ -37,7 +39,7 @@ export const userRepository = {
 
     const { data, error } = await supabase
       .from("users")
-      .update({ username, updated_at: new Date().toISOString() })
+      .update({ username, updated_at: getWIBNow() })
       .eq("user_id", userId)
       .select()
       .maybeSingle();

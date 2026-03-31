@@ -179,8 +179,9 @@ export const useStarboxStore = create<StarboxState>()(
           const totalPlayer = activeParticipants.length || 1;
 
           // Urutan giliran Starbox = HP terendah memilih lebih dahulu (comeback mechanic).
-          // `isMe` ditandai di sini agar UI bisa membedakan kartu pemain sendiri.
+          // Hanya pemain yang masih hidup yang bisa memilih.
           activeParticipants = activeParticipants
+            .filter((p: any) => p.health > 0)
             .sort((a, b) => (a.health ?? 100) - (b.health ?? 100))
             .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
 

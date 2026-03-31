@@ -24,14 +24,20 @@ export async function GET(request: NextRequest) {
       `[API] Checking round status for game ${game_room_id}, round ${round_number}`
     );
 
+    const supabase = await (
+      await import("@/lib/supabase/server")
+    ).createClient();
+
     const allFinished = await battleRoomService.areAllBattlesFinished(
       game_room_id,
-      round_number
+      round_number,
+      supabase
     );
 
     // Check game end condition (only 1 player alive or all rounds completed)
     const shouldEndGame = await roundManagementService.checkGameEndCondition(
-      game_room_id
+      game_room_id,
+      supabase
     );
 
     return NextResponse.json({

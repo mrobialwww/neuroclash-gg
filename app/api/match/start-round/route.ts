@@ -124,23 +124,54 @@ export async function POST(request: NextRequest) {
       }
 
       // No existing battle rooms found, wait a bit and retry
+      // We wait longer (2.5s) to give the primary request time to finish generation
       console.log(
-        `[API][${requestId}] ⚠️ No existing battle rooms found, waiting 1s and retrying...`
+        `[API][${requestId}] ⚠️ No existing battle rooms found, waiting 2.5s and retrying...`
       );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
 
       // Retry lock acquisition
-      const retryResult = tryAcquireLock(lockKey, requestId);
+      let retryResult = tryAcquireLock(lockKey, requestId);
+
+      // If still not acquired, try one more time checking for rooms (idempotency)
       if (!retryResult.acquired) {
         console.log(
-          `[API][${requestId}] ❌ Still cannot acquire lock, giving up`
+          `[API][${requestId}] ⚠️ Retry 1 failed, checking for rooms again...`
+        );
+        const { data: roomsAfterWait } = await supabase
+          .from("battle_rooms")
+          .select("*")
+          .eq("game_room_id", game_room_id)
+          .eq("round_number", round_number);
+
+        if (roomsAfterWait && roomsAfterWait.length > 0) {
+          return NextResponse.json({
+            success: true,
+            battleRooms: roomsAfterWait,
+            message: `Round ${round_number} already started (returned existing battle rooms after wait)`,
+            fromLockWait: true,
+          });
+        }
+
+        // Final wait and retry
+        console.log(
+          `[API][${requestId}] ⚠️ Still no rooms, final wait 2.5s...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        retryResult = tryAcquireLock(lockKey, requestId);
+      }
+
+      if (!retryResult.acquired) {
+        console.log(
+          `[API][${requestId}] ❌ Still cannot acquire lock after retries, giving up`
         );
         return NextResponse.json(
           {
             error: "Cannot acquire lock for battle room generation",
-            message: "Another request is currently generating battle rooms",
+            message:
+              "Another request is currently generating battle rooms. Please wait a moment and refresh.",
           },
-          { status: 429 }
+          { status: 423 } // Use 423 Locked instead of 429
         );
       }
     }
@@ -230,10 +261,15 @@ export async function POST(request: NextRequest) {
 
       let battleRooms;
       try {
+        const supabase = await (
+          await import("@/lib/supabase/server")
+        ).createClient();
+
         battleRooms = await roundManagementService.startRound(
           game_room_id,
           round_number,
-          [currentQuestion]
+          [currentQuestion],
+          supabase
         );
       } catch (roundError) {
         console.error(
