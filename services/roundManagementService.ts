@@ -39,9 +39,7 @@ export const roundManagementService = {
     );
 
     if (battleRooms.length === 0) {
-      console.log(
-        `[RoundService] No battle rooms generated - checking if game should end`
-      );
+      console.log(`[RoundService] No battle rooms generated - checking if game should end`);
       // Check if game should end
       const shouldEnd = await this.checkGameEndCondition(
         gameId,
@@ -54,9 +52,7 @@ export const roundManagementService = {
     }
 
     // 2. Update battle room status to 'ongoing'
-    console.log(
-      `[RoundService] Updating ${battleRooms.length} battle rooms to 'ongoing'`
-    );
+    console.log(`[RoundService] Updating ${battleRooms.length} battle rooms to 'ongoing'`);
     for (const battleRoom of battleRooms) {
       await battleRoomService.updateBattleRoomStatus(
         battleRoom.battle_room_id,
@@ -102,15 +98,9 @@ export const roundManagementService = {
       console.log(`[RoundService] Created new match_rounds`);
     }
 
-    console.log(
-      `[RoundService] ==================================================`
-    );
-    console.log(
-      `[RoundService] Round ${roundNumber} started with ${battleRooms.length} battle rooms`
-    );
-    console.log(
-      `[RoundService] ==================================================`
-    );
+    console.log(`[RoundService] ==================================================`);
+    console.log(`[RoundService] Round ${roundNumber} started with ${battleRooms.length} battle rooms`);
+    console.log(`[RoundService] ==================================================`);
 
     return battleRooms;
   },
@@ -137,18 +127,10 @@ export const roundManagementService = {
     new_health: number;
     message: string;
   }> {
-    console.log(
-      `[RoundService] ==================================================`
-    );
-    console.log(
-      `[RoundService] Processing answer from user ${userId} in battle room ${battleRoomId}`
-    );
-    console.log(
-      `[RoundService] Answer ID: ${answerId}, Game ID: ${gameId}, Round: ${roundNumber}`
-    );
-    console.log(
-      `[RoundService] ==================================================`
-    );
+    console.log(`[RoundService] ==================================================`);
+    console.log(`[RoundService] Processing answer from user ${userId} in battle room ${battleRoomId}`);
+    console.log(`[RoundService] Answer ID: ${answerId}, Game ID: ${gameId}, Round: ${roundNumber}`);
+    console.log(`[RoundService] ==================================================`);
 
     const supabase = supabaseClient || (await createClient());
 
@@ -171,10 +153,7 @@ export const roundManagementService = {
     }
 
     // 2. Check if someone already answered
-    if (
-      battleRoom.first_answer_user_id &&
-      battleRoom.first_answer_user_id !== userId
-    ) {
+    if (battleRoom.first_answer_user_id && battleRoom.first_answer_user_id !== userId) {
       return {
         success: false,
         is_correct: false,
@@ -205,9 +184,7 @@ export const roundManagementService = {
         message: "Answer not found",
       };
     }
-    console.log(
-      `[RoundService] ✅ Answer found: is_correct=${answerDetail.is_correct}`
-    );
+    console.log(`[RoundService] ✅ Answer found: is_correct=${answerDetail.is_correct}`);
 
     // 4. Record the answer
     console.log(`[RoundService] Step 3: Recording answer to user_answers...`);
@@ -222,9 +199,7 @@ export const roundManagementService = {
 
     // 5. Check if this is the first answer BEFORE recording (for win tracking)
     const isFirstAnswer = !battleRoom.first_answer_user_id;
-    console.log(
-      `[RoundService] isFirstAnswer check: ${isFirstAnswer}, current first_answer_user_id: ${battleRoom.first_answer_user_id}`
-    );
+    console.log(`[RoundService] isFirstAnswer check: ${isFirstAnswer}, current first_answer_user_id: ${battleRoom.first_answer_user_id}`);
 
     // 6. If this is the first answer, record it in battle room
     if (isFirstAnswer) {
@@ -257,9 +232,7 @@ export const roundManagementService = {
       .maybeSingle();
 
     if (!questionData) {
-      console.error(
-        `[RoundService] ❌ Question not found for question_id: ${answerDetail.question_id}`
-      );
+      console.error(`[RoundService] ❌ Question not found for question_id: ${answerDetail.question_id}`);
       return {
         success: false,
         is_correct: answerDetail.is_correct,
@@ -289,9 +262,7 @@ export const roundManagementService = {
       };
     }
 
-    console.log(
-      `[RoundService] Question order: ${questionData.question_order}, Total rounds: ${gameRoomData.total_round}`
-    );
+    console.log(`[RoundService] Question order: ${questionData.question_order}, Total rounds: ${gameRoomData.total_round}`);
 
     const currentOrder = questionData.question_order;
     const totalQuestions = gameRoomData.total_round || 20;
@@ -313,11 +284,18 @@ export const roundManagementService = {
 
     if (answerDetail.is_correct) {
       // Correct answer - damage to opponents in same battle room
-      const opponents = [
-        battleRoom.player1_id,
-        battleRoom.player2_id,
-        battleRoom.player3_id,
-      ].filter((id): id is string => id !== null && id !== userId);
+      const opponents = [battleRoom.player1_id, battleRoom.player2_id, battleRoom.player3_id].filter(
+        (id): id is string => id !== null && id !== userId,
+      );
+
+      // Jika user punya Attack buff (ability_id=2), tambah 10 kepada basenya
+      const baseOffensiveDamage = damage + (myBuff === 2 ? 10 : 0);
+
+      // [BARU] Konsumsi buff Attack jika digunakan
+      if (myBuff === 2) {
+        await abilityPlayerRepository.userAttackorShieldAbility(gameId, userId, 2);
+        console.log(`[RoundService] User ${userId.substring(0, 8)} consumed Attack Buff`);
+      }
 
       // Jika user punya Attack buff (ability_id=2), tambah 10 kepada basenya
       const baseOffensiveDamage = damage + (myBuff === 2 ? 10 : 0);
@@ -375,10 +353,7 @@ export const roundManagementService = {
             opponentState.health - finalOpponentDamage
           );
           console.log(
-            `[RoundService] Applying damage to opponent ${opponentId.substring(
-              0,
-              8
-            )}: ${
+            `[RoundService] Applying damage to opponent ${opponentId.substring(0, 8)}: ${
               opponentState.health
             } -> ${healthAfterDamage}, round=${roundNumber} (OffensiveDamage: ${baseOffensiveDamage}, OpponentBuff: ${opponentBuff})`
           );
@@ -389,6 +364,7 @@ export const roundManagementService = {
             roundNumber,
             supabase
           );
+          await matchRepository.updateHealth(opponentId, gameId, healthAfterDamage, roundNumber);
         }
       }
       damageApplied = opponents.length > 0;
@@ -441,6 +417,7 @@ export const roundManagementService = {
           roundNumber,
           supabase
         );
+        await matchRepository.updateHealth(userId, gameId, newHealth, roundNumber);
         damageApplied = true;
       }
     }
@@ -460,9 +437,7 @@ export const roundManagementService = {
     );
 
     if (allFinished) {
-      console.log(
-        `[RoundService] All battle rooms finished for round ${roundNumber}`
-      );
+      console.log(`[RoundService] All battle rooms finished for round ${roundNumber}`);
 
       // Update match_rounds
       await supabase
@@ -534,42 +509,28 @@ export const roundManagementService = {
       .single();
 
     if (!questionData) {
-      console.error(
-        `[RoundService] ❌ Question not found for question_id: ${battleRoom.question_id}`
-      );
+      console.error(`[RoundService] ❌ Question not found for question_id: ${battleRoom.question_id}`);
       return;
     }
 
     // Fetch game_room separately to get total_round
-    const { data: gameRoomData } = await supabase
-      .from("game_rooms")
-      .select("total_round")
-      .eq("game_room_id", questionData.game_room_id)
-      .single();
+    const { data: gameRoomData } = await supabase.from("game_rooms").select("total_round").eq("game_room_id", questionData.game_room_id).single();
 
     if (!gameRoomData) {
-      console.error(
-        `[RoundService] ❌ Game room not found for game_room_id: ${questionData.game_room_id}`
-      );
+      console.error(`[RoundService] ❌ Game room not found for game_room_id: ${questionData.game_room_id}`);
       return;
     }
 
     const currentOrder = questionData.question_order;
     const totalQuestions = gameRoomData.total_round || 20;
 
-    console.log(
-      `[RoundService] Timeout - Question order: ${currentOrder}, Total rounds: ${totalQuestions}`
-    );
+    console.log(`[RoundService] Timeout - Question order: ${currentOrder}, Total rounds: ${totalQuestions}`);
 
     // Calculate damage
     const damage = this.calculateDamage(currentOrder, totalQuestions);
 
     // Apply damage to all players in the battle room
-    const players = [
-      battleRoom.player1_id,
-      battleRoom.player2_id,
-      battleRoom.player3_id,
-    ].filter((id): id is string => id !== null);
+    const players = [battleRoom.player1_id, battleRoom.player2_id, battleRoom.player3_id].filter((id): id is string => id !== null);
 
     for (const playerId of players) {
       const player = await matchRepository.getParticipants(gameId, supabase);
@@ -601,10 +562,7 @@ export const roundManagementService = {
 
         const healthAfterDamage = Math.max(0, playerState.health - finalDamage);
         console.log(
-          `[RoundService] [Timeout] Applying damage to ${playerId.substring(
-            0,
-            8
-          )}: ${
+          `[RoundService] [Timeout] Applying damage to ${playerId.substring(0, 8)}: ${
             playerState.health
           } -> ${healthAfterDamage}, round=${roundNumber}`
         );
@@ -615,6 +573,7 @@ export const roundManagementService = {
           roundNumber,
           supabase
         );
+        await matchRepository.updateHealth(playerId, gameId, healthAfterDamage, roundNumber);
       }
     }
 
@@ -629,9 +588,7 @@ export const roundManagementService = {
     );
 
     if (allFinished) {
-      console.log(
-        `[RoundService] All battle rooms finished (with timeout) for round ${roundNumber}`
-      );
+      console.log(`[RoundService] All battle rooms finished (with timeout) for round ${roundNumber}`);
 
       // Update match_rounds
       await supabase
@@ -684,39 +641,22 @@ export const roundManagementService = {
     const supabase = supabaseClient || (await createClient());
 
     // 1. Check alive players
-    const { data: players } = await supabase
-      .from("game_players")
-      .select("user_id, health, status")
-      .eq("game_room_id", gameId);
+    const { data: players } = await supabase.from("game_players").select("user_id, health, status").eq("game_room_id", gameId);
 
-    const alivePlayers = (players || []).filter(
-      (p: any) => p.health > 0 && p.status === "alive"
-    );
+    const alivePlayers = (players || []).filter((p: any) => p.health > 0 && p.status === "alive");
 
-    console.log(
-      `[RoundService] Checking game end condition - alive players: ${
-        alivePlayers.length
-      }, total players: ${players?.length || 0}`
-    );
+    console.log(`[RoundService] Checking game end condition - alive players: ${alivePlayers.length}, total players: ${players?.length || 0}`);
 
     if (alivePlayers.length <= 1) {
-      console.log(
-        `[RoundService] Game should end - only ${alivePlayers.length} players alive`
-      );
+      console.log(`[RoundService] Game should end - only ${alivePlayers.length} players alive`);
       return true;
     }
 
     // 2. Check if all rounds completed
-    const { data: room } = await supabase
-      .from("game_rooms")
-      .select("total_round")
-      .eq("game_room_id", gameId)
-      .single();
+    const { data: room } = await supabase.from("game_rooms").select("total_round").eq("game_room_id", gameId).single();
 
     if (!room) {
-      console.error(
-        `[RoundService] Game room not found for game_id: ${gameId}`
-      );
+      console.error(`[RoundService] Game room not found for game_id: ${gameId}`);
       return false;
     }
 
@@ -730,16 +670,12 @@ export const roundManagementService = {
 
     if (lastRound && lastRound.round_number >= room.total_round) {
       console.log(
-        `[RoundService] Game should end - all ${room.total_round} rounds completed (current: ${lastRound.round_number}/${room.total_round})`
+        `[RoundService] Game should end - all ${room.total_round} rounds completed (current: ${lastRound.round_number}/${room.total_round})`,
       );
       return true;
     }
 
-    console.log(
-      `[RoundService] Game should NOT end - continuing to round ${
-        lastRound ? lastRound.round_number + 1 : 2
-      }`
-    );
+    console.log(`[RoundService] Game should NOT end - continuing to round ${lastRound ? lastRound.round_number + 1 : 2}`);
 
     return false;
   },
@@ -760,9 +696,7 @@ export const roundManagementService = {
       `[RoundService] ==================================================`
     );
     console.log(`[RoundService] Ending game ${gameId}`);
-    console.log(
-      `[RoundService] ==================================================`
-    );
+    console.log(`[RoundService] ==================================================`);
 
     const supabase = supabaseClient || (await createClient());
 
@@ -799,13 +733,9 @@ export const roundManagementService = {
 
     // NOTE: game_players is deliberately NOT deleted here so the endgame stats page can fetch players.
 
-    console.log(
-      `[RoundService] ==================================================`
-    );
+    console.log(`[RoundService] ==================================================`);
     console.log(`[RoundService] Game ${gameId} ended successfully`);
-    console.log(
-      `[RoundService] ==================================================`
-    );
+    console.log(`[RoundService] ==================================================`);
   },
 
   /**
@@ -830,8 +760,6 @@ export const roundManagementService = {
       damage_applied: false,
     });
 
-    console.log(
-      `[RoundService] Prepared next round ${nextRoundNumber} for game ${gameId}`
-    );
+    console.log(`[RoundService] Prepared next round ${nextRoundNumber} for game ${gameId}`);
   },
 };
