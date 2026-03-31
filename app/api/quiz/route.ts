@@ -90,7 +90,10 @@ export async function POST(req: Request) {
     };
 
     const targetCount = round + Math.ceil(round / 10);
-    const abilityMaterials = Math.round(0.2 * (maxPlayer + maxPlayer / 5));
+    const abilityMaterials = Math.max(
+      2,
+      Math.round(0.2 * (maxPlayer + maxPlayer / 5))
+    );
 
     // Helper function for retry logic with exponential backoff
     const generateWithRetry = async (params: any, retries = 3) => {

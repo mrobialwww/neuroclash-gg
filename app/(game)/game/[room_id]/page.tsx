@@ -45,6 +45,7 @@ export default function GamePage() {
     trophyBoost: number;
     survivalTime: string;
     isWinner: boolean;
+    deathRound?: number;
   } | null>(null);
   const [hasShownOverlay, setHasShownOverlay] = useState(false);
   const [isLoadingEliminationData, setIsLoadingEliminationData] =
@@ -175,6 +176,7 @@ export default function GamePage() {
           trophyBoost: myResult.trophyBoost || 0,
           survivalTime: myResult.survivalTime || survivalTime,
           isWinner: myResult.placement === 1,
+          deathRound: myResult.deathRound,
         });
 
         setShowEliminationOverlay(true);
@@ -228,6 +230,7 @@ export default function GamePage() {
         trophyBoost: myResult.trophyBoost || 0,
         survivalTime: myResult.survivalTime || survivalTime,
         isWinner: myResult.placement === 1,
+        deathRound: myResult.deathRound,
       });
     } catch (err) {
       console.error("Error fetching end game data:", err);
@@ -455,7 +458,7 @@ export default function GamePage() {
                 : `Pertandingan telah berakhir!`}
             </p>
             <p className="text-white/70 text-sm md:text-base font-medium">
-              Kamu telah menyelesaikan semua {totalQuestions ?? currentOrder - 1} soal.
+              Kamu telah menyelesaikan {eliminationData?.deathRound ?? totalQuestions ?? currentOrder} soal.
             </p>
           </div>
 

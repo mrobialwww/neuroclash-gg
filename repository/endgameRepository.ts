@@ -14,7 +14,7 @@ export const endgameRepository = {
     return supabase
       .from("game_players")
       .select(
-        "user_id, health, status, win, updated_at, users!inner(username, total_trophy)"
+        "user_id, health, status, win, created_at, updated_at, users!inner(username, total_trophy)"
       )
       .eq("game_room_id", roomId);
   },

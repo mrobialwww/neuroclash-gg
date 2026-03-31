@@ -61,7 +61,7 @@ Follow these steps to run the NeuroClash GG platform locally on your machine.
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/your-username/neuroclash-gg.git
+   git clone https://github.com/mrobialwww/neuroclash-gg.git
    cd neuroclash-gg
    ```
 

@@ -157,16 +157,30 @@ export const endgameService = {
 
       // Calculate win/loss based on game_players record (round wins) for consistency
       let winCount = p.win || 0;
+
+      // SOLO MODE FALLBACK: If win is 0 and it's a solo game, calculate from correct answers
+      if (winCount === 0 && totalPlayers === 1) {
+        winCount = pAnswers.filter((a: any) => a.answers?.is_correct).length;
+        console.log(
+          `[EndgameService] Solo player win calculation: ${winCount}/${N}`
+        );
+      }
+
       let loseCount = Math.max(0, N - winCount);
 
-      // Use earliest match_round as more accurate start time if possible
+      // Start of match: preference order:
+      // 1. created_at of round 1 (most accurate for game board interaction)
+      // 2. created_at of the game_room (when lobby was ready)
+      // 3. created_at of the game_player record (when player joined or match was initialized)
+      // 4. updated_at of the game_room (last fallback)
       const matchStart = parseDBDate(
         earlyRound?.created_at ||
-          gameRoomData?.updated_at ||
           gameRoomData?.created_at ||
-          p.created_at
+          p.created_at ||
+          gameRoomData?.updated_at
       );
 
+      // End time logic:
       // If player is still alive, survival time is until the room finished
       const isRoomFinished = gameRoomData?.room_status === "finished";
       const matchEnd =
@@ -250,6 +264,7 @@ export const endgameService = {
       console.log(
         `[EndgameService] Calculating rewards for ${p.username}: Rank=${Rank}, Wins=${p.win}, N=${N}, totalPlayers=${totalPlayers}`
       );
+
       const { trophyWon, coinsEarned } = calculateRewards({
         rank: Rank,
         totalPlayers,
@@ -270,7 +285,7 @@ export const endgameService = {
         coinsEarned,
         health: p.health,
         isAlive: p.status === "alive",
-        deathRound: p.deathRound === 999 ? 0 : p.deathRound,
+        deathRound: p.deathRound === 999 ? N : p.deathRound,
         answerTime: p.answerCount,
         survivalTime: p.survivalTime,
         win: p.win,

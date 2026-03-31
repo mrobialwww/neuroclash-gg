@@ -904,11 +904,18 @@ export const battleRoomService = {
       })
       .eq("battle_room_id", battleRoomId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[BattleRoomService] Error updating battle room:", error);
       throw error;
+    }
+
+    if (!data) {
+      console.warn(
+        `[BattleRoomService] WARNING: Battle room ${battleRoomId} not found when trying to update to ${status}`
+      );
+      return;
     }
 
     console.log(
