@@ -1,79 +1,69 @@
-<CodeContent>
 # NeuroClash GG 🎮📚
 
-> **FICPACT CUP 2026 Web Development Competition**
->
-> **Theme:** "Ficpact Playground"
-> **Sub-Theme:** Interactive Edutainment
->
-> **Created by:** Team Ditolak Magang
-
-NeuroClash GG is an innovative, web-based interactive edutainment platform that transforms conventional learning into a highly engaging, competitive gaming experience. Targeted specifically at elementary to high school students (SD-SMA), it combines the accessibility of modern quiz platforms with the thrilling mechanics of an auto-battler game. Battle with your knowledge, deal damage to opponents, and emerge victorious!
+**NeuroClash GG** is a web-based, gamified educational quiz platform that combines the accessibility of modern quiz applications with the competitive mechanics of an auto-battler game (like Magic Chess). Created by **Team Ditolak Magang**, it serves as an exciting, engaging learning experience and a practical tool for students to evaluate their knowledge playfully.
 
 ---
 
-## 🌟 Core Concept
+## 🎯 Executive Summary
 
-NeuroClash GG is designed to make learning highly addictive and exciting. By simply answering educational materials, students engage in epic real-time battles supporting 4 to 40 players simultaneously. The faster and more accurately you answer, the more damage you deal to your opponents' HP. With built-in comeback mechanics and skill cards, the competition remains intense from start to finish!
+The platform's core innovation lies in utilizing AI to automatically generate questions from user-uploaded materials or available templates. To boost student engagement, it introduces a competitive game loop complete with Solo and Multiplayer modes, Real-time 1v1 Battles, HP systems, Damage calculation, and Comeback mechanics (StarBox).
 
 ## ✨ Key Features
 
-- **🤖 AI-Powered Question Generator:** Teachers or hosts can instantly generate a structured JSON quiz with multiple choice questions, answers, and difficulty levels simply by uploading a document (e.g., PDF) or picking a preset topic. Powered by the Gemini API!
-- **⚔️ Real-Time Massive Multiplayer (4 - 40 Players):** Test your intellect against multiple opponents in real-time. Experience the adrenaline of an auto-battler combined with an educational quiz.
-- **🛡️ Dynamic Game Loop (HP & Damage):** Speed and accuracy matter. Answering correctly faster than your opponent deals raw damage to their Health Points (HP). If both answer incorrectly, both take damage.
-- **🎁 The StarBox (Comeback Mechanic):** Falling behind? Don't worry! Every few rounds (e.g., every 5th round), the player with the lowest HP gets a priority pick on powerful items (e.g., Knowledge Book, Healing Potion, or Strong Shield) to turn the tide of the battle.
-- **🤖 Solo Mode (vs. Bot):** No opponents online? Play offline learning exercises by challenging our highly adaptive bot, _Prof. Bubu_, to sharpen your skills independently.
-- **📊 Comprehensive Dashboard & Statistics:** Track your Total Matches, Win Rate, Average Rank, First Places, and showcase your collection of customizable 2D avatars.
-
-## 🛠️ Tech Stack
-
-Built with a modern, high-performance, and battle-tested ecosystem to ensure smooth, real-time gaming capabilities:
-
-- **Frontend:** [Next.js 14+](https://nextjs.org/) (App Router), React, TypeScript
-- **Styling:** Tailwind CSS (Focused on responsive layouting, `isolate`, and GPU-accelerated micro-animations for chaotic battle phases)
-- **State Management:** Zustand
-- **Backend & Database:** [Supabase](https://supabase.com/) (PostgreSQL, Auth, Storage)
-- **Real-Time Engine:** Supabase Realtime / WebSockets
-- **AI Integration:** Google Gemini API
+- **Arena & Material Customization**: Hosts can choose default system materials (e.g., "Basic Programming") or upload their own PDF documents. They can customize room parameters such as the maximum number of players (15, 20, 40) and the number of questions.
+- **AI Question Generator**: Automatically processes selected PDFs or templates using the Gemini API to generate structured multiple-choice questions (JSON format), complete with answer keys and difficulty levels.
+- **Versatile Game Modes**:
+  - **Multiplayer Mode (1v1 / 1v1v1)**: Real-time matchmaking against other students.
+  - **Solo Mode**: Play offline or practice independently against our adaptive system bot, *Prof. Bubu*.
+- **Live Dashboard & Account System**: Features a real-time leaderboard tracking remaining HP and a 2D Avatar selection screen before matches.
+- **Interactive Battle Phase**: Speed and accuracy matter! The fastest player to answer correctly deals damage to opponents. Answer incorrectly, and you receive damage.
+- **StarBox (Comeback Mechanic)**: Appears at specific intervals (e.g., every 5 rounds). The player with the lowest HP gets priority to pick powerful game-changing items like the *Knowledge Book*, *Healing Potion*, or *Strong Shield*.
 
 ## 🏗️ Architecture
 
 NeuroClash GG strictly adheres to the **Route-Repository-Service (RRS)** Clean Architecture pattern to ensure maintainability, testability, and separation of concerns.
 
-- **API Routes Layer (`/app/api`):** HTTP request handlers. Strictly no direct DB queries are executed here.
-- **Service Layer (`/services`):** Core business logic, battle damage algorithms, AI prompting, and result synthesis.
-- **Repository Layer (`/repositories`):** Abstracted database interactions and raw queries utilizing the Supabase client.
-- **State Layer (`/store`):** Client-side Zustand stores handling session data and real-time battle UI states.
+- **API Routes Layer (`/app/api`)**: HTTP request handlers. Strictly no direct DB queries are executed here.
+- **Service Layer (`/services`)**: Core business logic, score/damage calculation, AI integration, and data processing.
+- **Repository Layer (`/repositories`)**: Abstracted database interactions and raw queries utilizing the Supabase client.
+- **State Layer (`/store`)**: Client-side Zustand stores handling session data and real-time UI states.
 
-## 🚀 Getting Started
+## 🛠️ Tech Stack
 
-Follow these steps to run the NeuroClash GG platform locally on your machine.
+Built with a high-performance modern ecosystem ensuring smooth gameplay and real-time synchronization:
+
+- **Frontend**: Next.js 14+ (App Router), TypeScript, React.js
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Backend & Database**: Supabase (PostgreSQL, Auth, Storage), Node.js (Route-Repository-Service architecture)
+- **Real-time Engine**: Supabase Realtime / WebSockets (for timer synchronization and 1v1 damage)
+- **AI Integration**: Google Gemini API (PDF extraction and JSON-based question generation)
+
+## 🚀 Installation & Usage
+
+Follow these steps to set up and run NeuroClash GG locally.
 
 ### Prerequisites
-
 - Node.js (v18+)
 - npm, yarn, or bun
 - A Supabase Project
 - Google Gemini API Key
 
-### Installation
+### Installation Steps
 
 1. **Clone the repository:**
-
    ```bash
    git clone https://github.com/mrobialwww/neuroclash-gg.git
    cd neuroclash-gg
    ```
 
 2. **Install dependencies:**
-
    ```bash
    npm install
    ```
 
 3. **Set up Environment Variables:**
-   Create a `.env` or `.env.local` file in the root directory and add the following keys:
-
+   Create a `.env.local` file in the root directory and add your keys:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -81,24 +71,41 @@ Follow these steps to run the NeuroClash GG platform locally on your machine.
    GEMINI_API_KEY=your_gemini_api_key
    ```
 
-   _(Note: Never commit your `.env` files to version control!)_
+   *(Note: Never commit your `.env` files to version control!)*
 
 4. **Run the development server:**
-
    ```bash
    npm run dev
    ```
 
 5. **Open the App:**
-   Navigate to [http://localhost:3000](http://localhost:3000) in your web browser.
+   Visit [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 📜 Coding Standards & Best Practices
+## ➡️ User Flow
 
-- **Strict TypeScript:** We enforce absolute strict mode, explicit return types, and unified interfaces. The `any` type is strictly prohibited.
-- **Visual Protection:** Uses container isolation (`isolate overflow-hidden relative`) to prevent visual glitches during intense gameplay rendering.
-- **Deployment:** NeuroClash GG is fully optimized for Vercel deployment, utilizing caching mechanisms and dynamic loading for heavy battle-arena components.
+### Host Flow
+`Login` → `Create Arena` → `Choose Default Material OR Upload PDF` → `Set Max Players & Questions` → `Click Generate AI` → `Share Room Code` → `Start Quiz`
+
+### Student Flow (Multiplayer)
+`Login` → `Enter Room Code` → `Select Avatar` → `Enter Waiting Room` → `Quiz Starts` → `Warm-up Phase` → `1v1 Battle Phase` → `StarBox Phase` → `Last Man Standing`
+
+### Student Flow (Solo Mode)
+`Choose Solo Mode` → `Select Material/Generate Questions` → `Select Avatar` → `Battle vs Bot` → `StarBox Phase` → `Finish Game`
+
+## 🤝 Contributing
+
+We welcome contributions to make NeuroClash GG even better!
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+Please ensure your code strictly follows our **Route-Repository-Service (RRS)** architecture and TypeScript strict mode guidelines.
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-
-_Made with ❤️ by Tim Ditolak Magang for FICPACT CUP 2026. Coding Your Imagination, Creating Real Impact._
-</CodeContent>
