@@ -57,10 +57,7 @@ export const matchRepository = {
     supabaseClient?: any
   ) {
     console.log(
-      `[MatchRepo] updateHealth called: userId=${userId.substring(
-        0,
-        8
-      )}, roomId=${roomId.substring(
+      `[MatchRepo] updateHealth called: userId=${userId.substring(0, 8)}, roomId=${roomId.substring(
         0,
         8
       )}, health=${newHealth}, round=${roundNumber}`
@@ -72,6 +69,7 @@ export const matchRepository = {
       roundNumber,
       supabaseClient
     );
+    return gamePlayerRepository.updateHealth(userId, roomId, newHealth, roundNumber);
   },
 
   /**
@@ -121,7 +119,7 @@ export const matchRepository = {
           is_correct,
           question_id
         )
-      `
+      `,
       )
       .eq("answer.question_id", questionId)
       .order("created_at", { ascending: true });
@@ -172,18 +170,9 @@ export const matchRepository = {
    * Memberikan statistik akhir dari player ketika sudah tereliminasi dari room
    * Terdapat pengecekan apakah user memiliki ability boost coin/trophy
    */
-  async playerElimination(
-    roomId: string,
-    userId: string,
-    totalTrophy: number,
-    totalCoin: number,
-    placement: number
-  ) {
+  async playerElimination(roomId: string, userId: string, totalTrophy: number, totalCoin: number, placement: number) {
     const supabase = createClient();
-    const abilities = await abilityPlayerRepository.getMyAbilities(
-      roomId,
-      userId
-    );
+    const abilities = await abilityPlayerRepository.getMyAbilities(roomId, userId);
 
     // Cek apakah user memiliki ability "PIALA KEJAYAAN"
     const ability5 = abilities?.find((a) => a.ability_id === 5);
