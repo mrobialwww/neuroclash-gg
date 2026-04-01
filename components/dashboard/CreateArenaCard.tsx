@@ -382,3 +382,30 @@ export function CreateArenaCard() {
     </>
   );
 }
+
+export function CreateArenaCardSkeleton() {
+  return (
+    <div className="relative flex h-full min-h-[220px] w-full flex-col justify-center overflow-hidden rounded-3xl bg-[#4D70E8]/80 p-6 shadow-sm md:min-h-[240px] lg:p-8">
+      {/* Background Decor Placeholder */}
+      <div className="absolute right-0 top-0 h-full w-[40%] bg-linear-to-l from-white/10 to-transparent pointer-events-none" />
+
+      {/* Content Skeleton */}
+      <div className="relative z-30 flex w-[60%] flex-col items-start pl-1 sm:w-[55%] md:w-[60%] md:pl-2 lg:w-[50%]">
+        {/* Title */}
+        <div className="mb-2 md:mb-4 h-8 md:h-12 w-full max-w-[200px] rounded-md bg-white/20 animate-pulse" />
+        
+        {/* Description */}
+        <div className="mb-4 md:mb-8 h-4 md:h-5 w-full max-w-[220px] md:max-w-[280px] rounded-md bg-white/20 animate-pulse" />
+        <div className="mb-4 md:mb-8 -mt-4 md:-mt-6 h-4 md:h-5 w-3/4 max-w-[180px] rounded-md bg-white/20 animate-pulse" />
+        
+        {/* Button */}
+        <div className="w-32 md:w-40 h-10 md:h-12 rounded-full bg-white/30 animate-pulse" />
+      </div>
+
+      {/* Hero Illustration Placeholder */}
+      <div className="pointer-events-none absolute right-[5%] top-1/2 z-20 flex h-[70%] w-[40%] md:w-[35%] -translate-y-1/2 items-center justify-center">
+        <div className="h-full w-full rounded-[40%] bg-white/10 animate-pulse blur-sm" />
+      </div>
+    </div>
+  );
+}

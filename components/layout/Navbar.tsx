@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "../common/Searchbar";
-import axios from "axios";
 import { useUserStore } from "@/store/useUserStore";
 import { Suspense } from "react";
-
-import { motion } from "motion/react";
 
 interface NavbarProps {
   initialData?: {
@@ -28,6 +25,9 @@ export function Navbar({ initialData }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { coins: storeCoins, avatar: storeAvatar, username: storeUsername, isInitialized, setUserData } = useUserStore();
+
+  const [highlightStyle, setHighlightStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   // Sinkronisasi data awal dari server ke global store
   useEffect(() => {
@@ -53,7 +53,6 @@ export function Navbar({ initialData }: NavbarProps) {
           } = await supabase.auth.getUser();
 
           if (user) {
-            // Fetch user data from API to avoid importing server client
             const res = await fetch(`/api/users/${user.id}`, {
               cache: "no-store",
               credentials: "include",
@@ -63,7 +62,6 @@ export function Navbar({ initialData }: NavbarProps) {
               const userData = Array.isArray(result.data) ? result.data[0] : result.data;
 
               if (userData) {
-                // Get user's active character
                 const charRes = await fetch(`/api/user-character/${user.id}?is_used=true`, {
                   cache: "no-store",
                   credentials: "include",
@@ -95,7 +93,6 @@ export function Navbar({ initialData }: NavbarProps) {
     }
   }, [isInitialized, initialData, setUserData]);
 
-  // Gunakan data dari global store, fallback seperlunya
   const user = {
     username: storeUsername,
     coins: storeCoins,
@@ -108,6 +105,20 @@ export function Navbar({ initialData }: NavbarProps) {
     { name: "Toko", href: "/shop", icon: "/icons/shop.svg" },
     { name: "Papan Peringkat", href: "/leaderboard", icon: "/icons/chart.svg" },
   ];
+
+  useEffect(() => {
+    const idx = navLinks.findIndex((link) => link.href === pathname);
+    if (idx !== -1 && navRefs.current[idx]) {
+      const el = navRefs.current[idx]!;
+      setHighlightStyle({
+        left: el.offsetLeft,
+        width: el.offsetWidth,
+        opacity: 1,
+      });
+    } else {
+      setHighlightStyle((prev) => ({ ...prev, opacity: 0 }));
+    }
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white">
@@ -133,13 +144,14 @@ export function Navbar({ initialData }: NavbarProps) {
         </div>
 
         {/* Center: Desktop Navigation */}
-        <nav className="hidden items-center md:flex lg:gap-2">
-          {navLinks.map((link) => {
+        <nav className="relative hidden items-center md:flex lg:gap-2">
+          {navLinks.map((link, i) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
+                ref={(el) => { navRefs.current[i] = el; }}
                 className={cn(
                   "group relative flex h-full items-center gap-2 px-4 transition-all duration-300 ease-in-out",
                   isActive ? "text-[#256AF4]" : "text-[#A1A1A1] hover:text-[#555555]",
@@ -160,16 +172,18 @@ export function Navbar({ initialData }: NavbarProps) {
                   />
                 </div>
                 <span className="text-md whitespace-nowrap font-semibold transition-colors duration-300">{link.name}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="navbar-active-tab"
-                    className="absolute bottom-0 left-0 h-1 w-full bg-[#256AF4]"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
               </Link>
             );
           })}
+          {/* Active indicator */}
+          <div
+            className="absolute bottom-0 h-1 bg-[#256AF4] transition-all duration-300 ease-in-out"
+            style={{
+              left: highlightStyle.left,
+              width: highlightStyle.width,
+              opacity: highlightStyle.opacity,
+            }}
+          />
         </nav>
 
         {/* Right: User Stats */}

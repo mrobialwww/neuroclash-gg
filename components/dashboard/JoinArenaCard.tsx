@@ -134,3 +134,33 @@ export function JoinArenaCard({
     </div>
   );
 }
+
+export function JoinArenaCardSkeleton() {
+  return (
+    <div className="relative flex h-full min-h-[220px] w-full flex-col items-center justify-between overflow-hidden rounded-3xl border border-white/20 bg-[#140B29]/80 p-5 text-center shadow-[0_4px_20px_rgba(253,169,40,0.05)] md:min-h-[240px] md:p-8">
+      <div className="z-10 mb-2 flex w-full flex-col items-center">
+        {/* Title */}
+        <div className="mb-2 h-9 md:h-10 w-48 rounded-md bg-white/20 animate-pulse" />
+
+        {/* Badge image */}
+        <div className="relative z-10 mb-2 flex h-28 w-28 items-center justify-center md:h-32 md:w-32">
+          <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/20 animate-pulse" />
+        </div>
+
+        {/* Rank indicator */}
+        <div className="relative z-10 mx-auto mb-2 box-border flex w-full max-w-[320px] items-center justify-center overflow-hidden px-4">
+          <div className="relative flex h-[60px] w-full items-center justify-center rounded-lg bg-white/10 animate-pulse">
+            {/* Inner Content Skeleton */}
+            <div className="h-5 w-3/4 rounded-md bg-white/20" />
+          </div>
+        </div>
+      </div>
+
+      {/* Input & Button group */}
+      <div className="z-10 w-full max-w-sm flex gap-2">
+        <div className="h-12 flex-1 rounded-xl bg-white/10 animate-pulse" />
+        <div className="h-12 w-28 rounded-xl bg-white/10 animate-pulse" />
+      </div>
+    </div>
+  );
+}

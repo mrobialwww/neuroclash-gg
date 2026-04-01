@@ -114,3 +114,44 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
     </>
   );
 }
+
+export function GameRoomCardSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col items-center rounded-2xl border border-gray-50 bg-white p-5 pb-6 shadow-[0_4px_25px_rgba(0,0,0,0.05)]",
+        className
+      )}
+    >
+      {/* Center Icon Skeleton */}
+      <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white shadow-lg bg-gray-200 animate-pulse" />
+
+      {/* Title Skeleton */}
+      <div className="min-h-10 mb-2 mt-2 w-3/4 animate-pulse rounded-md bg-gray-200" />
+
+      {/* Progress Bar Skeleton */}
+      <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div className="h-full w-1/3 animate-pulse bg-gray-200 rounded-full" />
+      </div>
+
+      {/* Footer Stats Row Skeleton */}
+      <div className="mt-auto flex w-full items-center justify-between">
+        {/* AvatarCircles Skeleton */}
+        <div className="flex -space-x-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-[44px] w-[44px] rounded-full border-2 border-white bg-gray-200 animate-pulse"
+            />
+          ))}
+        </div>
+
+        {/* Player & round stats skeleton */}
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-8 animate-pulse rounded-md bg-gray-200" />
+          <div className="h-10 w-8 animate-pulse rounded-md bg-gray-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
