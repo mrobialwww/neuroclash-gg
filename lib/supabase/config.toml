@@ -1,0 +1,5 @@
+[auth.external.google]
+enabled = true
+client_id = "588311211317-7fc6b7r4s3jgf6smo9t2tg95e37ubl4i.apps.googleusercontent.com"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
