@@ -92,7 +92,7 @@ export const quizService = {
                         ? `dengan tingkat kesulitan ${difficulty}`
                         : ""
                 } soal pilihan ganda dari dokumen PDF ini.
-Buatkan juga materi bacaan singkat (masing-masing cukup 4-5 kalimat) sejumlah ${abilityMaterials} buah yang diambil dari intisari dokumen tersebut.
+Buatkan juga materi bacaan singkat (masing-masing cukup 3-4 kalimat) sejumlah ${abilityMaterials} buah yang diambil dari intisari dokumen tersebut.
 Kembalikan HANYA JSON murni tanpa markdown, tanpa backtick, tanpa penjelasan apapun.
 Format JSON yang harus dikembalikan:
 {
@@ -102,25 +102,25 @@ Format JSON yang harus dikembalikan:
       "order": 1,
       "question": "pertanyaan di sini",
       "options": [
-        { "key": "A", "text": "pilihan A", "is_correct": false },
-        { "key": "B", "text": "pilihan B", "is_correct": true },
-        { "key": "C", "text": "pilihan C", "is_correct": false },
-        { "key": "D", "text": "pilihan D", "is_correct": false }
-      ],
-      "explanation": "penjelasan singkat mengapa jawaban tersebut benar"
+        { "key": "A", "text": "pilihan A", "is_correct": true, "explanation": "penjelasan singkat mengapa jawaban ini benar" },
+        { "key": "B", "text": "pilihan B", "is_correct": false, "explanation": "penjelasan singkat mengapa jawaban ini salah" },
+        { "key": "C", "text": "pilihan C", "is_correct": false, "explanation": "penjelasan singkat mengapa jawaban ini salah" },
+        { "key": "D", "text": "pilihan D", "is_correct": false, "explanation": "penjelasan singkat mengapa jawaban ini salah" }
+      ]
     }
   ],
   "ability_materials" : [
     {
       "title": "judul materi bacaan",
-      "text": "isi materi bacaan singkat 4-5 kalimat yang diambil dari intisari dokumen"
+      "text": "isi materi bacaan singkat 3-4 kalimat yang diambil dari intisari dokumen"
     }
   ]
 }
 Pastikan:
 - "order" dimulai dari 1 hingga ${targetCount}
 - "is_correct" bernilai true hanya untuk 1 pilihan yang benar, sisanya false
-- "explanation" berisi penjelasan singkat 1-2 kalimat mengapa jawaban tersebut benar
+- Posisi jawaban benar (is_correct: true) harus diacak setiap soal, jangan selalu di key yang sama
+- Setiap "options" memiliki field "explanation" yang berisi penjelasan singkat 1 kalimat mengapa jawaban tersebut benar atau salah
 - Semua soal relevan dengan isi dokumen
 - "order" merepresentasikan urutan tingkat kesulitan soal dari paling mudah ke paling susah`,
                 {

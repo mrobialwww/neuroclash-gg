@@ -7,11 +7,14 @@
  */
 
 import { gamePlayersService } from "@/modules/gamePlayers/gamePlayers.service";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET({ params }: { params: Promise<{ roomId: string }> }) {
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ roomId: string }> },
+) {
     try {
         const { roomId } = await params;
 

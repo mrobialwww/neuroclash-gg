@@ -71,7 +71,11 @@ export default function EndgamePage({
             if (parts.length === 2) {
                 const mins = parseInt(parts[0]);
                 const secs = parseInt(parts[1]);
-                formattedPlayTime = `${mins} Menit ${secs} Detik`;
+                if (mins === 0 && secs === 0 && r.isAlive) {
+                    formattedPlayTime = "Bertahan";
+                } else {
+                    formattedPlayTime = `${mins} Menit ${secs} Detik`;
+                }
             } else {
                 formattedPlayTime = r.survivalTime;
             }

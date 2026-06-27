@@ -27,7 +27,8 @@ export const gameRoomRepository = {
      * Digunakan oleh Server Components — query Supabase langsung (tanpa HTTP round-trip).
      */
     async getPublicOpenRooms(): Promise<GameRoomWithPlayerCount[]> {
-        const supabase = await createClient();
+        const { createPublicClient } = await import("@/lib/supabase/public");
+        const supabase = createPublicClient();
 
         const { data, error } = await supabase
             .from("game_rooms")
@@ -469,10 +470,12 @@ export const gameRoomRepository = {
         questions: {
             question_order: number;
             question_text: string;
+            explanation?: string;
             answers?: {
                 answer_text: string;
                 is_correct: boolean;
                 key?: string;
+                explanation?: string | null;
             }[];
         }[],
     ): Promise<{ questionsInserted: number; answersInserted: number }> {
@@ -559,6 +562,7 @@ export const gameRoomRepository = {
                             answer_text: answer.answer_text,
                             is_correct: answer.is_correct === true,
                             key: answer.key,
+                            explanation: answer.explanation || null,
                         })
                         .select()
                         .single();
@@ -652,7 +656,8 @@ export const gameRoomRepository = {
                         answer_id,
                         answer_text,
                         is_correct,
-                        key
+                        key,
+                        explanation
                     )
                 `,
             )

@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { quizService } from "@/modules/quiz/quiz.service";
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ game_room_id: string }> },
-) {
+export async function POST(request: NextRequest) {
     try {
-        const { game_room_id } = await params;
-
-        // Ambil data body dari request
         const body = await request.json();
-        const { user_id, room_code } = body;
+        const { game_room_id, user_id, room_code } = body;
 
         if (!user_id) {
             return NextResponse.json(
@@ -19,7 +13,13 @@ export async function POST(
             );
         }
 
-        // Panggil service untuk validasi kode room dan registrasi participant
+        if (!game_room_id) {
+            return NextResponse.json(
+                { error: "Property 'game_room_id' wajib dikirim" },
+                { status: 400 },
+            );
+        }
+
         const joinResult = await quizService.joinRoomByCode(
             game_room_id,
             user_id,
@@ -31,14 +31,8 @@ export async function POST(
             data: joinResult,
         });
     } catch (error) {
-        console.error(
-            `API Error [POST /api/user-game/join/${await params.then(
-                (p) => p.game_room_id,
-            )}]:`,
-            error,
-        );
+        console.error(`API Error [POST /api/user-game/join-room-code]:`, error);
 
-        // Cek jika error berasal dari "Kode room tidak valid" maka set status 403 (Forbidden)
         const errorMessage =
             error instanceof Error ? error.message : "Internal Server Error";
         const statusCode = errorMessage === "Kode room tidak valid" ? 403 : 500;
