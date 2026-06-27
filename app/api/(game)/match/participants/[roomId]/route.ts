@@ -11,7 +11,10 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET({ params }: { params: Promise<{ roomId: string }> }) {
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ roomId: string }> },
+) {
     try {
         const { roomId } = await params;
 

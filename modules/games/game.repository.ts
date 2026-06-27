@@ -741,16 +741,36 @@ export const gameRoomRepository = {
      */
     async upsertNextRound(gameId: string, nextRoundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: nextRoundNumber,
-                status: "waiting",
-                all_battles_finished: false,
-                damage_applied: false,
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
+
+        // Cek apakah round sudah ada
+        const { data: existing } = await supabase
+            .from("match_rounds")
+            .select("match_round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", nextRoundNumber)
+            .maybeSingle();
+
+        const payload = {
+            game_room_id: gameId,
+            round_number: nextRoundNumber,
+            status: "waiting",
+            all_battles_finished: false,
+            damage_applied: false,
+        };
+
+        let error;
+        if (existing) {
+            // Update
+            const result = await supabase
+                .from("match_rounds")
+                .update(payload)
+                .eq("match_round_id", existing.match_round_id);
+            error = result.error;
+        } else {
+            // Insert
+            const result = await supabase.from("match_rounds").insert(payload);
+            error = result.error;
+        }
 
         if (error) {
             throw new Error(
@@ -765,17 +785,37 @@ export const gameRoomRepository = {
      */
     async activateMatchRound(gameId: string, roundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: roundNumber,
-                status: "ongoing",
-                all_battles_finished: false,
-                damage_applied: false,
-                updated_at: getWIBNow(),
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
+        
+        // Cek apakah round sudah ada
+        const { data: existing } = await supabase
+            .from("match_rounds")
+            .select("match_round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", roundNumber)
+            .maybeSingle();
+
+        const payload = {
+            game_room_id: gameId,
+            round_number: roundNumber,
+            status: "ongoing",
+            all_battles_finished: false,
+            damage_applied: false,
+            updated_at: getWIBNow(),
+        };
+
+        let error;
+        if (existing) {
+            // Update
+            const result = await supabase
+                .from("match_rounds")
+                .update(payload)
+                .eq("match_round_id", existing.match_round_id);
+            error = result.error;
+        } else {
+            // Insert
+            const result = await supabase.from("match_rounds").insert(payload);
+            error = result.error;
+        }
 
         if (error) {
             throw new Error(

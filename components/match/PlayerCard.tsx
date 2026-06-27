@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getCharacterBgColor } from "@/lib/constants/characters";
+import { SkillType } from "@/lib/constants/characters";
+import { SkillBadge } from "@/components/match/SkillBadge";
 import { cn } from "@/lib/utils/utils";
 import { MockUser as User } from "@/types/MockUser";
 
@@ -17,6 +19,10 @@ interface PlayerCardProps {
     isOpponent?: boolean;
     hideHealthBar?: boolean;
     className?: string;
+    /** Tipe skill pasif karakter (hanya untuk epic/legend) */
+    skillType?: SkillType | null;
+    /** Level skin untuk menentukan nilai skill */
+    skinLevel?: "epic" | "legend";
 }
 
 export const PlayerCard = ({
@@ -25,6 +31,8 @@ export const PlayerCard = ({
     isOpponent = false,
     hideHealthBar = false,
     className,
+    skillType = null,
+    skinLevel,
 }: PlayerCardProps) => {
     const healthPercentage = (player.health / player.maxHealth) * 100;
 
@@ -94,6 +102,15 @@ export const PlayerCard = ({
                 >
                     {player.name}
                 </h3>
+
+                {/* Skill Badge — tampil hanya untuk karakter epic/legend yang punya skill */}
+                {skillType && skinLevel && (
+                    <SkillBadge
+                        skillType={skillType}
+                        skinLevel={skinLevel}
+                        className="my-1"
+                    />
+                )}
 
                 {/* HP Bar Section - Hidden in Solo mode for opponent */}
                 {!hideHealthBar && (

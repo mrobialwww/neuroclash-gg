@@ -2,6 +2,7 @@ import { GAME_CONSTANTS } from "@/lib/game/gameConstants";
 import { battleRoomService } from "@/modules/battles/battle.service";
 import { gamePlayersService } from "@/modules/gamePlayers/gamePlayers.service";
 import { gameRoomService } from "@/modules/games/game.service";
+import { getPlayerCharacterSkill } from "@/lib/game/characterSkill";
 
 export const roundManagementService = {
     /**
@@ -212,8 +213,18 @@ export const roundManagementService = {
                 battleRoom.player3_id,
             ].filter((id): id is string => id !== null && id !== userId);
 
-            // Jika user punya Attack buff (ability_id=2), tambah 10 kepada basenya
-            const baseOffensiveDamage = damage + (myBuff === 2 ? 10 : 0);
+            // StarBox Attack buff (+10) + [SKILL] Character Damage bonus (+4 epic / +8 legend)
+            const mySkill = await getPlayerCharacterSkill(userId);
+            const characterDamageBonus =
+                mySkill?.type === "damage" ? mySkill.value : 0;
+            const baseOffensiveDamage =
+                damage + (myBuff === 2 ? 10 : 0) + characterDamageBonus;
+
+            if (characterDamageBonus > 0) {
+                console.log(
+                    `[RoundService] [Skill] User ${userId.substring(0, 8)} has Damage skill: +${characterDamageBonus} bonus damage`,
+                );
+            }
 
             // [BARU] Konsumsi buff Attack jika digunakan
             if (myBuff === 2) {
@@ -236,16 +247,30 @@ export const roundManagementService = {
                 );
                 const opponentState = opponent.find((p) => p.id === opponentId);
                 if (opponentState && opponentState.health > 0) {
-                    // [BARU] Cek apakah musuh punya Shield (ability_id=4) untuk ngeblok -20
+                    // StarBox Shield buff (-20) + [SKILL] Character Defence bonus (-4 epic / -8 legend)
                     const opponentBuff =
                         await gamePlayersService.getActiveAbilityBuff(
                             gameId,
                             opponentId,
                         );
-                    console.log(opponentBuff);
+                    const opponentSkill =
+                        await getPlayerCharacterSkill(opponentId);
+                    const characterDefenceBonus =
+                        opponentSkill?.type === "defence"
+                            ? opponentSkill.value
+                            : 0;
+
+                    if (characterDefenceBonus > 0) {
+                        console.log(
+                            `[RoundService] [Skill] Opponent ${opponentId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} damage reduction`,
+                        );
+                    }
+
                     const finalOpponentDamage = Math.max(
                         0,
-                        baseOffensiveDamage - (opponentBuff === 4 ? 20 : 0),
+                        baseOffensiveDamage -
+                            (opponentBuff === 4 ? 20 : 0) -
+                            characterDefenceBonus,
                     );
 
                     // [BARU] Konsumsi buff Shield musuh jika digunakan
@@ -273,7 +298,7 @@ export const roundManagementService = {
                             8,
                         )}: ${
                             opponentState.health
-                        } -> ${healthAfterDamage}, round=${roundNumber} (OffensiveDamage: ${baseOffensiveDamage}, OpponentBuff: ${opponentBuff})`,
+                        } -> ${healthAfterDamage}, round=${roundNumber} (OffensiveDamage: ${baseOffensiveDamage}, OpponentBuff: ${opponentBuff}, CharDefence: ${characterDefenceBonus})`,
                     );
 
                     await gamePlayersService.updateHealth(
@@ -303,10 +328,24 @@ export const roundManagementService = {
             const player = await gamePlayersService.getParticipantsList(gameId);
             const playerState = player.find((p) => p.id === userId);
             if (playerState) {
-                // [BARU] Jika user salah jawab (damage diri sendiri), tapi dia ada shield, tetap dikurangi -20
+                // StarBox Shield buff (-20) + [SKILL] Character Defence bonus (-4 epic / -8 legend)
+                const mySkillWrong = await getPlayerCharacterSkill(userId);
+                const characterDefenceBonusSelf =
+                    mySkillWrong?.type === "defence"
+                        ? mySkillWrong.value
+                        : 0;
+
+                if (characterDefenceBonusSelf > 0) {
+                    console.log(
+                        `[RoundService] [Skill] User ${userId.substring(0, 8)} has Defence skill: -${characterDefenceBonusSelf} self-damage reduction`,
+                    );
+                }
+
                 const selfDamage = Math.max(
                     0,
-                    damage - (myBuff === 4 ? 20 : 0),
+                    damage -
+                        (myBuff === 4 ? 20 : 0) -
+                        characterDefenceBonusSelf,
                 );
                 newHealth = Math.max(0, playerState.health - selfDamage);
 
@@ -331,7 +370,7 @@ export const roundManagementService = {
                         8,
                     )}: ${
                         playerState.health
-                    } -> ${newHealth}, round=${roundNumber} (SelfDamage: ${selfDamage})`,
+                    } -> ${newHealth}, round=${roundNumber} (SelfDamage: ${selfDamage}, CharDefence: ${characterDefenceBonusSelf})`,
                 );
 
                 await gamePlayersService.updateHealth(
@@ -454,15 +493,28 @@ export const roundManagementService = {
             const player = await gamePlayersService.getParticipantsList(gameId);
             const playerState = player.find((p) => p.id === playerId);
             if (playerState && playerState.health > 0) {
-                // [BARU] Seluruh player yang kena damage timeout bisa pakai shield ngeblok -20
+                // StarBox Shield buff (-20) + [SKILL] Character Defence bonus (-4 epic / -8 legend)
+                // Skill Damage TIDAK aktif saat timeout (tidak ada pemenang)
                 const playerBuff =
                     await gamePlayersService.getActiveAbilityBuff(
                         gameId,
                         playerId,
                     );
+                const playerSkill = await getPlayerCharacterSkill(playerId);
+                const characterDefenceBonus =
+                    playerSkill?.type === "defence" ? playerSkill.value : 0;
+
+                if (characterDefenceBonus > 0) {
+                    console.log(
+                        `[RoundService] [Timeout] [Skill] Player ${playerId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} timeout damage reduction`,
+                    );
+                }
+
                 const finalDamage = Math.max(
                     0,
-                    damage - (playerBuff === 4 ? 20 : 0),
+                    damage -
+                        (playerBuff === 4 ? 20 : 0) -
+                        characterDefenceBonus,
                 );
 
                 // [BARU] Konsumsi buff Shield jika digunakan saat timeout
@@ -490,7 +542,7 @@ export const roundManagementService = {
                         8,
                     )}: ${
                         playerState.health
-                    } -> ${healthAfterDamage}, round=${roundNumber}`,
+                    } -> ${healthAfterDamage}, round=${roundNumber} (CharDefence: ${characterDefenceBonus})`,
                 );
 
                 await gamePlayersService.updateHealth(

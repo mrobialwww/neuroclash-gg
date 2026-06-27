@@ -11,11 +11,10 @@ import { userRepository } from "@/modules/users/user.repository";
 import { userService } from "@/modules/users/user.service";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET({
-    params,
-}: {
-    params: Promise<{ user_id: string }>;
-}) {
+export async function GET(
+    _request: NextRequest,
+    { params }: { params: Promise<{ user_id: string }> },
+) {
     try {
         const { user_id } = await params;
 

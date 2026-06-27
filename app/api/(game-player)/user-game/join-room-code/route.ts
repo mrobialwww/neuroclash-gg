@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { quizService } from "@/modules/quiz/quiz.service";
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ game_room_id: string }> },
-) {
+export async function POST(request: NextRequest) {
     try {
-        const { game_room_id } = await params;
-
         // Ambil data body dari request
         const body = await request.json();
-        const { user_id, room_code } = body;
+        const { game_room_id, user_id, room_code } = body;
+
 
         if (!user_id) {
             return NextResponse.json(
@@ -32,9 +28,7 @@ export async function POST(
         });
     } catch (error) {
         console.error(
-            `API Error [POST /api/user-game/join/${await params.then(
-                (p) => p.game_room_id,
-            )}]:`,
+            `API Error [POST /api/user-game/join-room-code]:`,
             error,
         );
 
