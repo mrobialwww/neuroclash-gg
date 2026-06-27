@@ -139,7 +139,11 @@ export const gamePlayersRepository = {
             `[GamePlayerRepo] getParticipants called for roomId: ${roomId}`,
         );
 
-        const supabase = await createClient();
+        // Gunakan admin client (service_role) untuk bypass RLS.
+        // Ini aman karena hanya dipanggil dari server-side route handler,
+        // bukan dari client. Dengan admin client, query tidak akan gagal
+        // meskipun session user tidak memiliki akses ke tabel tertentu.
+        const supabase = createAdminClient();
 
         // Step 1: Fetch game_players (without join first)
         const { data: gamePlayers, error: gamePlayersError } = await supabase
@@ -235,12 +239,9 @@ export const gamePlayersRepository = {
                         username,
                     );
 
-                    // Fetch equipped character menggunakan admin client untuk mem-Bypass RLS
-                    // (karena getPlayers dipanggil via server route tanpa cookie session)
-
-                    const adminSupabase = createAdminClient();
+                    // Fetch equipped character — gunakan admin client yang sama (bypass RLS)
                     const { data: charData, error: charError } =
-                        await adminSupabase
+                        await supabase
                             .from("characters")
                             .select(
                                 "skin_name, image_url, user_characters!inner(user_id, is_used)",

@@ -85,9 +85,9 @@ export const AnswerOptionButton = ({
 
                 {/* Explanation Content */}
                 {showExplanation && (
-                    <div className="mt-4 w-full border-t border-white/10 pt-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                    <div className="mt-4 w-full animate-in fade-in slide-in-from-top-1 duration-300">
                         <div className={cn(
-                            "flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide mb-1.5",
+                            "flex items-center gap-1.5 text-xs md:text-sm font-bold mb-1.5",
                             explanationVariant === "correct" ? "text-[#4ade80]" : "text-[#f87171]"
                         )}>
                             <span>{explanationVariant === "correct" ? "✓" : "✗"}</span>

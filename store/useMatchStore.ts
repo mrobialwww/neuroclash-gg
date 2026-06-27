@@ -109,8 +109,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         // 2. No battle room
         // 3. Already answered (selectedAnswerId is set)
         // 4. Already submitting
-        // 5. Someone already answered in this battle room
-        // 6. User is not a player in this battle room
+        // 5. User is not a player in this battle room
         const isUserInBattleRoom =
             state.currentBattleRoom?.player1_id === state.currentUser?.id ||
             state.currentBattleRoom?.player2_id === state.currentUser?.id ||
@@ -121,8 +120,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             state.currentBattleRoom &&
             !state.selectedAnswerId &&
             !state.isSubmitting &&
-            isUserInBattleRoom &&
-            !state.currentBattleRoom.first_answer_user_id
+            isUserInBattleRoom
         );
     },
 
@@ -163,13 +161,17 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             let room: GameRoomWithPlayerCount | null = null;
             if (roomCode && roomCode !== gameRoomId) {
                 const res = await fetch(`/api/game-rooms/code/${roomCode}`, { credentials: "include" });
-                const json = await res.json();
-                room = json.data?.[0] ?? json.data ?? null;
+                if (res.ok) {
+                    const json = await res.json();
+                    room = json.data?.[0] ?? json.data ?? null;
+                }
             }
             if (!room && gameRoomId) {
                 const res = await fetch(`/api/game-rooms/${gameRoomId}`, { credentials: "include" });
-                const json = await res.json();
-                room = json.data?.[0] ?? json.data ?? null;
+                if (res.ok) {
+                    const json = await res.json();
+                    room = json.data?.[0] ?? json.data ?? null;
+                }
             }
             if (!room) {
                 set({
@@ -676,10 +678,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             JSON.stringify(errorJson, null, 2),
                         );
 
-                        // If it's a "question not found" error, finish the game
-                        if (errorJson.error?.includes("Question not found")) {
+                        // If it's a "question not found" or game-ended error, finish the game
+                        if (
+                            errorJson.error?.includes("Question not found") ||
+                            errorJson.error?.includes("No battle rooms") ||
+                            errorJson.details?.includes("activateMatchRound")
+                        ) {
                             console.log(
-                                `[MatchStore] Question not found for round ${nextOrder}, finishing game`,
+                                `[MatchStore] Game ended or question not found for round ${nextOrder}, finishing game`,
                             );
                             set({ isFinished: true });
                             return;
@@ -920,8 +926,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         isSubmitting: false,
                     });
 
-                    // Solo mode: show feedback briefly, then advance immediately
-                    await new Promise((resolve) => setTimeout(resolve, 1500));
+                    // Solo mode: show feedback briefly (allow overlay animation), then advance
+                    await new Promise((resolve) => setTimeout(resolve, 2200));
                     get().advanceRound();
                 } else {
                     console.error(
@@ -947,17 +953,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         console.log(
             `[MatchStore] currentBattleRoom: ${state.currentBattleRoom.battle_room_id}`,
         );
-        console.log(
-            `[MatchStore] first_answer_user_id: ${state.currentBattleRoom.first_answer_user_id}`,
-        );
-
-        if (state.currentBattleRoom.first_answer_user_id) {
-            console.log(
-                "[MatchStore] Someone already answered in this battle room",
-            );
-            set({ isSubmitting: false });
-            return;
-        }
 
         try {
             // Submit answer to battle API

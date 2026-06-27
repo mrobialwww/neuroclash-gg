@@ -177,7 +177,30 @@ export default function StarboxPage() {
         players.length,
     ]);
 
-    // ── 5. Click handler
+    // ── 5. Safety timeout: jika Starbox stuck >30 detik, force advance
+    const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+
+        safetyTimeoutRef.current = setTimeout(() => {
+            const state = useStarboxStore.getState();
+            if (state.players.length > 0 && state.currentTurnIndex < state.players.length) {
+                console.warn(
+                    "[StarboxPage] Safety timeout triggered — force advancing to next round",
+                );
+                handleNextRound();
+            }
+        }, 30000);
+
+        return () => {
+            if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+        };
+    }, [isLoading, players.length, currentTurnIndex, handleNextRound]);
+
+    // ── 6. Click handler
     const handleUserClickAbility = useCallback(
         (abilityId: string) => {
             const totalStock = abilities.reduce((sum, a) => sum + a.stock, 0);
@@ -231,6 +254,25 @@ export default function StarboxPage() {
                 <p className="animate-pulse text-lg font-semibold text-white">
                     Menyiapkan Starbox...
                 </p>
+            </main>
+        );
+    }
+
+    // ── Empty-state fallback: abilities atau players tidak tersedia
+    if (abilities.length === 0 || players.length === 0) {
+        return (
+            <main className="flex min-h-screen w-full flex-col items-center justify-center space-y-6">
+                <p className="text-balance text-center text-xl font-bold text-white">
+                    {players.length === 0
+                        ? "Tidak ada pemain yang tersedia untuk Starbox"
+                        : "Item Starbox tidak tersedia"}
+                </p>
+                <p className="text-sm text-white/50">
+                    Mengarahkan ke ronde berikutnya...
+                </p>
+                <MainButton variant="white" onClick={handleNextRound}>
+                    Lanjutkan
+                </MainButton>
             </main>
         );
     }

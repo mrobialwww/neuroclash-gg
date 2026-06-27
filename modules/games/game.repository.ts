@@ -751,8 +751,7 @@ export const gameRoomRepository = {
             .from("match_rounds")
             .select("round_id")
             .eq("game_room_id", gameId)
-            .eq("round_number", nextRoundNumber)
-            .maybeSingle();
+            .eq("round_number", nextRoundNumber);
 
         if (fetchErr) {
             throw new Error(
@@ -760,7 +759,7 @@ export const gameRoomRepository = {
             );
         }
 
-        if (existing) {
+        if (existing && existing.length > 0) {
             const { error: updErr } = await supabase
                 .from("match_rounds")
                 .update({
@@ -768,7 +767,7 @@ export const gameRoomRepository = {
                     all_battles_finished: false,
                     damage_applied: false,
                 })
-                .eq("round_id", existing.round_id);
+                .eq("round_id", existing[0].round_id);
 
             if (updErr) {
                 throw new Error(
@@ -805,8 +804,7 @@ export const gameRoomRepository = {
             .from("match_rounds")
             .select("round_id")
             .eq("game_room_id", gameId)
-            .eq("round_number", roundNumber)
-            .maybeSingle();
+            .eq("round_number", roundNumber);
 
         if (fetchErr) {
             throw new Error(
@@ -814,7 +812,7 @@ export const gameRoomRepository = {
             );
         }
 
-        if (existing) {
+        if (existing && existing.length > 0) {
             const { error: updErr } = await supabase
                 .from("match_rounds")
                 .update({
@@ -823,7 +821,7 @@ export const gameRoomRepository = {
                     damage_applied: false,
                     updated_at: getWIBNow(),
                 })
-                .eq("round_id", existing.round_id);
+                .eq("round_id", existing[0].round_id);
 
             if (updErr) {
                 throw new Error(

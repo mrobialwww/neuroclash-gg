@@ -543,14 +543,16 @@ export const gameRoomService = {
 
             // End time logic:
             // - Dead players: when they died (p.updated_at)
-            // - Alive players: when room finished (gameRoomData.updated_at),
-            //   or current time if room not yet finished
+            // - Alive players: use Date.now() for solo mode or non-finished rooms.
+            //   When room is finished, fallback to gameRoomData.updated_at
+            //   but note: solo mode rooms may not auto-update updated_at,
+            //   so always use Date.now() for solo (totalPlayers === 1).
             const isRoomFinished = gameRoomData?.room_status === "finished";
             const matchEnd =
                 p.status === "alive"
-                    ? isRoomFinished
-                        ? parseDBDate(gameRoomData?.updated_at)
-                        : Date.now()
+                    ? totalPlayers === 1 || !isRoomFinished
+                        ? Date.now()
+                        : parseDBDate(gameRoomData?.updated_at)
                     : parseDBDate(p.updated_at);
 
             const survivalTime = calculateDuration(matchStart, matchEnd);
