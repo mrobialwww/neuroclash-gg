@@ -22,7 +22,16 @@ export const quizService = {
 
         // 1. Multipart form-data (file upload or URL)
         if (contentType.includes("multipart/form-data")) {
-            const formData = await req.formData();
+            let formData;
+            try {
+                formData = await req.formData();
+            } catch (err) {
+                const errMsg = err instanceof Error ? err.message : String(err);
+                if (errMsg.includes("Failed to parse body as FormData") || errMsg.includes("exceeded 10MB")) {
+                    throw new Error("Ukuran file terlalu besar (maksimal 10MB). Silakan gunakan file PDF yang lebih kecil.");
+                }
+                throw new Error("Gagal mengurai form data. Pastikan format file PDF valid.");
+            }
             const file = formData.get("pdf") as File | null;
             const url = formData.get("url") as string | null;
             const rd = formData.get("round") as string | null;
@@ -228,6 +237,7 @@ Pastikan:
             label: ans.key.toUpperCase(),
             text: ans.answer_text,
             isCorrect: ans.is_correct,
+            explanation: ans.explanation ?? null,
         }));
 
         return {

@@ -746,21 +746,51 @@ export const gameRoomRepository = {
      */
     async upsertNextRound(gameId: string, nextRoundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: nextRoundNumber,
-                status: "waiting",
-                all_battles_finished: false,
-                damage_applied: false,
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
 
-        if (error) {
+        const { data: existing, error: fetchErr } = await supabase
+            .from("match_rounds")
+            .select("round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", nextRoundNumber)
+            .maybeSingle();
+
+        if (fetchErr) {
             throw new Error(
-                `[GameRoomRepo] upsertNextRound Error: ${error.message}`,
+                `[GameRoomRepo] upsertNextRound Error checking: ${fetchErr.message}`,
             );
+        }
+
+        if (existing) {
+            const { error: updErr } = await supabase
+                .from("match_rounds")
+                .update({
+                    status: "waiting",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                })
+                .eq("round_id", existing.round_id);
+
+            if (updErr) {
+                throw new Error(
+                    `[GameRoomRepo] upsertNextRound Error updating: ${updErr.message}`,
+                );
+            }
+        } else {
+            const { error: insErr } = await supabase
+                .from("match_rounds")
+                .insert({
+                    game_room_id: gameId,
+                    round_number: nextRoundNumber,
+                    status: "waiting",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                });
+
+            if (insErr) {
+                throw new Error(
+                    `[GameRoomRepo] upsertNextRound Error inserting: ${insErr.message}`,
+                );
+            }
         }
     },
 
@@ -770,22 +800,53 @@ export const gameRoomRepository = {
      */
     async activateMatchRound(gameId: string, roundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: roundNumber,
-                status: "ongoing",
-                all_battles_finished: false,
-                damage_applied: false,
-                updated_at: getWIBNow(),
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
 
-        if (error) {
+        const { data: existing, error: fetchErr } = await supabase
+            .from("match_rounds")
+            .select("round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", roundNumber)
+            .maybeSingle();
+
+        if (fetchErr) {
             throw new Error(
-                `[GameRoomRepo] activateMatchRound Error: ${error.message}`,
+                `[GameRoomRepo] activateMatchRound Error checking: ${fetchErr.message}`,
             );
+        }
+
+        if (existing) {
+            const { error: updErr } = await supabase
+                .from("match_rounds")
+                .update({
+                    status: "ongoing",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                    updated_at: getWIBNow(),
+                })
+                .eq("round_id", existing.round_id);
+
+            if (updErr) {
+                throw new Error(
+                    `[GameRoomRepo] activateMatchRound Error updating: ${updErr.message}`,
+                );
+            }
+        } else {
+            const { error: insErr } = await supabase
+                .from("match_rounds")
+                .insert({
+                    game_room_id: gameId,
+                    round_number: roundNumber,
+                    status: "ongoing",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                    updated_at: getWIBNow(),
+                });
+
+            if (insErr) {
+                throw new Error(
+                    `[GameRoomRepo] activateMatchRound Error inserting: ${insErr.message}`,
+                );
+            }
         }
     },
 

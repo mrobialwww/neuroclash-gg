@@ -1,16 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils/utils";
-
-interface Option {
-    id: string;
-    label: string;
-    text: string;
-}
+import { QuizOption } from "@/types/quiz";
+import { AnswerOptionButton } from "./AnswerOptionButton";
 
 interface QuestionCardProps {
     question: string;
-    options: Option[];
+    options: QuizOption[];
     onSelect?: (optionId: string) => void;
     selectedId?: string | null;
     disabled?: boolean;
@@ -21,6 +17,12 @@ interface QuestionCardProps {
     correctAnswerId?: string | null;
     /** Whether the last answer was correct (Solo mode) — null means not yet answered */
     lastAnswerCorrect?: boolean | null;
+    /** Whether the opponent (not the current user) answered first */
+    opponentAnsweredFirst?: boolean;
+    /** Display name of the first-answering opponent */
+    opponentName?: string;
+    /** Whether the opponent's first answer was correct */
+    firstAnswerCorrect?: boolean | null;
     className?: string;
 }
 
@@ -35,17 +37,27 @@ export const QuestionCard = ({
     firstAnswerId,
     correctAnswerId,
     lastAnswerCorrect,
+    opponentAnsweredFirst = false,
+    opponentName,
     className,
 }: QuestionCardProps) => {
     const canUserAnswer =
         typeof canAnswer === "function" ? canAnswer() : canAnswer;
 
-    // Whether we should show the correct/wrong reveal (Solo mode)
+    // Whether we should show the correct/wrong reveal (Solo mode or after user answers)
     const shouldReveal =
         selectedId !== null &&
         selectedId !== undefined &&
         lastAnswerCorrect !== null &&
         lastAnswerCorrect !== undefined;
+
+    // Helper states for inline explanation placement
+    const chosenId = selectedId ?? (opponentAnsweredFirst ? firstAnswerId : null);
+    const hasAnswered =
+        (!!selectedId && lastAnswerCorrect !== null && lastAnswerCorrect !== undefined) ||
+        opponentAnsweredFirst;
+    const shouldShowExplanation = hasAnswered && !!correctAnswerId;
+    const chosenIsCorrect = chosenId === correctAnswerId;
 
     const optionColors: Record<string, string> = {
         A: "text-[#3B82F6] border-[#3B82F6]",
@@ -61,22 +73,30 @@ export const QuestionCard = ({
         D: "bg-[#A855F7]/20",
     };
 
-    const getButtonStyle = (option: Option) => {
+    const getButtonStyle = (option: QuizOption) => {
         const isSelected = selectedId === option.id;
         const isCorrect = correctAnswerId === option.id;
         const isFirstAnswer = firstAnswerId === option.id;
 
-        // Solo reveal mode
+        // Solo/post-submit reveal mode
         if (shouldReveal) {
             if (isCorrect) {
-                // Always highlight correct answer in green
                 return "border-[#008130] bg-[#008130]/30 scale-[1.02]";
             }
             if (isSelected && !lastAnswerCorrect) {
-                // Selected but wrong
                 return "border-[#B40000] bg-[#B40000]/30 scale-[1.02]";
             }
-            // Other options fade out
+            return "border-white/10 opacity-40 cursor-not-allowed";
+        }
+
+        // Opponent answered first — highlight their answer and the correct answer
+        if (opponentAnsweredFirst && correctAnswerId) {
+            if (isCorrect) {
+                return "border-[#008130] bg-[#008130]/30 scale-[1.02]";
+            }
+            if (isFirstAnswer && !isCorrect) {
+                return "border-[#B40000] bg-[#B40000]/30 scale-[1.02]";
+            }
             return "border-white/10 opacity-40 cursor-not-allowed";
         }
 
@@ -116,62 +136,61 @@ export const QuestionCard = ({
             {/* Options Grid */}
             <div className="grid shrink-0 grid-cols-1 gap-3 md:grid-cols-2 lg:gap-6">
                 {options.map((option) => {
-                    const isLongText = option.text.length > 50;
                     const isFirstAnswer = firstAnswerId === option.id;
                     const isDisabled =
                         shouldReveal ||
+                        opponentAnsweredFirst ||
                         disabled ||
                         !canUserAnswer ||
                         (!!selectedId && selectedId !== option.id);
 
-                    return (
-                        <button
-                            key={option.id}
-                            onClick={() => onSelect?.(option.id)}
-                            disabled={isDisabled}
-                            className={cn(
-                                "group relative flex items-center rounded-2xl p-4 lg:p-6",
-                                "border-2 bg-[#D9D9D9]/20 backdrop-blur-md transition-colors",
-                                "min-h-[70px] md:min-h-[100px] lg:min-h-[140px]",
-                                "outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                                getButtonStyle(option),
-                            )}
-                        >
-                            {/* Label Circle (A, B, C, D) */}
-                            <div
-                                className={cn(
-                                    "absolute left-3 top-1/2 -translate-y-1/2 lg:left-4 lg:top-4 lg:translate-y-0",
-                                    "flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold lg:h-8 lg:w-8 lg:text-sm",
-                                    optionColors[option.label],
-                                    optionBgColors[option.label],
-                                    isFirstAnswer &&
-                                        "border-yellow-400 bg-white text-yellow-400",
-                                )}
-                            >
-                                {option.label}
-                                {isFirstAnswer && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-[8px] lg:text-[10px]">
-                                            ✓
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
+                    const isCorrectOption = correctAnswerId === option.id;
+                    const isChosenOption = chosenId === option.id;
 
-                            {/* Option Text */}
-                            <div className="w-full px-8 text-center lg:px-6">
-                                <span
-                                    className={cn(
-                                        "block font-medium leading-tight text-white",
-                                        isLongText
-                                            ? "text-xs md:text-sm lg:text-base"
-                                            : "text-sm md:text-lg lg:text-xl",
-                                    )}
-                                >
-                                    {option.text}
-                                </span>
-                            </div>
-                        </button>
+                    let showOptionExplanation = false;
+                    let optionExplanationLabel = "";
+                    let optionExplanationVariant: "correct" | "incorrect" = "correct";
+
+                    if (shouldShowExplanation) {
+                        if (isCorrectOption) {
+                            showOptionExplanation = true;
+                            optionExplanationVariant = "correct";
+                            if (isChosenOption) {
+                                if (opponentAnsweredFirst && !selectedId) {
+                                    optionExplanationLabel = `${opponentName || "Musuh"} menjawab benar!`;
+                                } else {
+                                    optionExplanationLabel = "Jawaban kamu benar!";
+                                }
+                            } else {
+                                optionExplanationLabel = "Jawaban yang benar";
+                            }
+                        } else if (isChosenOption) {
+                            showOptionExplanation = true;
+                            optionExplanationVariant = "incorrect";
+                            if (opponentAnsweredFirst && !selectedId) {
+                                optionExplanationLabel = `${opponentName || "Musuh"} menjawab salah!`;
+                            } else {
+                                optionExplanationLabel = "Jawaban kamu salah!";
+                            }
+                        }
+                    }
+
+                    return (
+                        <AnswerOptionButton
+                            key={option.id}
+                            option={option}
+                            isSelected={selectedId === option.id}
+                            isCorrect={correctAnswerId === option.id}
+                            isFirstAnswer={isFirstAnswer}
+                            isDisabled={isDisabled}
+                            buttonStyle={getButtonStyle(option)}
+                            optionColors={optionColors}
+                            optionBgColors={optionBgColors}
+                            onSelect={onSelect}
+                            showExplanation={showOptionExplanation}
+                            explanationLabel={optionExplanationLabel}
+                            explanationVariant={optionExplanationVariant}
+                        />
                     );
                 })}
             </div>

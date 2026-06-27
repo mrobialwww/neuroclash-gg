@@ -41,6 +41,8 @@ export interface QuizOption {
   text: string;
   /** apakah ini jawaban yang benar */
   isCorrect: boolean;
+  /** penjelasan singkat mengapa jawaban ini benar/salah */
+  explanation?: string | null;
 }
 
 export interface QuizQuestion {

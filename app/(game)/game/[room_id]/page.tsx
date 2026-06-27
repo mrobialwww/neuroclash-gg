@@ -604,6 +604,10 @@ export default function GamePage() {
         );
     }
 
+    const opponentAnsweredFirst = !!firstAnswerPlayerId && firstAnswerPlayerId !== currentUser?.id;
+    const opponentName = firstAnswerPlayerId ? players.find(p => p.id === firstAnswerPlayerId)?.name : undefined;
+    const firstAnswerCorrect = firstAnswerId ? firstAnswerId === correctAnswerId : null;
+
     return (
         <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
             {/* Header Info */}
@@ -719,6 +723,9 @@ export default function GamePage() {
                                     firstAnswerId={firstAnswerId}
                                     correctAnswerId={correctAnswerId}
                                     lastAnswerCorrect={lastAnswerCorrect}
+                                    opponentAnsweredFirst={opponentAnsweredFirst}
+                                    opponentName={opponentName}
+                                    firstAnswerCorrect={firstAnswerCorrect}
                                     className="h-auto w-full"
                                 />
                             </>
