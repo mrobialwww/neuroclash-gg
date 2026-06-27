@@ -28,7 +28,7 @@ export const CHARACTER_BG_COLORS: Record<string, string> = {
 
     // Mahluk Buas & Mitos (Baris 3)
     Naga: "#F87171", // Merah naga
-    "Naga Pusaka": "#F87171",
+    "Naga Pustaka": "#F87171",
     Griffin: "#E4A560", // Krem emas
     "Griffin Garuda": "#E4A560",
     Phoenix: "#F5D858", // Kuning emas
@@ -87,7 +87,7 @@ export type SkillType = "damage" | "defence" | "heal";
 export const CHARACTER_SKILL_MAP: Record<string, SkillType> = {
     // ⚔️ Damage — menambah damage ke lawan saat menjawab benar
     "Api Baskara": "damage",
-    "Naga Pusaka": "damage",
+    "Naga Pustaka": "damage",
     "Roger Malam": "damage",
     "Griffin Garuda": "damage",
     "Kuda Kencana": "damage",
