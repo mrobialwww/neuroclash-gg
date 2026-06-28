@@ -1101,11 +1101,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         firstAnswerId: answerId,
                     });
 
-                    // Only claim first-answer status if no one answered before us
-                    const currentFirstPlayer = get().firstAnswerPlayerId;
-                    if (!currentFirstPlayer) {
+                    // Use server-returned first_answer_user_id (authoritative) instead of optimistic guess
+                    if (result.first_answer_user_id) {
                         set({
-                            firstAnswerPlayerId: state.currentUser?.id || null,
+                            firstAnswerPlayerId: result.first_answer_user_id,
                         });
                     }
 

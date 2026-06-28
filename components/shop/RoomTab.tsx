@@ -14,7 +14,7 @@ export const RoomTab = ({ activeTab, onChange }: Props) => {
                 <button
                     onClick={() => onChange("character")}
                     className={cn(
-                        "flex h-10 flex-1 items-center justify-center rounded-md transition-all duration-300",
+                        "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-md transition-all duration-300",
                         activeTab === "character"
                             ? "bg-[#6AA2FF] text-white shadow-md"
                             : "text-white/60 hover:text-white",
@@ -37,7 +37,7 @@ export const RoomTab = ({ activeTab, onChange }: Props) => {
                 <button
                     onClick={() => onChange("skin")}
                     className={cn(
-                        "flex h-10 flex-1 items-center justify-center rounded-md transition-all duration-300",
+                        "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-md transition-all duration-300",
                         activeTab === "skin"
                             ? "bg-[#6AA2FF] text-white shadow-md"
                             : "text-white/60 hover:text-white",

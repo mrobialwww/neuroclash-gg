@@ -189,7 +189,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                                 <button
                                     onClick={handleUpdateUsername}
                                     disabled={isUpdating}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#4D70E8] text-white transition-colors hover:bg-[#3D5FD0] disabled:opacity-50 md:h-10 md:w-10"
+                                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-[#4D70E8] text-white transition-colors hover:bg-[#3D5FD0] disabled:opacity-50 md:h-10 md:w-10"
                                     title="Simpan"
                                 >
                                     {isUpdating ? (
@@ -209,7 +209,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                                         setIsEditing(false);
                                         setNewUsername(profile.username);
                                     }}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F4F4F5] text-[#71717A] transition-colors hover:bg-[#E4E4E7] md:h-10 md:w-10"
+                                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-[#F4F4F5] text-[#71717A] transition-colors hover:bg-[#E4E4E7] md:h-10 md:w-10"
                                     title="Batal"
                                 >
                                     <X size={16} className="md:h-4 md:w-4" />
@@ -219,7 +219,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                     ) : (
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="group/row flex w-full items-center justify-between p-4 transition-colors hover:bg-[#FAFAFA] md:p-5"
+                            className="group/row flex w-full cursor-pointer items-center justify-between p-4 transition-colors hover:bg-[#FAFAFA] md:p-5"
                         >
                             <div className="flex items-center gap-3 md:gap-4">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F4F5] text-[#71717A] md:h-11 md:w-11">

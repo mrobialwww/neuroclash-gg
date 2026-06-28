@@ -128,7 +128,7 @@ Format JSON yang harus dikembalikan:
 Pastikan:
 - "order" dimulai dari 1 hingga ${targetCount}
 - "is_correct" bernilai true hanya untuk 1 pilihan yang benar, sisanya false
-- Posisi jawaban benar (is_correct: true) harus diacak setiap soal, jangan selalu di key yang sama
+- Posisi jawaban benar (is_correct: true) harus diacak A-D setiap soal, jangan selalu di key yang sama
 - Setiap "options" memiliki field "explanation" yang berisi penjelasan singkat 1 kalimat mengapa jawaban tersebut benar atau salah
 - Semua soal relevan dengan isi dokumen
 - "order" merepresentasikan urutan tingkat kesulitan soal dari paling mudah ke paling susah`,

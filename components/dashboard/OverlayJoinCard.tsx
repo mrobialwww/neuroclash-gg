@@ -146,7 +146,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
                     className={`relative flex h-[200px] items-center justify-center transition-all md:h-[240px] ${bannerColor}`}
                 >
                     <div className="absolute right-3 top-3 z-20 flex items-center gap-2 sm:right-4 sm:top-4">
-                        <button className="flex items-center gap-2 rounded-md bg-black/50 px-3 py-1.5 text-[10px] font-bold text-white backdrop-blur-md transition-all hover:bg-black/70 sm:text-xs">
+                        <button className="flex cursor-pointer items-center gap-2 rounded-md bg-black/50 px-3 py-1.5 text-[10px] font-bold text-white backdrop-blur-md transition-all hover:bg-black/70 sm:text-xs">
                             <Image
                                 src="/icons/share.svg"
                                 alt="Share"
@@ -158,7 +158,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
                         </button>
                         <button
                             onClick={onClose}
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/50 backdrop-blur-md transition-all hover:bg-black/70 md:h-9 md:w-9"
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/50 backdrop-blur-md transition-all hover:bg-black/70 md:h-9 md:w-9"
                         >
                             <Image
                                 src="/icons/cancel.svg"

@@ -38,7 +38,7 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
                             <button
                                 key={item.key}
                                 onClick={() => onChange?.(item.key)}
-                                className="group flex w-full items-center gap-3 overflow-hidden rounded-md px-3 py-3 text-left transition"
+                                className="group flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-md px-3 py-3 text-left transition"
                                 style={isActive ? activeStyle : undefined}
                             >
                                 <div className="shrink-0">
@@ -76,7 +76,7 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
                         <button
                             key={item.key}
                             onClick={() => onChange?.(item.key)}
-                            className="relative flex flex-1 flex-col items-center justify-center gap-1 overflow-hidden py-2 transition"
+                            className="relative flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden py-2 transition"
                             style={isActive ? activeStyleMobile : undefined}
                         >
                             <Image

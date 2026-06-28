@@ -104,4 +104,61 @@ export const historyRepository = {
 
         return data;
     },
+
+    /**
+     * Fetch all questions with their answers for a game room (ordered by question_order).
+     */
+    async getQuestionsWithAnswers(gameRoomId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("questions")
+            .select("*, answers(*)")
+            .eq("game_room_id", gameRoomId)
+            .order("question_order", { ascending: true });
+
+        if (error) {
+            console.error("Supabase Error questions:", error.message);
+            throw new Error(error.message);
+        }
+
+        return data || [];
+    },
+
+    /**
+     * Fetch all user_answers for a specific user in a game room.
+     */
+    async getUserAnswersForRoom(gameRoomId: string, userId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("user_answers")
+            .select("*, answers!inner(question_id)")
+            .eq("game_room_id", gameRoomId)
+            .eq("user_id", userId);
+
+        if (error) {
+            console.error("Supabase Error user_answers:", error.message);
+            throw new Error(error.message);
+        }
+
+        return data || [];
+    },
+
+    /**
+     * Fetch a single game_room by ID.
+     */
+    async getGameRoomById(roomId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("game_rooms")
+            .select("title, category, total_round")
+            .eq("game_room_id", roomId)
+            .single();
+
+        if (error) {
+            console.error("Supabase Error game_room:", error.message);
+            throw new Error(error.message);
+        }
+
+        return data;
+    },
 };
