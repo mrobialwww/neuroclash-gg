@@ -41,6 +41,21 @@ export const gamePlayersService = {
     },
 
     /**
+     * Drop a material (abilityId 1) to a player when on prof bubu round
+     */
+    async dropMaterialToPlayer(roomId: string, playerId: string) {
+        console.log(
+            `[GamePlayerService] Dropping material to player ${playerId} in room ${roomId}`,
+        );
+        const abilityId = 1; // 1 is "Materi & Kekuatan"
+        return await gamePlayersRepository.incrementPlayerAbility(
+            roomId,
+            playerId,
+            abilityId,
+        );
+    },
+
+    /**
      * Auto assign abilities to players in a room
      */
     async autoAssignAbilities(

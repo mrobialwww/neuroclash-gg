@@ -7,7 +7,7 @@ import { BattleRoom } from "@/modules/battles/battle.schema";
 
 const supabase = createClient();
 
-export const SECONDS_PER_ROUND = 15;
+export const SECONDS_PER_ROUND = 30;
 export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
 
@@ -58,6 +58,14 @@ export interface MatchState {
     setupRealtimeSubscription: (roomId: string) => void;
     isOpponent: (playerId: string) => boolean;
     canAnswer: () => boolean;
+    isProfBubuPhase: boolean;
+    profBubuQuestion: QuizQuestion | null;
+    loadProfBubuQuestion: (
+        roomId: string,
+        totalRounds: number,
+        currentOrder: number,
+    ) => Promise<void>;
+    endProfBubuPhase: () => void;
 }
 
 export const useMatchStore = create<MatchState>((set, get) => ({
@@ -86,6 +94,50 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     lastAnswerCorrect: null,
     correctAnswerId: null,
     matchStartTime: null,
+    isProfBubuPhase: false,
+    profBubuQuestion: null,
+
+    loadProfBubuQuestion: async (roomId, totalRounds, currentOrder) => {
+        console.log(`[MatchStore] Loading Prof Bubu question`);
+        set({ isProfBubuPhase: true, profBubuQuestion: null });
+
+        const offset = Math.floor((currentOrder - 1) / 10);
+        const targetOrder = totalRounds + 1 + offset;
+
+        let question: QuizQuestion | null = null;
+        const qRes = await fetch(
+            `/api/quiz/questions/${roomId}?question_order=${targetOrder}`,
+        );
+        const qJson = await qRes.json();
+        const qData = Array.isArray(qJson?.data) ? qJson.data[0] : qJson?.data;
+        if (qData?.question_id) {
+            const aRes = await fetch(
+                `/api/quiz/questions/answers/${qData.question_id}`,
+            );
+            const aJson = await aRes.json();
+            const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
+            const sortedAnswers = [...rawAnswers].sort((a, b) =>
+                a.key.localeCompare(b.key),
+            );
+
+            const options = sortedAnswers.map((ans: any) => ({
+                id: ans.answer_id,
+                label: ans.key.toUpperCase(),
+                text: ans.answer_text,
+                isCorrect: ans.is_correct,
+                explanation: ans.explanation ?? null,
+            }));
+            question = { ...qData, options };
+        }
+
+        if (question) {
+            set({ profBubuQuestion: question });
+        }
+    },
+
+    endProfBubuPhase: () => {
+        set({ isProfBubuPhase: false, profBubuQuestion: null });
+    },
 
     isOpponent: (playerId: string) => {
         return get().opponentIds.includes(playerId);
@@ -95,8 +147,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         const state = get();
         const isSolo = state.roomInfo?.max_player === 1;
 
-        // Solo mode: only needs currentUser and no previous answer
-        if (isSolo) {
+        // Solo mode or Prof Bubu phase: only needs currentUser and no previous answer
+        if (isSolo || state.isProfBubuPhase) {
             return !!(
                 state.currentUser &&
                 !state.selectedAnswerId &&
@@ -183,6 +235,15 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     isLoadingQuestion: false,
                 });
                 return;
+            }
+
+            // Trigger Prof Bubu at start
+            if (initialRound === 1 && room.total_round) {
+                await get().loadProfBubuQuestion(
+                    gameRoomId,
+                    room.total_round,
+                    initialRound,
+                );
             }
 
             console.log(`[MatchStore] Room status: ${room.room_status}`);
@@ -645,6 +706,20 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             firstAnswerPlayerId: null,
             timeLeft: SECONDS_PER_ROUND,
         });
+
+        // Trigger Prof Bubu after every 10th round (if not finished)
+        if (
+            (nextOrder - 1) % 10 === 0 &&
+            nextOrder > 1 &&
+            state.totalQuestions &&
+            nextOrder <= state.totalQuestions
+        ) {
+            await get().loadProfBubuQuestion(
+                state.gameRoomId,
+                state.totalQuestions,
+                nextOrder,
+            );
+        }
 
         if (isSolo) {
             // ── SOLO MODE: Skip battle room generation, just load question ──
