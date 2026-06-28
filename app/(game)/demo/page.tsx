@@ -11,7 +11,7 @@ import { PlayerList } from "@/components/match/PlayerList";
 import { PlayerCard } from "@/components/match/PlayerCard";
 import { PlayerGridCard } from "@/components/match/PlayerGridCard";
 import { AbilityCard } from "@/components/match/AbilityCard";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 
 import { useDemoStore, DemoPlayerState, ActiveBuff } from "@/store/useDemoStore";
 import {
