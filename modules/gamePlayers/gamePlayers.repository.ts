@@ -244,7 +244,7 @@ export const gamePlayersRepository = {
                         await supabase
                             .from("characters")
                             .select(
-                                "skin_name, image_url, user_characters!inner(user_id, is_used)",
+                                "skin_name, skin_level, image_url, user_characters!inner(user_id, is_used)",
                             )
                             .eq("user_characters.user_id", row.user_id)
                             .eq("user_characters.is_used", true)
@@ -271,6 +271,12 @@ export const gamePlayersRepository = {
 
                     // Extract character data - charData contains skin_name and image_url directly
                     const skin_name = charData?.skin_name || "Slime";
+                    const skin_level =
+                        (charData?.skin_level as
+                            | "default"
+                            | "epic"
+                            | "legend"
+                            | undefined) || "default";
                     const image_url =
                         charData?.image_url || "/default/Slime.webp";
 
@@ -279,6 +285,7 @@ export const gamePlayersRepository = {
                         name: username || "Unknown",
                         image: image_url, // Changed from avatar to image to match Player interface
                         character: skin_name,
+                        skin_level,
                         health: row.health ?? 100,
                         maxHealth: 100, // Added maxHealth to fix NaN percentage in PlayerGridCard
                         is_alive: row.status === "alive",

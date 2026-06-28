@@ -2,6 +2,7 @@ import { GAME_CONSTANTS } from "@/lib/game/gameConstants";
 import { battleRoomService } from "@/modules/battles/battle.service";
 import { gamePlayersService } from "@/modules/gamePlayers/gamePlayers.service";
 import { gameRoomService } from "@/modules/games/game.service";
+import { getPlayerCharacterSkill } from "@/lib/game/characterSkill";
 
 export const roundManagementService = {
     calculateDamage(roundNumber: number, totalQuestions: number): number {
@@ -22,16 +23,13 @@ export const roundManagementService = {
         gameId: string,
         roundNumber: number,
     ) {
-        // 1. Get answer details
         const answerDetail = await gamePlayersService.getAnswerDetail(answerId);
         if (!answerDetail) {
             return { success: false, is_correct: false, damage_applied: false, damage_dealt: 0, new_health: 100, message: "Answer not found" };
         }
 
-        // 2. Record the answer
         await gamePlayersService.submitAnswer(userId, answerId, gameId, roundNumber);
 
-        // 3. Check if this is the first answer in this battle room
         const battleRoom = await battleRoomService.getBattleRoomById(battleRoomId);
         const isFirstAnswer = !battleRoom?.first_answer_user_id;
 
@@ -50,7 +48,6 @@ export const roundManagementService = {
             };
         }
 
-        // 4. Second answer — resolve the battle based on both answers
         console.log(`[RoundService] Second answer by ${userId.substring(0, 8)} — resolving battle`);
 
         const firstAnswer = await gamePlayersService.getAnswerDetail(battleRoom!.first_answer_id!);
@@ -70,75 +67,148 @@ export const roundManagementService = {
         const secondBuff = await gamePlayersService.getActiveAbilityBuff(gameId, userId);
 
         if (firstIsCorrect && secondIsCorrect) {
-            // Both Correct -> Fastest (first) deals damage to second
-            const baseDamage = damage + (firstBuff === 2 ? 10 : 0);
-            const finalDamage = Math.max(0, baseDamage - (secondBuff === 4 ? 20 : 0));
+            const firstSkill = await getPlayerCharacterSkill(firstUserId);
+            const characterDamageBonus = firstSkill?.type === "damage" ? firstSkill.value : 0;
+            const baseOffensiveDamage = damage + (firstBuff === 2 ? 10 : 0) + characterDamageBonus;
+
+            if (characterDamageBonus > 0) {
+                console.log(`[RoundService] [Skill] User ${firstUserId.substring(0, 8)} has Damage skill: +${characterDamageBonus} bonus damage`);
+            }
 
             if (firstBuff === 2) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 2);
-            if (secondBuff === 4 && baseDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, userId, 4);
 
-            const secondPlayer = allPlayers.find((p) => p.id === userId);
-            if (secondPlayer && secondPlayer.health > 0) {
-                const newHealth = Math.max(0, secondPlayer.health - finalDamage);
-                await gamePlayersService.updateHealth(userId, gameId, newHealth, roundNumber);
+            const opponents = [battleRoom!.player1_id, battleRoom!.player2_id, battleRoom!.player3_id]
+                .filter((id): id is string => id !== null && id !== firstUserId);
+
+            for (const opponentId of opponents) {
+                const opponentState = allPlayers.find((p) => p.id === opponentId);
+                if (opponentState && opponentState.health > 0) {
+                    const opponentBuff = await gamePlayersService.getActiveAbilityBuff(gameId, opponentId);
+                    const opponentSkill = await getPlayerCharacterSkill(opponentId);
+                    const characterDefenceBonus = opponentSkill?.type === "defence" ? opponentSkill.value : 0;
+
+                    if (characterDefenceBonus > 0) {
+                        console.log(`[RoundService] [Skill] Opponent ${opponentId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} damage reduction`);
+                    }
+
+                    const finalDamage = Math.max(0, baseOffensiveDamage - (opponentBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                    if (opponentBuff === 4 && baseOffensiveDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, opponentId, 4);
+
+                    const newHealth = Math.max(0, opponentState.health - finalDamage);
+                    await gamePlayersService.updateHealth(opponentId, gameId, newHealth, roundNumber);
+                }
             }
 
             await gamePlayersService.incrementWin(firstUserId, gameId);
         } else if (firstIsCorrect && !secondIsCorrect) {
-            // One Correct (first) -> Correct deals damage to wrong
-            const baseDamage = damage + (firstBuff === 2 ? 10 : 0);
-            const finalDamage = Math.max(0, baseDamage - (secondBuff === 4 ? 20 : 0));
+            const firstSkill = await getPlayerCharacterSkill(firstUserId);
+            const characterDamageBonus = firstSkill?.type === "damage" ? firstSkill.value : 0;
+            const baseOffensiveDamage = damage + (firstBuff === 2 ? 10 : 0) + characterDamageBonus;
+
+            if (characterDamageBonus > 0) {
+                console.log(`[RoundService] [Skill] User ${firstUserId.substring(0, 8)} has Damage skill: +${characterDamageBonus} bonus damage`);
+            }
 
             if (firstBuff === 2) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 2);
-            if (secondBuff === 4 && baseDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, userId, 4);
 
-            const secondPlayer = allPlayers.find((p) => p.id === userId);
-            if (secondPlayer && secondPlayer.health > 0) {
-                const newHealth = Math.max(0, secondPlayer.health - finalDamage);
-                await gamePlayersService.updateHealth(userId, gameId, newHealth, roundNumber);
+            const opponents = [battleRoom!.player1_id, battleRoom!.player2_id, battleRoom!.player3_id]
+                .filter((id): id is string => id !== null && id !== firstUserId);
+
+            for (const opponentId of opponents) {
+                const opponentState = allPlayers.find((p) => p.id === opponentId);
+                if (opponentState && opponentState.health > 0) {
+                    const opponentBuff = await gamePlayersService.getActiveAbilityBuff(gameId, opponentId);
+                    const opponentSkill = await getPlayerCharacterSkill(opponentId);
+                    const characterDefenceBonus = opponentSkill?.type === "defence" ? opponentSkill.value : 0;
+
+                    if (characterDefenceBonus > 0) {
+                        console.log(`[RoundService] [Skill] Opponent ${opponentId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} damage reduction`);
+                    }
+
+                    const finalDamage = Math.max(0, baseOffensiveDamage - (opponentBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                    if (opponentBuff === 4 && baseOffensiveDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, opponentId, 4);
+
+                    const newHealth = Math.max(0, opponentState.health - finalDamage);
+                    await gamePlayersService.updateHealth(opponentId, gameId, newHealth, roundNumber);
+                }
             }
 
             await gamePlayersService.incrementWin(firstUserId, gameId);
         } else if (!firstIsCorrect && secondIsCorrect) {
-            // One Correct (second) -> Correct deals damage to wrong
-            const baseDamage = damage + (secondBuff === 2 ? 10 : 0);
-            const finalDamage = Math.max(0, baseDamage - (firstBuff === 4 ? 20 : 0));
+            const secondSkill = await getPlayerCharacterSkill(userId);
+            const characterDamageBonus = secondSkill?.type === "damage" ? secondSkill.value : 0;
+            const baseOffensiveDamage = damage + (secondBuff === 2 ? 10 : 0) + characterDamageBonus;
+
+            if (characterDamageBonus > 0) {
+                console.log(`[RoundService] [Skill] User ${userId.substring(0, 8)} has Damage skill: +${characterDamageBonus} bonus damage`);
+            }
 
             if (secondBuff === 2) await gamePlayersService.userAttackorShieldAbility(gameId, userId, 2);
-            if (firstBuff === 4 && baseDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 4);
 
-            const firstPlayer = allPlayers.find((p) => p.id === firstUserId);
-            if (firstPlayer && firstPlayer.health > 0) {
-                const newHealth = Math.max(0, firstPlayer.health - finalDamage);
-                await gamePlayersService.updateHealth(firstUserId, gameId, newHealth, roundNumber);
+            const opponents = [battleRoom!.player1_id, battleRoom!.player2_id, battleRoom!.player3_id]
+                .filter((id): id is string => id !== null && id !== userId);
+
+            for (const opponentId of opponents) {
+                const opponentState = allPlayers.find((p) => p.id === opponentId);
+                if (opponentState && opponentState.health > 0) {
+                    const opponentBuff = await gamePlayersService.getActiveAbilityBuff(gameId, opponentId);
+                    const opponentSkill = await getPlayerCharacterSkill(opponentId);
+                    const characterDefenceBonus = opponentSkill?.type === "defence" ? opponentSkill.value : 0;
+
+                    if (characterDefenceBonus > 0) {
+                        console.log(`[RoundService] [Skill] Opponent ${opponentId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} damage reduction`);
+                    }
+
+                    const finalDamage = Math.max(0, baseOffensiveDamage - (opponentBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                    if (opponentBuff === 4 && baseOffensiveDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, opponentId, 4);
+
+                    const newHealth = Math.max(0, opponentState.health - finalDamage);
+                    await gamePlayersService.updateHealth(opponentId, gameId, newHealth, roundNumber);
+                }
             }
 
             await gamePlayersService.incrementWin(userId, gameId);
         } else {
-            // Both Wrong -> Both receive self-damage
-            const firstSelfDamage = Math.max(0, damage - (firstBuff === 4 ? 20 : 0));
-            const secondSelfDamage = Math.max(0, damage - (secondBuff === 4 ? 20 : 0));
-
-            if (firstBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 4);
-            if (secondBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, userId, 4);
-
             const firstPlayer = allPlayers.find((p) => p.id === firstUserId);
             if (firstPlayer && firstPlayer.health > 0) {
+                const firstSkill = await getPlayerCharacterSkill(firstUserId);
+                const firstDefenceBonus = firstSkill?.type === "defence" ? firstSkill.value : 0;
+
+                if (firstDefenceBonus > 0) {
+                    console.log(`[RoundService] [Skill] User ${firstUserId.substring(0, 8)} has Defence skill: -${firstDefenceBonus} self-damage reduction`);
+                }
+
+                const firstSelfDamage = Math.max(0, damage - (firstBuff === 4 ? 20 : 0) - firstDefenceBonus);
+
+                if (firstBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 4);
+
                 const newHealth = Math.max(0, firstPlayer.health - firstSelfDamage);
                 await gamePlayersService.updateHealth(firstUserId, gameId, newHealth, roundNumber);
             }
 
             const secondPlayer = allPlayers.find((p) => p.id === userId);
             if (secondPlayer && secondPlayer.health > 0) {
+                const secondSkill = await getPlayerCharacterSkill(userId);
+                const secondDefenceBonus = secondSkill?.type === "defence" ? secondSkill.value : 0;
+
+                if (secondDefenceBonus > 0) {
+                    console.log(`[RoundService] [Skill] User ${userId.substring(0, 8)} has Defence skill: -${secondDefenceBonus} self-damage reduction`);
+                }
+
+                const secondSelfDamage = Math.max(0, damage - (secondBuff === 4 ? 20 : 0) - secondDefenceBonus);
+
+                if (secondBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, userId, 4);
+
                 const newHealth = Math.max(0, secondPlayer.health - secondSelfDamage);
                 await gamePlayersService.updateHealth(userId, gameId, newHealth, roundNumber);
             }
         }
 
-        // 5. Mark battle room as finished
         await gameRoomService.updateBattleRoomStatus(battleRoomId, "finished");
 
-        // 6. Check if all battle rooms finished
         const allFinished = await battleRoomService.areAllBattlesFinished(gameId, roundNumber);
         if (allFinished) {
             console.log(`[RoundService] All battle rooms finished for round ${roundNumber}`);
@@ -188,29 +258,40 @@ export const roundManagementService = {
         const players = [battleRoom.player1_id, battleRoom.player2_id, battleRoom.player3_id]
             .filter((id): id is string => id !== null);
 
-        const allPlayers = await gamePlayersService.getParticipantsList(gameId);
-
         if (battleRoom.first_answer_user_id) {
-            // Someone already answered — resolve based on their answer
             const firstUserId = battleRoom.first_answer_user_id;
             const firstAnswer = await gamePlayersService.getAnswerDetail(battleRoom.first_answer_id!);
             const firstIsCorrect = firstAnswer?.is_correct ?? false;
             const firstBuff = await gamePlayersService.getActiveAbilityBuff(gameId, firstUserId);
 
             if (firstIsCorrect) {
-                // Correct answerer deals damage to timeout players
-                const baseDamage = damage + (firstBuff === 2 ? 10 : 0);
+                const firstSkill = await getPlayerCharacterSkill(firstUserId);
+                const characterDamageBonus = firstSkill?.type === "damage" ? firstSkill.value : 0;
+                const baseDamage = damage + (firstBuff === 2 ? 10 : 0) + characterDamageBonus;
+
+                if (characterDamageBonus > 0) {
+                    console.log(`[RoundService] [Timeout] [Skill] User ${firstUserId.substring(0, 8)} has Damage skill: +${characterDamageBonus} bonus damage`);
+                }
+
                 if (firstBuff === 2) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 2);
 
                 for (const playerId of players) {
                     if (playerId === firstUserId) continue;
-                    const playerState = allPlayers.find((p) => p.id === playerId);
+                    const allPlayersTimeout = await gamePlayersService.getParticipantsList(gameId);
+                    const playerState = allPlayersTimeout.find((p) => p.id === playerId);
                     if (playerState && playerState.health > 0) {
                         const opponentBuff = await gamePlayersService.getActiveAbilityBuff(gameId, playerId);
-                        const finalDamage = Math.max(0, baseDamage - (opponentBuff === 4 ? 20 : 0));
-                        if (opponentBuff === 4 && baseDamage > 0) {
-                            await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+                        const opponentSkill = await getPlayerCharacterSkill(playerId);
+                        const characterDefenceBonus = opponentSkill?.type === "defence" ? opponentSkill.value : 0;
+
+                        if (characterDefenceBonus > 0) {
+                            console.log(`[RoundService] [Timeout] [Skill] Player ${playerId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} timeout damage reduction`);
                         }
+
+                        const finalDamage = Math.max(0, baseDamage - (opponentBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                        if (opponentBuff === 4 && baseDamage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+
                         const newHealth = Math.max(0, playerState.health - finalDamage);
                         await gamePlayersService.updateHealth(playerId, gameId, newHealth, roundNumber);
                     }
@@ -218,13 +299,19 @@ export const roundManagementService = {
 
                 await gamePlayersService.incrementWin(firstUserId, gameId);
             } else {
-                // Wrong answerer takes self-damage, timeout players also take damage
-                const selfDamage = Math.max(0, damage - (firstBuff === 4 ? 20 : 0));
-                if (firstBuff === 4 && damage > 0) {
-                    await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 4);
+                const firstSkill = await getPlayerCharacterSkill(firstUserId);
+                const firstDefenceBonus = firstSkill?.type === "defence" ? firstSkill.value : 0;
+
+                if (firstDefenceBonus > 0) {
+                    console.log(`[RoundService] [Timeout] [Skill] User ${firstUserId.substring(0, 8)} has Defence skill: -${firstDefenceBonus} timeout damage reduction`);
                 }
 
-                const firstPlayer = allPlayers.find((p) => p.id === firstUserId);
+                const selfDamage = Math.max(0, damage - (firstBuff === 4 ? 20 : 0) - firstDefenceBonus);
+
+                if (firstBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, firstUserId, 4);
+
+                const allPlayersTimeout = await gamePlayersService.getParticipantsList(gameId);
+                const firstPlayer = allPlayersTimeout.find((p) => p.id === firstUserId);
                 if (firstPlayer && firstPlayer.health > 0) {
                     const newHealth = Math.max(0, firstPlayer.health - selfDamage);
                     await gamePlayersService.updateHealth(firstUserId, gameId, newHealth, roundNumber);
@@ -232,28 +319,43 @@ export const roundManagementService = {
 
                 for (const playerId of players) {
                     if (playerId === firstUserId) continue;
-                    const playerState = allPlayers.find((p) => p.id === playerId);
+                    const playerState = (await gamePlayersService.getParticipantsList(gameId))
+                        .find((p) => p.id === playerId);
                     if (playerState && playerState.health > 0) {
                         const playerBuff = await gamePlayersService.getActiveAbilityBuff(gameId, playerId);
-                        const finalDamage = Math.max(0, damage - (playerBuff === 4 ? 20 : 0));
-                        if (playerBuff === 4 && damage > 0) {
-                            await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+                        const playerSkill = await getPlayerCharacterSkill(playerId);
+                        const characterDefenceBonus = playerSkill?.type === "defence" ? playerSkill.value : 0;
+
+                        if (characterDefenceBonus > 0) {
+                            console.log(`[RoundService] [Timeout] [Skill] Player ${playerId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} timeout damage reduction`);
                         }
+
+                        const finalDamage = Math.max(0, damage - (playerBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                        if (playerBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+
                         const newHealth = Math.max(0, playerState.health - finalDamage);
                         await gamePlayersService.updateHealth(playerId, gameId, newHealth, roundNumber);
                     }
                 }
             }
         } else {
-            // No one answered — all players take timeout damage
             for (const playerId of players) {
-                const playerState = allPlayers.find((p) => p.id === playerId);
+                const allPlayersTimeout = await gamePlayersService.getParticipantsList(gameId);
+                const playerState = allPlayersTimeout.find((p) => p.id === playerId);
                 if (playerState && playerState.health > 0) {
                     const playerBuff = await gamePlayersService.getActiveAbilityBuff(gameId, playerId);
-                    const finalDamage = Math.max(0, damage - (playerBuff === 4 ? 20 : 0));
-                    if (playerBuff === 4 && damage > 0) {
-                        await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+                    const playerSkill = await getPlayerCharacterSkill(playerId);
+                    const characterDefenceBonus = playerSkill?.type === "defence" ? playerSkill.value : 0;
+
+                    if (characterDefenceBonus > 0) {
+                        console.log(`[RoundService] [Timeout] [Skill] Player ${playerId.substring(0, 8)} has Defence skill: -${characterDefenceBonus} timeout damage reduction`);
                     }
+
+                    const finalDamage = Math.max(0, damage - (playerBuff === 4 ? 20 : 0) - characterDefenceBonus);
+
+                    if (playerBuff === 4 && damage > 0) await gamePlayersService.userAttackorShieldAbility(gameId, playerId, 4);
+
                     const newHealth = Math.max(0, playerState.health - finalDamage);
                     await gamePlayersService.updateHealth(playerId, gameId, newHealth, roundNumber);
                 }

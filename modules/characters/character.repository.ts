@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Character } from "@/modules/characters/character.schema";
 
 export const characterRepository = {
@@ -27,15 +28,21 @@ export const characterRepository = {
         userId: string,
         isUsed?: boolean,
     ): Promise<Character[]> {
-        const supabase = await createClient();
+        // Gunakan admin client agar bisa bypass RLS.
+        // Fungsi ini dipanggil server-side untuk mengecek skill semua pemain
+        // (termasuk pemain lain), bukan hanya user yang sedang login.
+        const supabase = createAdminClient();
 
         let query = supabase
-            .from("characters")
-            .select("*, user_characters!inner(user_id, is_used)")
-            .eq("user_characters.user_id", userId);
-
+            .from("user_characters")
+            .select("is_used, user_id, characters!inner(*)")
+            .eq("user_id", userId);
+        // .from("characters")
+        //             .select("*, user_characters!inner(user_id, is_used)")
+        //             .eq("user_characters.user_id", userId);
         if (isUsed !== undefined) {
-            query = query.eq("user_characters.is_used", isUsed);
+            // query = query.eq("user_characters.is_used", isUsed);
+            query = query.eq("is_used", isUsed);
         }
 
         const { data, error } = await query;
@@ -45,7 +52,18 @@ export const characterRepository = {
             throw new Error(error.message);
         }
 
-        return data || [];
+        // Map the result to match the previous return signature where characters is the root object
+        const formattedData = (data || []).map((row: any) => ({
+            ...row.characters,
+            user_characters: [
+                {
+                    user_id: row.user_id,
+                    is_used: row.is_used,
+                },
+            ],
+        }));
+
+        return formattedData as Character[];
     },
 
     /**

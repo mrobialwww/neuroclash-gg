@@ -7,7 +7,7 @@ import { BattleRoom } from "@/modules/battles/battle.schema";
 
 const supabase = createClient();
 
-export const SECONDS_PER_ROUND = 15;
+export const SECONDS_PER_ROUND = 120;
 export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
 
@@ -363,7 +363,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             const battleRes = await fetch(
                 `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
             );
-            const battleRoom: BattleRoom | null = battleRes.ok ? await battleRes.json() : null;
+            const battleRoom: BattleRoom | null = battleRes.ok
+                ? await battleRes.json()
+                : null;
 
             if (battleRoom) {
                 // Get opponent IDs from battle room
@@ -537,13 +539,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Fetch question + answers via API (store is client-side)
         let question: QuizQuestion | null = null;
-        const qRes = await fetch(`/api/quiz/questions/${roomId}?question_order=${order}`);
+        const qRes = await fetch(
+            `/api/quiz/questions/${roomId}?question_order=${order}`,
+        );
         const qJson = await qRes.json();
         const qData = Array.isArray(qJson?.data) ? qJson.data[0] : qJson?.data;
         if (qData?.question_id) {
-            const aRes = await fetch(`/api/quiz/questions/answers/${qData.question_id}`);
+            const aRes = await fetch(
+                `/api/quiz/questions/answers/${qData.question_id}`,
+            );
             const aJson = await aRes.json();
-            
             const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
             const sortedAnswers = [...rawAnswers].sort((a, b) => a.key.localeCompare(b.key));
             
@@ -554,7 +559,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 isCorrect: ans.is_correct,
                 explanation: ans.explanation ?? null,
             }));
-
             question = { ...qData, options };
         }
 

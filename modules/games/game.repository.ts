@@ -747,35 +747,30 @@ export const gameRoomRepository = {
     async upsertNextRound(gameId: string, nextRoundNumber: number) {
         const supabase = await createClient();
 
-        const { data: existing, error: fetchErr } = await supabase
+        const { data: existing } = await supabase
             .from("match_rounds")
-            .select("round_id")
+            .select("match_round_id")
             .eq("game_room_id", gameId)
-            .eq("round_number", nextRoundNumber);
+            .eq("round_number", nextRoundNumber)
+            .maybeSingle();
 
-        if (fetchErr) {
-            throw new Error(
-                `[GameRoomRepo] upsertNextRound Error checking: ${fetchErr.message}`,
-            );
-        }
-
-        if (existing && existing.length > 0) {
-            const { error: updErr } = await supabase
+        if (existing) {
+            const { error } = await supabase
                 .from("match_rounds")
                 .update({
                     status: "waiting",
                     all_battles_finished: false,
                     damage_applied: false,
                 })
-                .eq("round_id", existing[0].round_id);
+                .eq("match_round_id", existing.match_round_id);
 
-            if (updErr) {
+            if (error) {
                 throw new Error(
-                    `[GameRoomRepo] upsertNextRound Error updating: ${updErr.message}`,
+                    `[GameRoomRepo] upsertNextRound Error updating: ${error.message}`,
                 );
             }
         } else {
-            const { error: insErr } = await supabase
+            const { error } = await supabase
                 .from("match_rounds")
                 .insert({
                     game_room_id: gameId,
@@ -785,35 +780,26 @@ export const gameRoomRepository = {
                     damage_applied: false,
                 });
 
-            if (insErr) {
+            if (error) {
                 throw new Error(
-                    `[GameRoomRepo] upsertNextRound Error inserting: ${insErr.message}`,
+                    `[GameRoomRepo] upsertNextRound Error inserting: ${error.message}`,
                 );
             }
         }
     },
 
-    /**
-     * Activate a match round — upsert with status 'ongoing'.
-     * Handles both insert (new round) and update (existing round) idempotently.
-     */
     async activateMatchRound(gameId: string, roundNumber: number) {
         const supabase = await createClient();
 
-        const { data: existing, error: fetchErr } = await supabase
+        const { data: existing } = await supabase
             .from("match_rounds")
-            .select("round_id")
+            .select("match_round_id")
             .eq("game_room_id", gameId)
-            .eq("round_number", roundNumber);
+            .eq("round_number", roundNumber)
+            .maybeSingle();
 
-        if (fetchErr) {
-            throw new Error(
-                `[GameRoomRepo] activateMatchRound Error checking: ${fetchErr.message}`,
-            );
-        }
-
-        if (existing && existing.length > 0) {
-            const { error: updErr } = await supabase
+        if (existing) {
+            const { error } = await supabase
                 .from("match_rounds")
                 .update({
                     status: "ongoing",
@@ -821,15 +807,15 @@ export const gameRoomRepository = {
                     damage_applied: false,
                     updated_at: getWIBNow(),
                 })
-                .eq("round_id", existing[0].round_id);
+                .eq("match_round_id", existing.match_round_id);
 
-            if (updErr) {
+            if (error) {
                 throw new Error(
-                    `[GameRoomRepo] activateMatchRound Error updating: ${updErr.message}`,
+                    `[GameRoomRepo] activateMatchRound Error updating: ${error.message}`,
                 );
             }
         } else {
-            const { error: insErr } = await supabase
+            const { error } = await supabase
                 .from("match_rounds")
                 .insert({
                     game_room_id: gameId,
@@ -840,9 +826,9 @@ export const gameRoomRepository = {
                     updated_at: getWIBNow(),
                 });
 
-            if (insErr) {
+            if (error) {
                 throw new Error(
-                    `[GameRoomRepo] activateMatchRound Error inserting: ${insErr.message}`,
+                    `[GameRoomRepo] activateMatchRound Error inserting: ${error.message}`,
                 );
             }
         }
