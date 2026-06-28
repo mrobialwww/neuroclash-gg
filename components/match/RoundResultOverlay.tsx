@@ -163,7 +163,7 @@ export const RoundResultOverlay = ({
                         animate={{ scale: [0, 1.3, 1], y: [30, -10, 0] }}
                         transition={{ duration: 0.45, ease: "backOut" }}
                     >
-                        <div className="pointer-events-none absolute inset-[-100%] z-0 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.8)_0%,transparent_70%)]" />
+                        <div className="pointer-events-none absolute inset-[-100%] -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.8)_0%,transparent_70%)]" />
                         <div className="relative z-10 text-lg font-bold text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]">
                             {line1}
                         </div>

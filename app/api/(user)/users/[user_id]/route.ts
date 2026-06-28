@@ -12,7 +12,7 @@ import { userService } from "@/modules/users/user.service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: Promise<{ user_id: string }> },
 ) {
     try {

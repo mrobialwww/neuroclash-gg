@@ -11,6 +11,7 @@ import {
 import { EndgameTable } from "@/components/endgame/EndgameTable";
 import { EndgamePlayer } from "@/components/endgame/EndgameTableRow";
 import { useMatchStore } from "@/store/useMatchStore";
+import { createClient } from "@/lib/supabase/client";
 
 export default function EndgamePage({
     params,
@@ -44,7 +45,22 @@ export default function EndgamePage({
         }
     }, [roomId, currentUser]);
 
-    const currentUserId = currentUser?.id || "unknown";
+    const [realUserId, setRealUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (currentUser?.id) {
+            setRealUserId(currentUser.id);
+        } else {
+            const supabase = createClient();
+            supabase.auth.getUser().then(({ data }) => {
+                if (data?.user) {
+                    setRealUserId(data.user.id);
+                }
+            });
+        }
+    }, [currentUser]);
+
+    const currentUserId = realUserId || "unknown";
     const myResult = results.find((r) => r.userId === currentUserId);
 
     const reward = {

@@ -3,8 +3,10 @@ import { quizService } from "@/modules/quiz/quiz.service";
 
 export async function POST(request: NextRequest) {
     try {
+        // Ambil data body dari request
         const body = await request.json();
         const { game_room_id, user_id, room_code } = body;
+
 
         if (!user_id) {
             return NextResponse.json(
@@ -31,7 +33,10 @@ export async function POST(request: NextRequest) {
             data: joinResult,
         });
     } catch (error) {
-        console.error(`API Error [POST /api/user-game/join-room-code]:`, error);
+        console.error(
+            `API Error [POST /api/user-game/join-room-code]:`,
+            error,
+        );
 
         const errorMessage =
             error instanceof Error ? error.message : "Internal Server Error";

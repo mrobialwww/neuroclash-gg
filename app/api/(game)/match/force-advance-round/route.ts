@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { battleRoomRepository } from "@/modules/battles/battle.repository";
 import { battleRoomService } from "@/modules/battles/battle.service";
 import { gameRoomService } from "@/modules/games/game.service";
+import { roundManagementService } from "@/services/roundManagementService";
 
 /**
  * POST /api/match/force-advance-round
@@ -47,33 +48,35 @@ export async function POST(request: NextRequest) {
             console.log(
                 `[API] force-advance-round: force-timeout battle room ${room.battle_room_id.substring(0, 8)}`,
             );
-            await gameRoomService.updateBattleRoomStatus(
+            await roundManagementService.handleTimeout(
                 room.battle_room_id,
-                "timeout",
+                game_room_id,
+                round_number
             );
         }
 
-        // 3. Finalize the match round record
-        try {
-            await battleRoomService.finalizeMatchRound(game_room_id, round_number);
-        } catch (e) {
-            // Might already be finalized — log and continue
-            console.warn(
-                `[API] force-advance-round: finalizeMatchRound warning (may be already done):`,
-                e,
-            );
-        }
+        if (stuckRooms.length === 0) {
+            // 3. Finalize the match round record
+            try {
+                await battleRoomService.finalizeMatchRound(game_room_id, round_number);
+            } catch (e) {
+                console.warn(
+                    `[API] force-advance-round: finalizeMatchRound warning (may be already done):`,
+                    e,
+                );
+            }
 
-        // 4. Check game end condition
-        const shouldEnd = await gameRoomService.checkGameEndCondition(game_room_id);
-        if (shouldEnd) {
-            console.log(`[API] force-advance-round: game should end, ending game`);
-            await gameRoomService.endGame(game_room_id);
-            return NextResponse.json({ success: true, game_ended: true });
-        }
+            // 4. Check game end condition
+            const shouldEnd = await gameRoomService.checkGameEndCondition(game_room_id);
+            if (shouldEnd) {
+                console.log(`[API] force-advance-round: game should end, ending game`);
+                await gameRoomService.endGame(game_room_id);
+                return NextResponse.json({ success: true, game_ended: true });
+            }
 
-        // 5. Prepare next round record
-        await gameRoomService.prepareNextRound(game_room_id, round_number);
+            // 5. Prepare next round record
+            await gameRoomService.prepareNextRound(game_room_id, round_number);
+        }
 
         console.log(
             `[API] force-advance-round: round ${round_number} force-finished, next round prepared`,

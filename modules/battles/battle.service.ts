@@ -173,8 +173,8 @@ export const battleRoomService = {
         battleRoomId: string,
         userId: string,
         answerId: string
-    ): Promise<void> {
-        await battleRoomRepository.updateFirstAnswer(battleRoomId, userId, answerId);
+    ): Promise<boolean> {
+        return await battleRoomRepository.updateFirstAnswer(battleRoomId, userId, answerId);
     },
 
     /**

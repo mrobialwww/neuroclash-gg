@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${baloo2.variable} relative min-h-screen antialiased`}>
+      <body className={`${baloo2.variable} relative min-h-screen antialiased`} suppressHydrationWarning>
         {/* Scrolling Background Container - Looping & Mirrored */}
         <div className="pointer-events-none absolute inset-0 -z-50 flex h-full w-full select-none flex-col overflow-hidden">
           {Array.from({ length: 20 }).map((_, i) => (

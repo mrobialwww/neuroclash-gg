@@ -363,7 +363,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             const battleRes = await fetch(
                 `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
             );
-            const battleRoom: BattleRoom | null = battleRes.ok ? await battleRes.json() : null;
+            const battleRoom: BattleRoom | null = battleRes.ok
+                ? await battleRes.json()
+                : null;
 
             if (battleRoom) {
                 // Get opponent IDs from battle room
@@ -455,6 +457,19 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                                 newRound.round_number,
                             );
                         }
+
+                        // Ketika semua pertarungan selesai (all_battles_finished),
+                        // majukan round segera tanpa menunggu timer habis.
+                        if (
+                            !oldRound.all_battles_finished &&
+                            newRound.all_battles_finished &&
+                            newRound.status === "finished"
+                        ) {
+                            console.log(
+                                `[MatchStore] All battles finished for round ${newRound.round_number}, advancing early...`,
+                            );
+                            await get().waitForAllBattlesAndAdvance();
+                        }
                     }
                 },
             )
@@ -537,25 +552,31 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Fetch question + answers via API (store is client-side)
         let question: QuizQuestion | null = null;
-        const qRes = await fetch(`/api/quiz/questions/${roomId}?question_order=${order}`);
-        const qJson = await qRes.json();
-        const qData = Array.isArray(qJson?.data) ? qJson.data[0] : qJson?.data;
-        if (qData?.question_id) {
-            const aRes = await fetch(`/api/quiz/questions/answers/${qData.question_id}`);
-            const aJson = await aRes.json();
-            
-            const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
-            const sortedAnswers = [...rawAnswers].sort((a, b) => a.key.localeCompare(b.key));
-            
-            const options = sortedAnswers.map((ans: any) => ({
-                id: ans.answer_id,
-                label: ans.key.toUpperCase(),
-                text: ans.answer_text,
-                isCorrect: ans.is_correct,
-                explanation: ans.explanation ?? null,
-            }));
+        try {
+            const qRes = await fetch(
+                `/api/quiz/questions/${roomId}?question_order=${order}`,
+            );
+            const qJson = await qRes.json();
+            const qData = Array.isArray(qJson?.data) ? qJson.data[0] : qJson?.data;
+            if (qData?.question_id) {
+                const aRes = await fetch(
+                    `/api/quiz/questions/answers/${qData.question_id}`,
+                );
+                const aJson = await aRes.json();
+                const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
+                const sortedAnswers = [...rawAnswers].sort((a, b) => a.key.localeCompare(b.key));
 
-            question = { ...qData, options };
+                const options = sortedAnswers.map((ans: any) => ({
+                    id: ans.answer_id,
+                    label: ans.key.toUpperCase(),
+                    text: ans.answer_text,
+                    isCorrect: ans.is_correct,
+                    explanation: ans.explanation ?? null,
+                }));
+                question = { ...qData, options };
+            }
+        } catch (err) {
+            console.error(`[MatchStore] Failed to load question for round ${order}:`, err);
         }
 
         if (!question) {
@@ -876,7 +897,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
         // Now advance the round (this will generate new battle rooms and start next round)
-        await get().advanceRound();
+        try {
+            await get().advanceRound();
+        } catch (err) {
+            console.error(`[MatchStore] advanceRound failed:`, err);
+        }
 
         // Hide loading state and reset flag
         set({ isWaitingForAllBattles: false, isAdvancingRound: false });
@@ -984,11 +1009,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     const correctOpt = state.currentQuestion?.options.find(
                         (o) => o.isCorrect,
                     );
+                    const isFirst = !result.damage_applied;
                     set({
                         lastAnswerCorrect: result.is_correct ?? false,
                         correctAnswerId: correctOpt?.id ?? null,
-                        firstAnswerPlayerId: state.currentUser?.id || null,
-                        firstAnswerId: answerId,
+                        ...(isFirst && {
+                            firstAnswerPlayerId: state.currentUser?.id || null,
+                            firstAnswerId: answerId,
+                        }),
                     });
 
                     console.log(
@@ -1070,10 +1098,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             `[MatchStore] Timeout API call succeeded`,
                         );
 
-                        if (noOneAnswered) {
-                            // Only sync health when we actually applied damage
-                            await get().syncPlayersFromDB(gameRoomId);
-                        }
+                        // Always sync health after timeout — damage is applied
+                        // regardless of whether someone answered or not
+                        await get().syncPlayersFromDB(gameRoomId);
                     } else {
                         const errorText = await res.text();
                         if (errorText.includes("Battle room not found")) {

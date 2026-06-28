@@ -15,6 +15,7 @@ import { PlayerOpponents } from "@/modules/gamePlayers/gamePlayers.schema";
 import { battleRoomService } from "@/modules/battles/battle.service";
 import { lockManager } from "@/lib/utils/lockManager";
 import { gamePlayersService } from "@/modules/gamePlayers/gamePlayers.service";
+import { getPlayerCharacterSkill } from "@/lib/game/characterSkill";
 
 // In-memory track opponents untuk setiap game (reset per round)
 const playerOpponentsCache: Map<string, PlayerOpponents[]> = new Map();
@@ -1753,7 +1754,50 @@ export const gameRoomService = {
             );
         }
 
-        // 3. Create/update match_rounds status (idempotent upsert)
+        // 3. [SKILL] Terapkan Heal di awal ronde untuk player yang punya skill Heal
+        // Heal diterapkan SEBELUM soal dijawab (di awal ronde)
+        const allPlayerIds = [
+            ...new Set(
+                battleRooms.flatMap((br) =>
+                    [
+                        br.player1_id,
+                        br.player2_id,
+                        br.player3_id,
+                    ].filter((id): id is string => id !== null),
+                ),
+            ),
+        ];
+
+        console.log(
+            `[RoundService] [Heal Skill] Checking heal skill for ${allPlayerIds.length} players`,
+        );
+
+        await Promise.all(
+            allPlayerIds.map(async (playerId) => {
+                const skill = await getPlayerCharacterSkill(playerId);
+                if (!skill || skill.type !== "heal") return;
+
+                const participants =
+                    await gamePlayersService.getParticipantsList(gameId);
+                const playerState = participants.find(
+                    (p) => p.id === playerId,
+                );
+                if (!playerState || playerState.health <= 0) return;
+
+                const newHp = playerState.health + skill.value;
+                await gamePlayersService.updateHealth(
+                    playerId,
+                    gameId,
+                    newHp,
+                    roundNumber,
+                );
+                console.log(
+                    `[RoundService] [Heal Skill] Player ${playerId.substring(0, 8)}: ${playerState.health} → ${newHp} (+${skill.value} HP dari skill ${skill.type})`,
+                );
+            }),
+        );
+
+        // 4. Create/update match_rounds status (idempotent upsert)
         console.log(`[RoundService] Updating match_rounds status`);
         await gameRoomRepository.activateMatchRound(gameId, roundNumber);
         console.log(

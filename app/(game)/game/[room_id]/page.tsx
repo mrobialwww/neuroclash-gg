@@ -15,6 +15,11 @@ import {
 } from "@/components/match/BuffEffectOverlay";
 import { RoundResultOverlay } from "@/components/match/RoundResultOverlay";
 import NextImage from "next/image";
+import {
+    CHARACTER_SKILL_MAP,
+    SKILL_VALUES,
+    SkillType,
+} from "@/lib/constants/characters";
 
 import {
     useMatchStore,
@@ -363,14 +368,32 @@ export default function GamePage() {
 
         const mapToCard = (p: any) =>
             p
-                ? {
-                      id: p.id,
-                      name: p.name,
-                      character: p.character || "Slime",
-                      image: p.image,
-                      health: p.health,
-                      maxHealth: 100,
-                  }
+                ? (() => {
+                      // Resolve skill dari nama karakter — hanya ada di epic/legend
+                      const skinLevel = p.skin_level as
+                          | "default"
+                          | "epic"
+                          | "legend"
+                          | undefined;
+                      const skillType: SkillType | null =
+                          skinLevel && skinLevel !== "default"
+                              ? CHARACTER_SKILL_MAP[p.character] ?? null
+                              : null;
+
+                      return {
+                          id: p.id,
+                          name: p.name,
+                          character: p.character || "Slime",
+                          image: p.image,
+                          health: p.health,
+                          maxHealth: 100,
+                          skillType,
+                          skinLevel:
+                              skillType && skinLevel !== "default"
+                                  ? (skinLevel as "epic" | "legend")
+                                  : undefined,
+                      };
+                  })()
                 : null;
 
         // Prof. Bubu card untuk Solo mode (lawan)
@@ -738,6 +761,8 @@ export default function GamePage() {
                                     player={meCard as any}
                                     isMe={true}
                                     className="w-full"
+                                    skillType={(meCard as any).skillType}
+                                    skinLevel={(meCard as any).skinLevel}
                                 />
                             ) : (
                                 <div className="h-[90px] w-full" />
@@ -765,6 +790,8 @@ export default function GamePage() {
                                     isMe={false}
                                     hideHealthBar={isSolo}
                                     className="w-full"
+                                    skillType={(opponentCard as any).skillType}
+                                    skinLevel={(opponentCard as any).skinLevel}
                                 />
                             ) : (
                                 <div className="h-[90px] w-full" />
