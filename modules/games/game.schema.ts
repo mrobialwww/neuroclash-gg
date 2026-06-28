@@ -86,6 +86,7 @@ export interface BattleRoomData {
     player1_id: string;
     player2_id: string;
     status: string;
+    round_number: number;
     [key: string]: unknown;
 }
 

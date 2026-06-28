@@ -508,21 +508,6 @@ export default function GamePage() {
         );
     }
 
-    // Tampilan ketika Loading Data
-    if (isLoadingQuestion && !currentQuestion) {
-        return (
-            <main className="relative flex min-h-screen w-full flex-col items-center justify-center space-y-4">
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[100px]" />
-                <div className="relative flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_15px_rgba(61,121,243,0.3)]" />
-                    <p className="animate-pulse text-lg font-semibold uppercase tracking-widest text-white">
-                        Memuat Arena...
-                    </p>
-                </div>
-            </main>
-        );
-    }
-
     // Tampilan ketika Menunggu Semua Battle Room Selesai
     if (isWaitingForAllBattles && !error) {
         return (
@@ -801,8 +786,18 @@ export default function GamePage() {
 
                     {/* Kolom Tengah Utama — Area Pertanyaan */}
                     <div className="isolate order-3 col-span-2 mt-2 flex flex-col lg:order-2 lg:col-span-1 lg:mt-0">
-                        {currentQuestion && (
-                            <>
+                        {currentQuestion ? (
+                            <div className="relative">
+                                {isLoadingQuestion && (
+                                    <div className="absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-[#040619]/60 pt-12 backdrop-blur-sm">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#3D79F3] border-t-transparent shadow-[0_0_12px_rgba(61,121,243,0.3)]" />
+                                            <p className="animate-pulse text-sm font-semibold uppercase tracking-widest text-blue-300">
+                                                Memuat...
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                                 {firstAnswerPlayerId && (
                                     <div className="mb-4 text-center font-semibold text-yellow-400">
                                         {
@@ -830,7 +825,15 @@ export default function GamePage() {
                                     firstAnswerCorrect={firstAnswerCorrect}
                                     className="h-auto w-full"
                                 />
-                            </>
+                            </div>
+                        ) : (
+                            /* Initial load — show compact skeleton inside layout */
+                            <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-[#383347] bg-[#040619]/40 p-12">
+                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_15px_rgba(61,121,243,0.3)]" />
+                                <p className="animate-pulse text-base font-semibold uppercase tracking-widest text-white">
+                                    Memuat Arena...
+                                </p>
+                            </div>
                         )}
                     </div>
 

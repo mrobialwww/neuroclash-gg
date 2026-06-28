@@ -134,6 +134,10 @@ export interface StarboxState extends PersistedStarboxSlice {
     myPlayerId: string | null;
     pickedPlayerIds: string[];
     attackorShield: number;
+    /** Server-synced timestamp (ms) when Starbox picking should begin.
+     *  Set by the host via Realtime broadcast so all clients count down
+     *  from the same reference point. */
+    starboxReadyAt: number | null;
 
     initGameData: (
         code: string,
@@ -178,6 +182,7 @@ export const useStarboxStore = create<StarboxState>()(
             myPlayerId: null,
             pickedPlayerIds: [],
             attackorShield: 0,
+            starboxReadyAt: null,
 
             /**
              * Entry point halaman Starbox. Dipanggil sekali saat komponen mount.
@@ -220,7 +225,8 @@ export const useStarboxStore = create<StarboxState>()(
                         players: [],
                         pickedPlayerIds: [],
                         pickingAbilityId: null,
-                        attackorShield: 0,
+            attackorShield: 0,
+            starboxReadyAt: null as number | null,
                     });
                 }
 
@@ -465,6 +471,25 @@ export const useStarboxStore = create<StarboxState>()(
 
                     // Buka koneksi Realtime setelah semua data siap — hindari event masuk sebelum state ready.
                     get().setupRealtimeSubscription(roomId);
+
+                    // ── SYNC STARBOX START TIME ──
+                    // Host broadcasts a shared readyAt timestamp so all clients count down
+                    // from the same reference point, preventing desync.
+                    if (isHost) {
+                        // Short delay to let other clients' subscriptions settle, then broadcast
+                        setTimeout(() => {
+                            const stockCh = stockChannel;
+                            if (stockCh) {
+                                const readyAt = Date.now() + 4000; // 4s from broadcast
+                                stockCh.send({
+                                    type: "broadcast",
+                                    event: "starbox_ready",
+                                    payload: { readyAt },
+                                });
+                                set({ starboxReadyAt: readyAt });
+                            }
+                        }, 2000);
+                    }
                 } catch (e: unknown) {
                     const err = e as { message?: string; details?: string };
                     console.error(
@@ -521,6 +546,12 @@ export const useStarboxStore = create<StarboxState>()(
                                 ],
                             };
                         });
+                    })
+                    .on("broadcast", { event: "starbox_ready" }, (payload) => {
+                        const readyAt = payload.payload.readyAt as number;
+                        if (readyAt) {
+                            set({ starboxReadyAt: readyAt });
+                        }
                     })
                     .on("broadcast", { event: "turn_skipped" }, (payload) => {
                         const turnIndexSkipped = payload.payload.turnIndex;
@@ -1032,6 +1063,7 @@ export const useStarboxStore = create<StarboxState>()(
                     myPlayerId: null,
                     pickedPlayerIds: [],
                     attackorShield: 0,
+                    starboxReadyAt: null,
                 });
             },
         }),

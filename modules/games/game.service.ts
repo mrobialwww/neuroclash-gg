@@ -544,16 +544,12 @@ export const gameRoomService = {
 
             // End time logic:
             // - Dead players: when they died (p.updated_at)
-            // - Alive players: use Date.now() for solo mode or non-finished rooms.
-            //   When room is finished, fallback to gameRoomData.updated_at
-            //   but note: solo mode rooms may not auto-update updated_at,
-            //   so always use Date.now() for solo (totalPlayers === 1).
-            const isRoomFinished = gameRoomData?.room_status === "finished";
+            // - Alive players: always use Date.now() (the moment rewards are calculated).
+            //   Using gameRoomData.updated_at is unreliable because it may not have been
+            //   updated by finishRoomProcessing yet at this point.
             const matchEnd =
                 p.status === "alive"
-                    ? totalPlayers === 1 || !isRoomFinished
-                        ? Date.now()
-                        : parseDBDate(gameRoomData?.updated_at)
+                    ? Date.now()
                     : parseDBDate(p.updated_at);
 
             const survivalTime = calculateDuration(matchStart, matchEnd);
@@ -570,11 +566,9 @@ export const gameRoomService = {
                 health: p.health || 0,
                 status: p.status,
                 deathRound:
-                    p.status !== "alive"
-                        ? pAnswers.length > 0
-                            ? Math.max(...pAnswers.map((a) => a.round_number))
-                            : 0
-                        : 999,
+                    pAnswers.length > 0
+                        ? Math.max(...pAnswers.map((a) => a.round_number))
+                        : 0,
                 answerCount: pAnswers.length,
                 win: winCount,
                 lose: loseCount,
@@ -604,11 +598,13 @@ export const gameRoomService = {
         }
 
         // 5. Determine Placements via Sorting
+        // Priority: 1) Wins (primary), 2) Health (tiebreaker for alive), 3) deathRound (for dead), 4) answerCount
         playersStats.sort((a, b) => {
             const aAlive = a.status === "alive";
             const bAlive = b.status === "alive";
             if (aAlive && !bAlive) return -1;
             if (!aAlive && bAlive) return 1;
+            if (a.win !== b.win) return b.win - a.win;
             if (aAlive && bAlive) {
                 if (a.health !== b.health) return b.health - a.health;
             } else {
@@ -671,7 +667,7 @@ export const gameRoomService = {
                 coinsEarned,
                 health: p.health,
                 isAlive: p.status === "alive",
-                deathRound: p.deathRound === 999 ? N : p.deathRound,
+                deathRound: p.deathRound,
                 answerTime: p.answerCount,
                 survivalTime: p.survivalTime,
                 win: p.win,
@@ -1914,7 +1910,7 @@ export const gameRoomService = {
         roundNumber: number,
         requestId: string,
     ): Promise<{
-        reason?: "ALREADY_EXISTS" | "LOCK_FAILED" | "NOT_FOUND";
+        reason?: "ALREADY_EXISTS" | "LOCK_FAILED" | "NOT_FOUND" | "GAME_ENDED";
         battleRooms?: BattleRoom[];
         message?: string;
         fromLockWait?: boolean;
@@ -1925,6 +1921,40 @@ export const gameRoomService = {
         );
 
         const lockKey = `${gameRoomId}_${roundNumber}`;
+
+        // 1a. Game End Check — if game has already ended, reject immediately
+        // This prevents clients from generating battle rooms after the game is over,
+        // which is the root cause of dead players appearing in next-round battle rooms.
+        const gameRoom = await gameRoomRepository.getGameRoom(gameRoomId);
+        if (!gameRoom) {
+            console.log(
+                `[GameRoomService][${requestId}] ❌ Game room not found: ${gameRoomId}`,
+            );
+            return { reason: "NOT_FOUND", message: "Game room not found" };
+        }
+
+        if (gameRoom.room_status === "finished") {
+            console.log(
+                `[GameRoomService][${requestId}] ❌ Game already finished — rejecting round ${roundNumber}`,
+            );
+            return {
+                reason: "GAME_ENDED",
+                battleRooms: [],
+                message: `Game has ended — cannot start round ${roundNumber}`,
+            };
+        }
+
+        const shouldEnd = await this.checkGameEndCondition(gameRoomId);
+        if (shouldEnd) {
+            console.log(
+                `[GameRoomService][${requestId}] ❌ Game should end (only 0-1 players alive) — rejecting round ${roundNumber}`,
+            );
+            return {
+                reason: "GAME_ENDED",
+                battleRooms: [],
+                message: `Game has ended — cannot start round ${roundNumber}`,
+            };
+        }
 
         // 1. Idempotency Check - see if rooms already exist
         const existingRooms = await battleRoomService.getAllBattleRoomsForRound(

@@ -40,6 +40,15 @@ export async function POST(request: NextRequest) {
             requestId,
         );
 
+        if (result.reason === "GAME_ENDED") {
+            return NextResponse.json({
+                success: false,
+                reason: "GAME_ENDED",
+                battleRooms: [],
+                message: result.message,
+            });
+        }
+
         if (result.reason === "ALREADY_EXISTS") {
             return NextResponse.json({
                 success: true,

@@ -122,13 +122,7 @@ export const battleRoomService = {
             return { eligible: false, reason: "NOT_FOUND" };
         }
 
-        // Check if anyone answered
-        if (battleRoom.first_answer_user_id) {
-            console.log(`[BattleRoomService] Battle room ${battleRoomId} already has an answer, skipping timeout`);
-            return { eligible: false, reason: "ALREADY_ANSWERED", battleRoom };
-        }
-
-        // IDEMPOTENCY CHECK: Check if battle room is already marked as timeout/finished
+        // IDEMPOTENCY CHECK FIRST: Check if battle room is already marked as timeout/finished
         if (battleRoom.status === "timeout" || battleRoom.status === "finished") {
             console.log(`[BattleRoomService] ⚠️ Battle room ${battleRoomId} already has status ${battleRoom.status}, skipping timeout`);
             return { eligible: false, reason: "ALREADY_FINISHED", battleRoom };

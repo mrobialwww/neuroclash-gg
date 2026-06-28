@@ -40,6 +40,7 @@ export default function StarboxPage() {
         myPlayerId,
         pickedPlayerIds,
         currentTurnIndex,
+        starboxReadyAt,
         initGameData,
         selectAbility,
         autoAssignRemaining,
@@ -53,7 +54,10 @@ export default function StarboxPage() {
         return () => cleanup();
     }, [code, roomId, initGameData, cleanup, nextRound]);
 
+    const hasNavigated = useRef(false);
     const handleNextRound = useCallback(() => {
+        if (hasNavigated.current) return;
+        hasNavigated.current = true;
         router.push(`/game/${roomId}?code=${code}&nextRound=${nextRound}`);
     }, [router, roomId, code, nextRound]);
 
@@ -79,21 +83,55 @@ export default function StarboxPage() {
     const [turnCountdown, setTurnCountdown] = useState(TURN_DURATION_MS / 1000);
     const autoPickedThisTurn = useRef(false);
 
-    // Initial delay timer
+    // Initial delay timer — synced via starboxReadyAt from the host broadcast.
+    // All clients count down from the same reference point, preventing desync.
     useEffect(() => {
-        if (isLoading || !isPreDelay) return;
-        const timer = setInterval(() => {
+        if (isLoading) return;
+
+        const readyTarget = starboxReadyAt;
+        if (readyTarget) {
+            // Server-synced start time: count down from the shared timestamp
+            const remaining = Math.max(0, Math.ceil((readyTarget - Date.now()) / 1000));
+            setPreCountdown(remaining);
+
+            if (Date.now() >= readyTarget) {
+                setIsPreDelay(false);
+                return;
+            }
+
+            const timer = setInterval(() => {
+                const left = Math.max(0, Math.ceil((readyTarget - Date.now()) / 1000));
+                setPreCountdown(left);
+                if (Date.now() >= readyTarget) {
+                    clearInterval(timer);
+                    setIsPreDelay(false);
+                }
+            }, 200);
+            return () => clearInterval(timer);
+        }
+
+        // Fallback: local countdown if no broadcast received after 6s
+        const fallbackTimer = setTimeout(() => {
+            setIsPreDelay(false);
+        }, 6000);
+
+        const localTimer = setInterval(() => {
             setPreCountdown((prev) => {
                 if (prev <= 1) {
-                    clearInterval(timer);
+                    clearInterval(localTimer);
+                    clearTimeout(fallbackTimer);
                     setIsPreDelay(false);
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
-        return () => clearInterval(timer);
-    }, [isLoading, isPreDelay]);
+
+        return () => {
+            clearInterval(localTimer);
+            clearTimeout(fallbackTimer);
+        };
+    }, [isLoading, starboxReadyAt]);
 
     // Turn timer
     const turnSkippedThisRender = useRef(false);

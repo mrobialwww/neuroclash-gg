@@ -18,10 +18,12 @@ export interface MatchState {
     currentOrder: number;
     totalQuestions: number | null;
     currentQuestion: QuizQuestion | null;
+    nextQuestionCached: QuizQuestion | null;
     isLoadingQuestion: boolean;
     selectedAnswerId: string | null;
     isSubmitting: boolean;
     isFinished: boolean;
+    allBattlesFinished: boolean;
     timeLeft: number;
     players: PlayerMatchState[];
     currentUser: {
@@ -29,6 +31,7 @@ export interface MatchState {
         username: string;
         avatar: string;
         character: string;
+        skin_level?: string;
     } | null;
     currentBattleRoom: BattleRoom | null;
     opponentIds: string[];
@@ -48,6 +51,7 @@ export interface MatchState {
         initialRound: number,
     ) => Promise<void>;
     loadQuestion: (gameRoomId: string, order: number) => Promise<void>;
+    prefetchNextQuestion: (roomId: string, nextOrder: number) => Promise<void>;
     advanceRound: () => void;
     waitForAllBattlesAndAdvance: () => Promise<void>;
     handleSelectAnswer: (userId: string, answerId: string) => Promise<void>;
@@ -67,7 +71,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     currentOrder: 1,
     totalQuestions: null,
     currentQuestion: null,
+    nextQuestionCached: null,
     isLoadingQuestion: true,
+    allBattlesFinished: false,
     selectedAnswerId: null,
     isSubmitting: false,
     isFinished: false,
@@ -312,7 +318,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
             console.log(`[MatchStore] Synced ${players.length} players`);
 
-            // Check if game should end (only 1 player alive)
+            // Check if game should end (only 1 player alive = winner found)
             const alivePlayers = players.filter(
                 (p) => p.is_alive && p.health > 0,
             );
@@ -394,12 +400,21 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                           )?.id ?? null)
                         : currentState.correctAnswerId;
 
+                // When opponent already answered first in this round, immediately
+                // lock the answer buttons to prevent the race condition where the
+                // current user can still click and submit an answer after the opponent.
+                const currentUserId = currentUser.id;
+                const opponentIsFirst =
+                    battleRoom.first_answer_user_id &&
+                    battleRoom.first_answer_user_id !== currentUserId;
+
                 set({
                     currentBattleRoom: battleRoom,
                     opponentIds,
                     firstAnswerPlayerId: battleRoom.first_answer_user_id,
                     firstAnswerId: battleRoom.first_answer_id,
                     correctAnswerId: derivedCorrectId,
+                    isSubmitting: opponentIsFirst ? true : get().isSubmitting,
                 });
             } else {
                 console.log(
@@ -445,29 +460,33 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     // Handle round changes
                     if (payload.eventType === "UPDATE") {
                         const { new: newRound, old: oldRound } = payload;
+                        // Hanya proses event untuk round yang sedang aktif (currentOrder).
+                        // Ini mencegah Realtime event dari round LAMA/SELESAI memicu
+                        // loadQuestion atau advance pada round yang salah, yang bisa
+                        // menyebabkan lompat soal, load Starbox ganda, atau game end prematur.
+                        const currentOrderForRound = get().currentOrder;
                         if (
                             oldRound.status === "waiting" &&
-                            newRound.status === "ongoing"
+                            newRound.status === "ongoing" &&
+                            newRound.round_number === currentOrderForRound
                         ) {
-                            // Round baru dimulai
                             await get().syncBattleRoomFromDB();
-                            const state = get();
                             await get().loadQuestion(
                                 roomId,
                                 newRound.round_number,
                             );
                         }
 
-                        // Ketika semua pertarungan selesai (all_battles_finished),
-                        // majukan round segera tanpa menunggu timer habis.
                         if (
                             !oldRound.all_battles_finished &&
                             newRound.all_battles_finished &&
-                            newRound.status === "finished"
+                            newRound.status === "finished" &&
+                            newRound.round_number === currentOrderForRound
                         ) {
                             console.log(
                                 `[MatchStore] All battles finished for round ${newRound.round_number}, advancing early...`,
                             );
+                            set({ allBattlesFinished: true });
                             await get().waitForAllBattlesAndAdvance();
                         }
                     }
@@ -539,6 +558,26 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     loadQuestion: async (roomId, order) => {
         console.log(`[MatchStore] Loading question for round ${order}`);
 
+        // ── CACHE FAST PATH ──
+        const cached = get().nextQuestionCached;
+        if (cached) {
+            console.log(`[MatchStore] Using cached question for round ${order}`);
+            set({
+                currentQuestion: cached,
+                nextQuestionCached: null,
+                isLoadingQuestion: false,
+                selectedAnswerId: null,
+                firstAnswerId: null,
+                firstAnswerPlayerId: null,
+                timeLeft: SECONDS_PER_ROUND,
+                nextRoundUrl: null,
+                lastAnswerCorrect: null,
+                correctAnswerId: null,
+                isSubmitting: false,
+            });
+            return;
+        }
+
         set({
             isLoadingQuestion: true,
             selectedAnswerId: null,
@@ -548,9 +587,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             nextRoundUrl: null,
             lastAnswerCorrect: null,
             correctAnswerId: null,
+            isSubmitting: false,
         });
 
-        // Fetch question + answers via API (store is client-side)
+        // Fetch question + answers via API (sequential — answers depend on question_id)
         let question: QuizQuestion | null = null;
         try {
             const qRes = await fetch(
@@ -564,11 +604,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 );
                 const aJson = await aRes.json();
                 const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
-                const sortedAnswers = [...rawAnswers].sort((a, b) => a.key.localeCompare(b.key));
+                const sortedAnswers = [...rawAnswers].sort((a, b) => (a.key || "").localeCompare(b.key || ""));
 
                 const options = sortedAnswers.map((ans: any) => ({
                     id: ans.answer_id,
-                    label: ans.key.toUpperCase(),
+                    label: ans.key?.toUpperCase() || "",
                     text: ans.answer_text,
                     isCorrect: ans.is_correct,
                     explanation: ans.explanation ?? null,
@@ -592,6 +632,43 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
     },
 
+    prefetchNextQuestion: async (roomId: string, nextOrder: number) => {
+        // Only pre-fetch if within bounds and not already cached
+        const state = get();
+        if (state.nextQuestionCached) return;
+        if (state.totalQuestions && nextOrder > state.totalQuestions) return;
+
+        console.log(`[MatchStore] Pre-fetching question for round ${nextOrder}...`);
+        try {
+            const qRes = await fetch(
+                `/api/quiz/questions/${roomId}?question_order=${nextOrder}`,
+            );
+            const qJson = await qRes.json();
+            const qData = Array.isArray(qJson?.data) ? qJson.data[0] : qJson?.data;
+            if (qData?.question_id) {
+                const aRes = await fetch(
+                    `/api/quiz/questions/answers/${qData.question_id}`,
+                );
+                const aJson = await aRes.json();
+                const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
+                const sortedAnswers = [...rawAnswers].sort((a, b) => (a.key || "").localeCompare(b.key || ""));
+                const options = sortedAnswers.map((ans: any) => ({
+                    id: ans.answer_id,
+                    label: ans.key?.toUpperCase() || "",
+                    text: ans.answer_text,
+                    isCorrect: ans.is_correct,
+                    explanation: ans.explanation ?? null,
+                }));
+                const question: QuizQuestion = { ...qData, options };
+                set({ nextQuestionCached: question });
+                console.log(`[MatchStore] Pre-fetched question for round ${nextOrder}`);
+            }
+        } catch (err) {
+            // Pre-fetch failure is non-critical — will fetch on demand
+            console.warn(`[MatchStore] Pre-fetch failed for round ${nextOrder}:`, err);
+        }
+    },
+
     advanceRound: async () => {
         const state = get();
         const isSolo = state.roomInfo?.max_player === 1;
@@ -612,18 +689,32 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             return;
         }
 
+        // Sync fresh player data before Starbox check (to avoid stale health data)
+        try {
+            await get().syncPlayersFromDB(state.gameRoomId);
+        } catch (syncErr) {
+            console.warn(`[MatchStore] advanceRound player sync failed:`, syncErr);
+        }
+
+        // Re-read state after sync
+        const syncedState = get();
+        if (syncedState.isFinished) return;
+
         // Starbox check: berlaku untuk SEMUA mode.
         // - Solo: advanceRound dipanggil langsung (tidak lewat waitForAllBattlesAndAdvance)
         // - Multiplayer: safety net jika advanceRound dipanggil dari code path tak terduga
         //   (e.g. Realtime handler). waitForAllBattlesAndAdvance juga punya check serupa.
-        if (state.currentOrder % STARBOX_INTERVAL === 0) {
+        // Skip Starbox jika hanya 1 pemain yang masih hidup (game sudah selesai)
+        const aliveCount = syncedState.players.filter((p) => p.is_alive && p.health > 0).length;
+        const onlyOneAlive = aliveCount <= 1 && syncedState.players.length > 1;
+        if (syncedState.currentOrder % STARBOX_INTERVAL === 0 && !onlyOneAlive) {
             console.log(
-                `[MatchStore] Starbox round! (from advanceRound, round ${state.currentOrder})`,
+                `[MatchStore] Starbox round! (from advanceRound, round ${syncedState.currentOrder})`,
             );
             set({
-                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
-                    state.roomCode
-                }&nextRound=${state.currentOrder + 1}`,
+                nextRoundUrl: `/starbox?roomId=${syncedState.gameRoomId}&code=${
+                    syncedState.roomCode
+                }&nextRound=${syncedState.currentOrder + 1}`,
             });
             return;
         }
@@ -645,6 +736,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             selectedAnswerId: null,
             firstAnswerId: null,
             firstAnswerPlayerId: null,
+            lastAnswerCorrect: null,
+            correctAnswerId: null,
+            isSubmitting: false,
             timeLeft: SECONDS_PER_ROUND,
         });
 
@@ -721,10 +815,26 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             } else {
                 const result = await res.json();
                 console.log(
-                    `[MatchStore] Round ${nextOrder} started with ${
-                        result.battleRooms?.length || 0
-                    } battle rooms`,
+                    `[MatchStore] Round ${nextOrder} response: reason=${result.reason}, rooms=${result.battleRooms?.length || 0}`,
                 );
+
+                // Handle GAME_ENDED response (game already finished)
+                if (result.reason === "GAME_ENDED") {
+                    console.log(
+                        `[MatchStore] Game has ended — cannot start round ${nextOrder}`,
+                    );
+                    set({ isFinished: true });
+                    return;
+                }
+
+                // Handle empty battle rooms — game may be ending
+                if (!result.battleRooms || result.battleRooms.length === 0) {
+                    console.log(
+                        `[MatchStore] No battle rooms generated for round ${nextOrder}, ending game`,
+                    );
+                    set({ isFinished: true });
+                    return;
+                }
             }
         } catch (error) {
             console.error("[MatchStore] Error starting round:", error);
@@ -762,14 +872,32 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             return;
         }
 
+        // Sync fresh player state from server BEFORE checking StarBox condition
+        // This prevents stale player data from triggering a StarBox when the game
+        // has actually ended (only 1 player alive).
+        try {
+            await get().syncPlayersFromDB(state.gameRoomId);
+        } catch (syncErr) {
+            console.warn(`[MatchStore] Pre-StarBox player sync failed:`, syncErr);
+        }
+
+        // Re-read state after sync
+        const syncedState = get();
+
+        // Check if game finished after sync
+        if (syncedState.isFinished) return;
+
         // Check if this is a Starbox round (multiplayer only)
-        const isSolo = state.roomInfo?.max_player === 1;
-        if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
+        // Skip Starbox jika hanya 1 pemain yang masih hidup (game sudah selesai)
+        const isSolo = syncedState.roomInfo?.max_player === 1;
+        const aliveCount = syncedState.players.filter((p) => p.is_alive && p.health > 0).length;
+        const onlyOneAlive = aliveCount <= 1 && syncedState.players.length > 1;
+        if (!isSolo && !onlyOneAlive && syncedState.currentOrder % STARBOX_INTERVAL === 0) {
             console.log(`[MatchStore] Starbox round!`);
             set({
-                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
-                    state.roomCode
-                }&nextRound=${state.currentOrder + 1}`,
+                nextRoundUrl: `/starbox?roomId=${syncedState.gameRoomId}&code=${
+                    syncedState.roomCode
+                }&nextRound=${syncedState.currentOrder + 1}`,
             });
             return;
         }
@@ -780,12 +908,23 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         // Show loading state
         set({ isWaitingForAllBattles: true });
 
+        // ── REALTIME FAST PATH ──
+        // If Realtime already confirmed all_battles_finished, note it but DO NOT skip polling.
+        // We must still poll at least once to check game_ended — Realtime fires BEFORE the
+        // server checks the game-end condition, so skipping polling would let clients advance
+        // into the next round after the game has already ended.
+        const rtConfirmed = get().allBattlesFinished;
+        if (rtConfirmed) {
+            console.log(`[MatchStore] Realtime confirmed all battles finished — will verify via poll`);
+            set({ allBattlesFinished: false });
+        }
+
         // Wait for all battles to finish with polling
         // NOTE: read currentOrder from LIVE store on each iteration, not stale snapshot,
         // so that if a Realtime event already advanced the round we don't poll the old one.
-        let allFinished = false;
+        let allFinished = false; // always poll at least once
         let attempts = 0;
-        const maxAttempts = 30; // 30 seconds before force-recovery
+        const maxAttempts = rtConfirmed ? 5 : 30; // fewer polls if Realtime confirmed
 
         while (!allFinished && attempts < maxAttempts) {
             attempts++;
@@ -839,8 +978,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 );
             }
 
-            // Wait 1 second before next poll
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            // Wait 500ms before next poll (faster detection)
+            await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
         if (!allFinished) {
@@ -888,13 +1027,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
 
         console.log(
-            `[MatchStore] All battles finished, preparing to advance to round ${
+            `[MatchStore] All battles finished, advancing to round ${
                 get().currentOrder + 1
             }`,
         );
-
-        // Wait 2 seconds for players to see results
-        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         // Now advance the round (this will generate new battle rooms and start next round)
         try {
@@ -950,6 +1086,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         correctAnswerId: correctOpt?.id ?? null,
                         isSubmitting: false,
                     });
+
+                    // Pre-fetch next question while result overlay shows
+                    const nextOrder = state.currentOrder + 1;
+                    get().prefetchNextQuestion(state.gameRoomId, nextOrder);
 
                     // Solo mode: show feedback briefly (allow overlay animation), then advance
                     await new Promise((resolve) => setTimeout(resolve, 2200));
@@ -1023,6 +1163,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         "[MatchStore] Syncing players after answer submission...",
                     );
                     await get().syncPlayersFromDB(state.gameRoomId);
+
+                    // Pre-fetch next question while waiting for opponent / overlay
+                    const nextOrder = state.currentOrder + 1;
+                    get().prefetchNextQuestion(state.gameRoomId, nextOrder);
                 }
             }
         } catch (e) {
@@ -1123,6 +1267,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 }
             }
 
+            // Pre-fetch next question while waiting for all battles
+            const nextOrder = get().currentOrder + 1;
+            get().prefetchNextQuestion(gameRoomId, nextOrder);
+
             console.log(
                 `[MatchStore] Timer expired, waiting for all battles to finish...`,
             );
@@ -1161,6 +1309,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             lastAnswerCorrect: null,
             correctAnswerId: null,
             matchStartTime: null,
+            nextQuestionCached: null,
+            allBattlesFinished: false,
         });
     },
 }));

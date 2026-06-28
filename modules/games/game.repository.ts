@@ -685,7 +685,12 @@ export const gameRoomRepository = {
      * Get alive players in a game room
      */
     async getAlivePlayers(gameId: string) {
-        const supabase = await createClient();
+        // Gunakan admin client untuk bypass RLS — ini penting karena RLS biasanya
+        // membatasi SELECT hanya untuk row user_id = auth.uid(), padahal kita butuh
+        // menghitung SEMUA pemain yang masih hidup, bukan hanya pemain yang request.
+        // Tanpa ini, query hanya return 1 row (current user) → alivePlayers.length <= 1
+        // selalu true → game end prematur.
+        const supabase = createAdminClient();
         const { data, error } = await supabase
             .from("game_players")
             .select("user_id, health, status")
