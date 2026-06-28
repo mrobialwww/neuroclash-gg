@@ -53,7 +53,7 @@ export interface MatchState {
     handleSelectAnswer: (userId: string, answerId: string) => Promise<void>;
     decrementTimer: () => void;
     resetMatch: () => void;
-    syncPlayersFromDB: (roomId: string) => Promise<void>;
+    syncPlayersFromDB: (roomId: string, force?: boolean) => Promise<void>;
     syncBattleRoomFromDB: () => Promise<void>;
     setupRealtimeSubscription: (roomId: string) => void;
     isOpponent: (playerId: string) => boolean;
@@ -273,12 +273,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
     },
 
-    syncPlayersFromDB: async (roomId) => {
+    syncPlayersFromDB: async (roomId, force = false) => {
         const { isSyncingPlayers, isAdvancingRound } = get();
 
         // IMPORTANT: Skip sync if we're currently advancing round
         // This prevents excessive sync calls during round transition
-        if (isAdvancingRound) {
+        // However, if force=true, we bypass this to allow syncing heal effects at round start
+        if (isAdvancingRound && !force) {
             console.log(
                 `[MatchStore] ⚠️ Skipping player sync - currently advancing round`,
             );
@@ -440,6 +441,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         ) {
                             // Round baru dimulai
                             await get().syncBattleRoomFromDB();
+                            await get().syncPlayersFromDB(roomId, true);
                             const state = get();
                             await get().loadQuestion(
                                 roomId,
@@ -700,6 +702,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Load question for new round
         await get().loadQuestion(state.gameRoomId, nextOrder);
+        await get().syncPlayersFromDB(state.gameRoomId, true);
     },
 
     waitForAllBattlesAndAdvance: async () => {
@@ -1026,7 +1029,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         console.log(
                             "[MatchStore] Syncing players after timeout damage...",
                         );
-                        await get().syncPlayersFromDB(gameRoomId);
                     } else {
                         const errorText = await res.text();
                         // Battle room might have already been processed or deleted if someone else's timeout/answer triggered first

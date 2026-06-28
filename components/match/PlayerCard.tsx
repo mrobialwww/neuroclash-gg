@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { SkillType } from "@/lib/constants/characters";
 import { SkillBadge } from "@/components/match/SkillBadge";
 import { cn } from "@/lib/utils/utils";
 import { MockUser as User } from "@/types/MockUser";
+import { useMatchStore } from "@/store/useMatchStore";
 
 interface Player extends User {
     health: number;
@@ -39,6 +41,12 @@ export const PlayerCard = ({
     // Suppress the transition animation on the very first render
     const isMounted = useRef(false);
     const [enableTransition, setEnableTransition] = useState(false);
+    const [activeAnim, setActiveAnim] = useState<
+        "heal" | "defence" | "damage" | null
+    >(null);
+    const firstAnswerPlayerId = useMatchStore(
+        (state) => state.firstAnswerPlayerId,
+    );
 
     useEffect(() => {
         if (!isMounted.current) {
@@ -52,6 +60,43 @@ export const PlayerCard = ({
         }
     }, []);
 
+    const [prevHealth, setPrevHealth] = useState(() => {
+        // Jika ronde 1 dan HP > maxHealth, artinya backend sudah apply heal
+        // sebelum halaman diload. Kita set prevHealth ke maxHealth agar animasi jalan.
+        if (skillType === "heal" && player.health > player.maxHealth) {
+            return player.maxHealth;
+        }
+        return player.health;
+    });
+
+    // Reset activeAnim otomatis setelah 2 detik
+    useEffect(() => {
+        if (activeAnim !== null) {
+            const timer = setTimeout(() => setActiveAnim(null), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [activeAnim]);
+
+    // Animasi attack/damage ketika player ini adalah yang menjawab benar pertama
+    useEffect(() => {
+        if (!isMounted.current) return;
+        if (firstAnswerPlayerId === player.id && skillType === "damage") {
+            setActiveAnim("damage");
+        }
+    }, [firstAnswerPlayerId, player.id, skillType]);
+
+    useEffect(() => {
+        if (!isMounted.current) return;
+
+        if (player.health > prevHealth) {
+            if (skillType === "heal") setActiveAnim("heal");
+        } else if (player.health < prevHealth) {
+            if (skillType === "defence") setActiveAnim("defence");
+        }
+
+        setPrevHealth(player.health);
+    }, [player.health, prevHealth, skillType]);
+
     return (
         <div
             className={cn(
@@ -62,6 +107,65 @@ export const PlayerCard = ({
                 className,
             )}
         >
+            {/* Subtle Card Skill Animations */}
+            <AnimatePresence>
+                {activeAnim === "heal" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl lg:rounded-2xl border-2 border-green-500 bg-green-500/10 shadow-[inset_0_0_15px_rgba(34,197,94,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: -5 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1 }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-green-400 drop-shadow-md md:text-base lg:text-lg"
+                        >
+                            + Heal
+                        </motion.div>
+                    </motion.div>
+                )}
+                {activeAnim === "defence" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl lg:rounded-2xl border-2 border-blue-500 bg-blue-500/10 shadow-[inset_0_0_15px_rgba(59,130,246,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-blue-400 drop-shadow-md md:text-base lg:text-lg"
+                        >
+                            Shield!
+                        </motion.div>
+                    </motion.div>
+                )}
+                {activeAnim === "damage" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl lg:rounded-2xl border-2 border-red-500 bg-red-500/10 shadow-[inset_0_0_15px_rgba(239,68,68,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 1.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-red-400 drop-shadow-md md:text-base lg:text-lg"
+                        >
+                            Attack!
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Avatar Section */}
             {/* Avatar Section */}
             <div
                 className={cn(

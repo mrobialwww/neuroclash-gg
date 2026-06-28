@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import { getCharacterBgColor } from "@/lib/constants/characters";
 import { cn } from "@/lib/utils/utils";
 import { Player } from "@/lib/constants/players";
+import { AnimatePresence, motion } from "framer-motion";
+import { useMatchStore } from "@/store/useMatchStore";
 
 interface PlayerGridCardProps {
     player: Player;
@@ -15,6 +18,7 @@ interface PlayerGridCardProps {
     isActiveTurn?: boolean;
     progress?: number;
     progressColor?: string;
+    skillType?: "heal" | "defence" | "damage" | null;
 }
 
 export const PlayerGridCard = ({
@@ -27,8 +31,55 @@ export const PlayerGridCard = ({
     isActiveTurn = false,
     progress = 0,
     progressColor = "bg-[#FDBB38]/80",
+    skillType = null,
 }: PlayerGridCardProps) => {
     const healthPercentage = (player.health / player.maxHealth) * 100;
+    const [hasMounted, setHasMounted] = useState(false);
+    const [activeAnim, setActiveAnim] = useState<
+        "heal" | "defence" | "damage" | null
+    >(null);
+    const firstAnswerPlayerId = useMatchStore(
+        (state) => state.firstAnswerPlayerId,
+    );
+
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
+    const [prevHealth, setPrevHealth] = useState(() => {
+        if (skillType === "heal" && player.health > player.maxHealth) {
+            return player.maxHealth;
+        }
+        return player.health;
+    });
+
+    // Reset activeAnim otomatis setelah 2 detik
+    useEffect(() => {
+        if (activeAnim !== null) {
+            const timer = setTimeout(() => setActiveAnim(null), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [activeAnim]);
+
+    // Animasi attack/damage ketika player ini menjawab benar pertama
+    useEffect(() => {
+        if (!hasMounted) return;
+        if (firstAnswerPlayerId === player.id && skillType === "damage") {
+            setActiveAnim("damage");
+        }
+    }, [firstAnswerPlayerId, player.id, skillType, hasMounted]);
+
+    useEffect(() => {
+        if (!hasMounted) return;
+
+        if (player.health > prevHealth) {
+            if (skillType === "heal") setActiveAnim("heal");
+        } else if (player.health < prevHealth) {
+            if (skillType === "defence") setActiveAnim("defence");
+        }
+
+        setPrevHealth(player.health);
+    }, [player.health, prevHealth, skillType, hasMounted]);
 
     // Border avatar selalu putih
     const borderColor = "border-white/80";
@@ -67,6 +118,68 @@ export const PlayerGridCard = ({
                 className,
             )}
         >
+            {/* Subtle Card Skill Animations */}
+            <AnimatePresence>
+                {activeAnim === "heal" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl border-2 border-green-500 bg-green-500/10 shadow-[inset_0_0_15px_rgba(34,197,94,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: -5 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1 }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-green-400 drop-shadow-md md:text-base"
+                        >
+                            + Heal
+                        </motion.div>
+                    </motion.div>
+                )}
+                {activeAnim === "defence" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl border-2 border-blue-500 bg-blue-500/10 shadow-[inset_0_0_15px_rgba(59,130,246,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-blue-400 drop-shadow-md md:text-base"
+                        >
+                            Shield!
+                        </motion.div>
+                    </motion.div>
+                )}
+                {activeAnim === "damage" && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl border-2 border-red-500 bg-red-500/10 shadow-[inset_0_0_15px_rgba(239,68,68,0.2)]"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 1.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 20,
+                            }}
+                            className="absolute left-1/2 top-1/4 -translate-x-1/2 text-sm font-bold text-red-400 drop-shadow-md md:text-base"
+                        >
+                            Attack!
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Progress Background Layer (Turn Timer) */}
             {isActiveTurn && progress > 0 && (
                 <div
