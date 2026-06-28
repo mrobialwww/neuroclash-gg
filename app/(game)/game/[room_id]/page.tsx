@@ -14,12 +14,9 @@ import {
     BuffEffectType,
 } from "@/components/match/BuffEffectOverlay";
 import { RoundResultOverlay } from "@/components/match/RoundResultOverlay";
+import { ProfBubuPhase } from "@/components/match/ProfBubuPhase";
 import NextImage from "next/image";
-import {
-    CHARACTER_SKILL_MAP,
-    SKILL_VALUES,
-    SkillType,
-} from "@/lib/constants/characters";
+import { CHARACTER_SKILL_MAP, SkillType } from "@/lib/constants/characters";
 
 import {
     useMatchStore,
@@ -94,6 +91,8 @@ export default function GamePage() {
         decrementTimer,
         isOpponent,
         canAnswer,
+        isProfBubuPhase,
+        endProfBubuPhase,
     } = useMatchStore();
 
     const { myInventory, refreshMyInventory } = useStarboxStore();
@@ -114,9 +113,12 @@ export default function GamePage() {
     }, [currentUser?.id, gameRoomId, refreshMyInventory]);
 
     // Round result overlay state & coordination
-    const [pendingBuffEffect, setPendingBuffEffect] = useState<BuffEffectType>(null);
+    const [pendingBuffEffect, setPendingBuffEffect] =
+        useState<BuffEffectType>(null);
 
-    const firstAnswerCorrect = firstAnswerId ? firstAnswerId === correctAnswerId : null;
+    const firstAnswerCorrect = firstAnswerId
+        ? firstAnswerId === correctAnswerId
+        : null;
 
     // Reset overlay & queue buff when overlay shows while buff is playing
     useEffect(() => {
@@ -135,25 +137,24 @@ export default function GamePage() {
 
     // Show round result overlay when answer is submitted
     useEffect(() => {
-        if (
-            selectedAnswerId &&
-            !isSubmitting &&
-            lastAnswerCorrect !== null
-        ) {
+        if (selectedAnswerId && !isSubmitting && lastAnswerCorrect !== null) {
             // Reset guard so overlay can show after opponent-first overlay dismisses
             if (playerAnsweredThisRound.current) {
                 lastShownRound.current = 0;
             }
             playerAnsweredThisRound.current = true;
-            if (
-                !showRoundResult &&
-                lastShownRound.current !== currentOrder
-            ) {
+            if (!showRoundResult && lastShownRound.current !== currentOrder) {
                 lastShownRound.current = currentOrder;
                 setShowRoundResult(true);
             }
         }
-    }, [selectedAnswerId, isSubmitting, lastAnswerCorrect, showRoundResult, currentOrder]);
+    }, [
+        selectedAnswerId,
+        isSubmitting,
+        lastAnswerCorrect,
+        showRoundResult,
+        currentOrder,
+    ]);
 
     // Reset per-round state when round advances
     useEffect(() => {
@@ -172,7 +173,13 @@ export default function GamePage() {
             lastShownRound.current = currentOrder;
             setShowRoundResult(true);
         }
-    }, [firstAnswerPlayerId, currentUser?.id, firstAnswerCorrect, showRoundResult, currentOrder]);
+    }, [
+        firstAnswerPlayerId,
+        currentUser?.id,
+        firstAnswerCorrect,
+        showRoundResult,
+        currentOrder,
+    ]);
 
     const roundDamage = useMemo(() => {
         if (!showRoundResult) return 0;
@@ -358,19 +365,25 @@ export default function GamePage() {
 
     // 2. Local Timer
     useEffect(() => {
-        if (isLoadingQuestion || isFinished || error) return;
+        if (isLoadingQuestion || isFinished || error || isProfBubuPhase) return;
 
         const timer = setInterval(() => {
             decrementTimer();
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isLoadingQuestion, isFinished, decrementTimer, error, timeLeft]);
+    }, [
+        isLoadingQuestion,
+        isFinished,
+        decrementTimer,
+        error,
+        timeLeft,
+        isProfBubuPhase,
+    ]);
 
     // 3. Mapping Players for UI
     const { meCard, opponentCard, sortedForList } = useMemo(() => {
         const meData = players.find((p) => p.id === currentUser?.id);
-        const others = players.filter((p) => p.id !== currentUser?.id);
 
         // Gunakan opponentIds dari battle room untuk menentukan lawan
         const battleOpponents = opponentIds
@@ -534,6 +547,18 @@ export default function GamePage() {
                     </p>
                 </div>
             </main>
+        );
+    }
+
+    // Tampilan Fase Prof Bubu
+    if (isProfBubuPhase) {
+        return (
+            <ProfBubuPhase
+                gameRoomId={gameRoomId}
+                onPhaseComplete={() => {
+                    endProfBubuPhase();
+                }}
+            />
         );
     }
 
@@ -713,8 +738,11 @@ export default function GamePage() {
         );
     }
 
-    const opponentAnsweredFirst = !!firstAnswerPlayerId && firstAnswerPlayerId !== currentUser?.id;
-    const opponentName = firstAnswerPlayerId ? players.find(p => p.id === firstAnswerPlayerId)?.name : undefined;
+    const opponentAnsweredFirst =
+        !!firstAnswerPlayerId && firstAnswerPlayerId !== currentUser?.id;
+    const opponentName = firstAnswerPlayerId
+        ? players.find((p) => p.id === firstAnswerPlayerId)?.name
+        : undefined;
 
     return (
         <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
@@ -839,7 +867,9 @@ export default function GamePage() {
                                     firstAnswerId={firstAnswerId}
                                     correctAnswerId={correctAnswerId}
                                     lastAnswerCorrect={lastAnswerCorrect}
-                                    opponentAnsweredFirst={opponentAnsweredFirst}
+                                    opponentAnsweredFirst={
+                                        opponentAnsweredFirst
+                                    }
                                     opponentName={opponentName}
                                     firstAnswerCorrect={firstAnswerCorrect}
                                     className="h-auto w-full"
