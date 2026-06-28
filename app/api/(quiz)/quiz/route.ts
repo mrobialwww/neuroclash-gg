@@ -29,7 +29,9 @@ export async function POST(req: Request) {
         if (
             msg.includes("Content-Type tidak didukung") ||
             msg.includes("Harap sertakan") ||
-            msg.includes("URL tidak ditemukan")
+            msg.includes("URL tidak ditemukan") ||
+            msg.includes("Ukuran file terlalu besar") ||
+            msg.includes("Gagal mengurai form data")
         ) {
             return NextResponse.json({ message: msg }, { status: 400 });
         }

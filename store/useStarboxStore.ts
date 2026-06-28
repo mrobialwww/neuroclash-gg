@@ -232,15 +232,19 @@ export const useStarboxStore = create<StarboxState>()(
                             `/api/game-rooms/code/${code}`,
                             { credentials: "include" },
                         );
-                        const json = await res.json();
-                        roomConfig = json.data?.[0] ?? json.data ?? null;
+                        if (res.ok) {
+                            const json = await res.json();
+                            roomConfig = json.data?.[0] ?? json.data ?? null;
+                        }
                     }
                     if (!roomConfig && roomId) {
                         const res = await fetch(`/api/game-rooms/${roomId}`, {
                             credentials: "include",
                         });
-                        const json = await res.json();
-                        roomConfig = json.data?.[0] ?? json.data ?? null;
+                        if (res.ok) {
+                            const json = await res.json();
+                            roomConfig = json.data?.[0] ?? json.data ?? null;
+                        }
                     }
                     if (!roomConfig) {
                         set({ isLoading: false });
@@ -272,14 +276,18 @@ export const useStarboxStore = create<StarboxState>()(
                         console.error("Gagal get participants di starbox", err);
                     }
 
-                    const totalPlayer = activeParticipants.length || 1;
-
                     // Urutan giliran Starbox = HP terendah memilih lebih dahulu (comeback mechanic).
-                    // Hanya pemain yang masih hidup yang bisa memilih.
+                    // Hanya pemain yang masih hidup yang bisa memilih — filter dengan health > 0
+                    // DAN is_alive !== false agar eliminated player tidak muncul di antrean/avatar.
                     activeParticipants = activeParticipants
-                        .filter((p) => p.health > 0)
+                        .filter(
+                            (p) =>
+                                p.health > 0 && p.is_alive !== false,
+                        )
                         .sort((a, b) => (a.health ?? 100) - (b.health ?? 100))
                         .map((p) => ({ ...p, isMe: p.id === currentUser?.id }));
+
+                    const totalPlayer = activeParticipants.length || 1;
 
                     // Solo mode can have no game_players row in some edge cases,
                     // but currentUser still owns the room. Create a fallback player
@@ -289,6 +297,24 @@ export const useStarboxStore = create<StarboxState>()(
                         activeParticipants.length === 0 &&
                         currentUser
                     ) {
+                        activeParticipants = [
+                            {
+                                id: currentUser.id,
+                                name: currentUser.username || "Kamu",
+                                image:
+                                    currentUser.avatar || "/default/Slime.webp",
+                                character: currentUser.character || "Slime",
+                                health: 100,
+                                maxHealth: 100,
+                                is_alive: true,
+                                isMe: true,
+                            },
+                        ];
+                    }
+
+                    // Fallback umum: jika participants masih kosong (misal endpoint 500),
+                    // buat player minimal agar Starbox tidak stuck.
+                    if (activeParticipants.length === 0 && currentUser) {
                         activeParticipants = [
                             {
                                 id: currentUser.id,
@@ -526,18 +552,50 @@ export const useStarboxStore = create<StarboxState>()(
                             const updated =
                                 payload.new as GamePlayersChangeRow | null;
                             if (!updated) return;
-                            set((state) => ({
-                                players: state.players.map((p) =>
-                                    p.id === updated.user_id
-                                        ? {
-                                              ...p,
-                                              health: updated.health,
-                                              is_alive:
-                                                  updated.status === "alive",
-                                          }
-                                        : p,
-                                ),
-                            }));
+
+                            const isDead =
+                                updated.health <= 0 ||
+                                updated.status !== "alive";
+
+                            if (isDead) {
+                                // Pemain mati — hapus dari array agar tidak muncul di antrean/avatar.
+                                set((state) => {
+                                    const deadIdx = state.players.findIndex(
+                                        (p) => p.id === updated.user_id,
+                                    );
+                                    if (deadIdx === -1) return state;
+
+                                    const newPlayers = state.players.filter(
+                                        (p) => p.id !== updated.user_id,
+                                    );
+                                    const turnIdx = state.currentTurnIndex;
+
+                                    // Jika pemain yang mati berada SEBELUM currentTurnIndex,
+                                    // kurangi index karena array menyusut.
+                                    const adjustedTurnIdx =
+                                        deadIdx < turnIdx
+                                            ? turnIdx - 1
+                                            : turnIdx;
+
+                                    return {
+                                        players: newPlayers,
+                                        currentTurnIndex: adjustedTurnIdx,
+                                    };
+                                });
+                            } else {
+                                // Pemain masih hidup — update health
+                                set((state) => ({
+                                    players: state.players.map((p) =>
+                                        p.id === updated.user_id
+                                            ? {
+                                                  ...p,
+                                                  health: updated.health,
+                                                  is_alive: true,
+                                              }
+                                            : p,
+                                    ),
+                                }));
+                            }
                         },
                     )
                     .subscribe();

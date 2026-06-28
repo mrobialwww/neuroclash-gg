@@ -127,8 +127,16 @@ export default function CreateArenaModal({
         "public" | "private" | null
     >(null);
     const [title, setTitle] = useState("");
+    const [localError, setLocalError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Reset local error when modal closes
+    React.useEffect(() => {
+        if (!open) {
+            setLocalError(null);
+        }
+    }, [open]);
 
     const filtered = CATEGORIES.filter((m) =>
         m.title.toLowerCase().includes(search.toLowerCase()),
@@ -143,9 +151,18 @@ export default function CreateArenaModal({
         e.preventDefault();
         setIsDragging(false);
         const file = e.dataTransfer.files?.[0];
-        if (file && file.type === "application/pdf") {
+        if (file) {
+            if (file.type !== "application/pdf") {
+                setLocalError("Format file harus PDF.");
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                setLocalError("Ukuran file PDF terlalu besar (maksimal 10MB).");
+                return;
+            }
             setUploadedFile(file);
             setSelectedMateri(null);
+            setLocalError(null);
         }
     }, []);
 
@@ -153,8 +170,16 @@ export default function CreateArenaModal({
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) {
+                if (file.size > 10 * 1024 * 1024) {
+                    setLocalError("Ukuran file PDF terlalu besar (maksimal 10MB).");
+                    if (e.target) {
+                        e.target.value = ""; // Reset input file
+                    }
+                    return;
+                }
                 setUploadedFile(file);
                 setSelectedMateri(null);
+                setLocalError(null);
             }
         },
         [],
@@ -163,6 +188,7 @@ export default function CreateArenaModal({
     const handleMateriClick = (id: string) => {
         setSelectedMateri((prev) => (prev === id ? null : id));
         setUploadedFile(null);
+        setLocalError(null);
     };
 
     let warningMessage = "";
@@ -437,9 +463,9 @@ export default function CreateArenaModal({
                 {/* ── Action Bar (Submit) ── */}
                 <div className="border-t border-[#383347] bg-[#040619] px-6 py-5 md:px-8">
                     {/* Error Banner */}
-                    {errorMsg && (
+                    {(errorMsg || localError) && (
                         <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-400">
-                            {errorMsg}
+                            {errorMsg || localError}
                         </div>
                     )}
                     <button

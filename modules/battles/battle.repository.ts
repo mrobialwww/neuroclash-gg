@@ -151,16 +151,18 @@ export const battleRoomRepository = {
         battleRoomId: string,
         userId: string,
         answerId: string,
-    ): Promise<void> {
+    ): Promise<boolean> {
         const supabase = await createClient();
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from("battle_rooms")
             .update({
                 first_answer_user_id: userId,
                 first_answer_id: answerId,
                 updated_at: getWIBNow(),
             })
-            .eq("battle_room_id", battleRoomId);
+            .is("first_answer_user_id", null)
+            .eq("battle_room_id", battleRoomId)
+            .select("battle_room_id");
 
         if (error) {
             console.error(
@@ -169,6 +171,8 @@ export const battleRoomRepository = {
             );
             throw new Error(error.message);
         }
+
+        return data !== null && data.length > 0;
     },
 
     /**

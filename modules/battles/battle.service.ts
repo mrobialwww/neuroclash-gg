@@ -122,16 +122,17 @@ export const battleRoomService = {
             return { eligible: false, reason: "NOT_FOUND" };
         }
 
-        // Check if anyone answered
-        if (battleRoom.first_answer_user_id) {
-            console.log(`[BattleRoomService] Battle room ${battleRoomId} already has an answer, skipping timeout`);
-            return { eligible: false, reason: "ALREADY_ANSWERED", battleRoom };
-        }
-
         // IDEMPOTENCY CHECK: Check if battle room is already marked as timeout/finished
         if (battleRoom.status === "timeout" || battleRoom.status === "finished") {
             console.log(`[BattleRoomService] ⚠️ Battle room ${battleRoomId} already has status ${battleRoom.status}, skipping timeout`);
             return { eligible: false, reason: "ALREADY_FINISHED", battleRoom };
+        }
+
+        // If someone already answered but status is still "ongoing", one player timed out
+        // Timeout should still process to handle the unanswered player
+        if (battleRoom.first_answer_user_id) {
+            console.log(`[BattleRoomService] Battle room ${battleRoomId} has first answer but status is ongoing — processing timeout for unanswered player`);
+            return { eligible: true, battleRoom };
         }
 
         console.log(`[BattleRoomService] Processing timeout for battle room ${battleRoomId} (status: ${battleRoom.status})`);
@@ -167,14 +168,15 @@ export const battleRoomService = {
     },
 
     /**
-     * Record first answer in battle room
+     * Record first answer in battle room (atomically — only succeeds if no first answer yet)
+     * @returns true if THIS call was the first answerer, false if someone else already was
      */
     async recordFirstAnswer(
         battleRoomId: string,
         userId: string,
         answerId: string
-    ): Promise<void> {
-        await battleRoomRepository.updateFirstAnswer(battleRoomId, userId, answerId);
+    ): Promise<boolean> {
+        return await battleRoomRepository.updateFirstAnswer(battleRoomId, userId, answerId);
     },
 
     /**
