@@ -53,7 +53,7 @@ export interface MatchState {
     handleSelectAnswer: (userId: string, answerId: string) => Promise<void>;
     decrementTimer: () => void;
     resetMatch: () => void;
-    syncPlayersFromDB: (roomId: string) => Promise<void>;
+    syncPlayersFromDB: (roomId: string, force?: boolean) => Promise<void>;
     syncBattleRoomFromDB: () => Promise<void>;
     setupRealtimeSubscription: (roomId: string) => void;
     isOpponent: (playerId: string) => boolean;
@@ -160,14 +160,18 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             // 1. Get Room Info first — fetch via API (store is client-side)
             let room: GameRoomWithPlayerCount | null = null;
             if (roomCode && roomCode !== gameRoomId) {
-                const res = await fetch(`/api/game-rooms/code/${roomCode}`, { credentials: "include" });
+                const res = await fetch(`/api/game-rooms/code/${roomCode}`, {
+                    credentials: "include",
+                });
                 if (res.ok) {
                     const json = await res.json();
                     room = json.data?.[0] ?? json.data ?? null;
                 }
             }
             if (!room && gameRoomId) {
-                const res = await fetch(`/api/game-rooms/${gameRoomId}`, { credentials: "include" });
+                const res = await fetch(`/api/game-rooms/${gameRoomId}`, {
+                    credentials: "include",
+                });
                 if (res.ok) {
                     const json = await res.json();
                     room = json.data?.[0] ?? json.data ?? null;
@@ -271,12 +275,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
     },
 
-    syncPlayersFromDB: async (roomId) => {
+    syncPlayersFromDB: async (roomId, force = false) => {
         const { isSyncingPlayers, isAdvancingRound } = get();
 
         // IMPORTANT: Skip sync if we're currently advancing round
         // This prevents excessive sync calls during round transition
-        if (isAdvancingRound) {
+        // However, if force=true, we bypass this to allow syncing heal effects at round start
+        if (isAdvancingRound && !force) {
             console.log(
                 `[MatchStore] ⚠️ Skipping player sync - currently advancing round`,
             );
@@ -389,9 +394,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 const currentState = get();
                 const derivedCorrectId =
                     battleRoom.first_answer_id && !currentState.correctAnswerId
-                        ? (currentState.currentQuestion?.options.find(
+                        ? currentState.currentQuestion?.options.find(
                               (o) => o.isCorrect,
-                          )?.id ?? null)
+                          )?.id ?? null
                         : currentState.correctAnswerId;
 
                 set({
@@ -456,6 +461,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             // Only sync + load if we haven't advanced to this round yet
                             // (advanceRound already does this; avoids premature overlay clearing)
                             await get().syncBattleRoomFromDB();
+                            await get().syncPlayersFromDB(roomId, true);
                             const state = get();
                             if (state.currentOrder < newRound.round_number) {
                                 await get().loadQuestion(
@@ -557,8 +563,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             );
             const aJson = await aRes.json();
             const rawAnswers = Array.isArray(aJson?.data) ? aJson.data : [];
-            const sortedAnswers = [...rawAnswers].sort((a, b) => a.key.localeCompare(b.key));
-            
+            const sortedAnswers = [...rawAnswers].sort((a, b) =>
+                a.key.localeCompare(b.key),
+            );
+
             const options = sortedAnswers.map((ans: any) => ({
                 id: ans.answer_id,
                 label: ans.key.toUpperCase(),
@@ -725,6 +733,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Load question for new round
         await get().loadQuestion(state.gameRoomId, nextOrder);
+        await get().syncPlayersFromDB(state.gameRoomId, true);
     },
 
     waitForAllBattlesAndAdvance: async () => {
@@ -843,22 +852,32 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             );
 
             try {
-                const recoveryRes = await fetch("/api/match/force-advance-round", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        game_room_id: state.gameRoomId,
-                        round_number: liveOrder,
-                    }),
-                    credentials: "include",
-                });
+                const recoveryRes = await fetch(
+                    "/api/match/force-advance-round",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            game_room_id: state.gameRoomId,
+                            round_number: liveOrder,
+                        }),
+                        credentials: "include",
+                    },
+                );
 
                 if (recoveryRes.ok) {
                     const recoveryData = await recoveryRes.json();
-                    console.log(`[MatchStore] force-advance-round success:`, recoveryData);
+                    console.log(
+                        `[MatchStore] force-advance-round success:`,
+                        recoveryData,
+                    );
 
                     if (recoveryData.game_ended) {
-                        set({ isFinished: true, isWaitingForAllBattles: false, isAdvancingRound: false });
+                        set({
+                            isFinished: true,
+                            isWaitingForAllBattles: false,
+                            isAdvancingRound: false,
+                        });
                         return;
                     }
 
@@ -866,8 +885,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     allFinished = true;
                 } else {
                     const errText = await recoveryRes.text();
-                    console.error(`[MatchStore] force-advance-round failed:`, errText);
-                    set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+                    console.error(
+                        `[MatchStore] force-advance-round failed:`,
+                        errText,
+                    );
+                    set({
+                        isWaitingForAllBattles: false,
+                        isAdvancingRound: false,
+                    });
                     return;
                 }
             } catch (err) {
@@ -1004,7 +1029,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     // Only claim first-answer status if no one answered before us
                     const currentFirstPlayer = get().firstAnswerPlayerId;
                     if (!currentFirstPlayer) {
-                        set({ firstAnswerPlayerId: state.currentUser?.id || null });
+                        set({
+                            firstAnswerPlayerId: state.currentUser?.id || null,
+                        });
                     }
 
                     console.log(
@@ -1082,14 +1109,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     });
 
                     if (res.ok) {
-                        console.log(
-                            `[MatchStore] Timeout API call succeeded`,
-                        );
+                        console.log(`[MatchStore] Timeout API call succeeded`);
 
-                        if (noOneAnswered) {
-                            // Only sync health when we actually applied damage
-                            await get().syncPlayersFromDB(gameRoomId);
-                        }
+                        // Sync players to get updated health from database (ONLY ONCE)
+                        // Real-time subscription will handle subsequent updates
+                        console.log(
+                            "[MatchStore] Syncing players after timeout damage...",
+                        );
                     } else {
                         const errorText = await res.text();
                         if (errorText.includes("Battle room not found")) {
