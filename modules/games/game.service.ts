@@ -570,11 +570,9 @@ export const gameRoomService = {
                 health: p.health || 0,
                 status: p.status,
                 deathRound:
-                    p.status !== "alive"
-                        ? pAnswers.length > 0
-                            ? Math.max(...pAnswers.map((a) => a.round_number))
-                            : 0
-                        : 999,
+                    pAnswers.length > 0
+                        ? Math.max(...pAnswers.map((a) => a.round_number))
+                        : 0,
                 answerCount: pAnswers.length,
                 win: winCount,
                 lose: loseCount,

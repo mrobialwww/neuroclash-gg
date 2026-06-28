@@ -7,7 +7,7 @@ import { BattleRoom } from "@/modules/battles/battle.schema";
 
 const supabase = createClient();
 
-export const SECONDS_PER_ROUND = 120;
+export const SECONDS_PER_ROUND = 15;
 export const STARBOX_INTERVAL = 5;
 export const INITIAL_ROUND = 1;
 
@@ -429,6 +429,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     console.log(`[MatchStore] Battle room updated:`, payload);
                     await get().syncBattleRoomFromDB();
 
+                    // Also sync player HP — game_players realtime may not be configured,
+                    // so we piggyback on battle_room updates (damage is applied by now)
+                    await get().syncPlayersFromDB(roomId);
+
                     // Don't auto-advance here - timer will handle it
                     // Just sync the battle room state
                 },
@@ -449,13 +453,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             oldRound.status === "waiting" &&
                             newRound.status === "ongoing"
                         ) {
-                            // Round baru dimulai
+                            // Only sync + load if we haven't advanced to this round yet
+                            // (advanceRound already does this; avoids premature overlay clearing)
                             await get().syncBattleRoomFromDB();
                             const state = get();
-                            await get().loadQuestion(
-                                roomId,
-                                newRound.round_number,
-                            );
+                            if (state.currentOrder < newRound.round_number) {
+                                await get().loadQuestion(
+                                    roomId,
+                                    newRound.round_number,
+                                );
+                            }
                         }
                     }
                 },
@@ -991,9 +998,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     set({
                         lastAnswerCorrect: result.is_correct ?? false,
                         correctAnswerId: correctOpt?.id ?? null,
-                        firstAnswerPlayerId: state.currentUser?.id || null,
                         firstAnswerId: answerId,
                     });
+
+                    // Only claim first-answer status if no one answered before us
+                    const currentFirstPlayer = get().firstAnswerPlayerId;
+                    if (!currentFirstPlayer) {
+                        set({ firstAnswerPlayerId: state.currentUser?.id || null });
+                    }
 
                     console.log(
                         "[MatchStore] Syncing players after answer submission...",

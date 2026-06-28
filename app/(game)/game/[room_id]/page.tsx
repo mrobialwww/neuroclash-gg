@@ -62,6 +62,7 @@ export default function GamePage() {
     // Round result overlay state
     const [showRoundResult, setShowRoundResult] = useState(false);
     const lastShownRound = React.useRef(0);
+    const playerAnsweredThisRound = React.useRef(false);
 
     // State untuk animasi buff ability
     const [buffEffect, setBuffEffect] = useState<BuffEffectType>(null);
@@ -137,14 +138,27 @@ export default function GamePage() {
         if (
             selectedAnswerId &&
             !isSubmitting &&
-            lastAnswerCorrect !== null &&
-            !showRoundResult &&
-            lastShownRound.current !== currentOrder
+            lastAnswerCorrect !== null
         ) {
-            lastShownRound.current = currentOrder;
-            setShowRoundResult(true);
+            // Reset guard so overlay can show after opponent-first overlay dismisses
+            if (playerAnsweredThisRound.current) {
+                lastShownRound.current = 0;
+            }
+            playerAnsweredThisRound.current = true;
+            if (
+                !showRoundResult &&
+                lastShownRound.current !== currentOrder
+            ) {
+                lastShownRound.current = currentOrder;
+                setShowRoundResult(true);
+            }
         }
     }, [selectedAnswerId, isSubmitting, lastAnswerCorrect, showRoundResult, currentOrder]);
+
+    // Reset per-round state when round advances
+    useEffect(() => {
+        playerAnsweredThisRound.current = false;
+    }, [currentOrder]);
 
     // Trigger overlay when opponent answered first (via Realtime update)
     useEffect(() => {
@@ -586,8 +600,8 @@ export default function GamePage() {
                         <p className="text-sm font-medium text-white/70 md:text-base">
                             Kamu telah menyelesaikan{" "}
                             {eliminationData?.deathRound ??
-                                totalQuestions ??
-                                currentOrder}{" "}
+                                currentOrder ??
+                                totalQuestions}{" "}
                             soal.
                         </p>
                     </div>

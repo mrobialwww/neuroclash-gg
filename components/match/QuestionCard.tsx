@@ -91,12 +91,19 @@ export const QuestionCard = ({
 
         // Opponent answered first — highlight their answer and the correct answer
         // Yellow for correct (player was slower), red for wrong, green reserved for "I was fastest"
-        if (opponentAnsweredFirst && correctAnswerId) {
-            if (isCorrect) {
-                return "border-yellow-400 bg-yellow-400/20 scale-[1.02]";
+        if (opponentAnsweredFirst) {
+            if (correctAnswerId) {
+                if (isCorrect) {
+                    return "border-yellow-400 bg-yellow-400/20 scale-[1.02]";
+                }
+                if (isFirstAnswer && !isCorrect) {
+                    return "border-[#B40000] bg-[#B40000]/30 scale-[1.02]";
+                }
+                return "border-white/10 opacity-40 cursor-not-allowed";
             }
-            if (isFirstAnswer && !isCorrect) {
-                return "border-[#B40000] bg-[#B40000]/30 scale-[1.02]";
+            // correctAnswerId not yet available — just highlight opponent's choice
+            if (isFirstAnswer) {
+                return "border-yellow-400 bg-yellow-400/20";
             }
             return "border-white/10 opacity-40 cursor-not-allowed";
         }

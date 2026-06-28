@@ -9,7 +9,7 @@ export const roundManagementService = {
         if (!totalQuestions || totalQuestions === 0)
             return GAME_CONSTANTS.BASE_DAMAGE;
 
-        let damage =
+        const damage =
             GAME_CONSTANTS.ROUND_DAMAGE_MIN +
             (roundNumber / totalQuestions) * GAME_CONSTANTS.ROUND_DAMAGE_SCALE;
 
@@ -30,12 +30,11 @@ export const roundManagementService = {
 
         await gamePlayersService.submitAnswer(userId, answerId, gameId, roundNumber);
 
-        const battleRoom = await battleRoomService.getBattleRoomById(battleRoomId);
-        const isFirstAnswer = !battleRoom?.first_answer_user_id;
+        // Atomically try to claim first answer — only succeeds if no one else already claimed it
+        const wasFirst = await battleRoomService.recordFirstAnswer(battleRoomId, userId, answerId);
 
-        if (isFirstAnswer) {
+        if (wasFirst) {
             console.log(`[RoundService] First answer by ${userId.substring(0, 8)} — recording, no damage yet`);
-            await battleRoomService.recordFirstAnswer(battleRoomId, userId, answerId);
             await gamePlayersService.markFirstAnswer(userId, answerId, roundNumber, battleRoomId);
 
             return {
@@ -50,7 +49,14 @@ export const roundManagementService = {
 
         console.log(`[RoundService] Second answer by ${userId.substring(0, 8)} — resolving battle`);
 
-        const firstAnswer = await gamePlayersService.getAnswerDetail(battleRoom!.first_answer_id!);
+        // Re-fetch battle room to get the actual first_answer_user_id (set by other player)
+        const battleRoom = await battleRoomService.getBattleRoomById(battleRoomId);
+        if (!battleRoom || !battleRoom.first_answer_user_id) {
+            console.error(`[RoundService] ❌ Battle room ${battleRoomId} has no first answer after claiming failed`);
+            return { success: false, is_correct: false, damage_applied: false, damage_dealt: 0, new_health: 100, message: "No first answer found" };
+        }
+
+        const firstAnswer = await gamePlayersService.getAnswerDetail(battleRoom.first_answer_id!);
         const firstIsCorrect = firstAnswer?.is_correct ?? false;
         const secondIsCorrect = answerDetail.is_correct;
 
@@ -244,6 +250,12 @@ export const roundManagementService = {
         const battleRoom = await battleRoomService.getBattleRoomById(battleRoomId);
         if (!battleRoom) {
             console.warn(`[RoundService] Battle room ${battleRoomId} not found during timeout`);
+            return;
+        }
+
+        // Guard: if battle room was already resolved (e.g. second player answered just in time), skip
+        if (battleRoom.status === "finished" || battleRoom.status === "timeout") {
+            console.log(`[RoundService] Battle room ${battleRoomId} already ${battleRoom.status}, skipping timeout processing`);
             return;
         }
 
