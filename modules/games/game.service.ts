@@ -183,10 +183,12 @@ export const gameRoomService = {
             (q: any) => ({
                 question_order: q.question_order || q.order || 1,
                 question_text: q.question_text || q.question || "",
+                explanation: q.explanation || "",
                 answers: (q.options || q.answers || []).map((opt: any) => ({
                     answer_text: opt.answer_text || opt.text || "",
                     is_correct: opt.is_correct || opt.isCorrect || false,
                     key: opt.key || "",
+                    explanation: opt.explanation || null,
                 })),
             }),
         );
@@ -530,25 +532,28 @@ export const gameRoomService = {
             let loseCount = Math.max(0, N - winCount);
 
             // Start of match: preference order:
-            // 1. created_at of round 1 (most accurate for game board interaction)
-            // 2. created_at of the game_room (when lobby was ready)
-            // 3. created_at of the game_player record (when player joined or match was initialized)
-            // 4. updated_at of the game_room (last fallback)
+            // 1. created_at of the game_player record (when player joined the room — most reliable)
+            // 2. created_at of round 1 (if match_rounds exist)
+            // 3. created_at of the game_room (when lobby was ready)
             const matchStart = parseDBDate(
-                earlyRound?.created_at ||
+                p.created_at ||
+                    earlyRound?.created_at ||
                     gameRoomData?.created_at ||
-                    p.created_at ||
-                    gameRoomData?.updated_at,
+                    Date.now().toString(),
             );
 
             // End time logic:
-            // If player is still alive, survival time is until the room finished
+            // - Dead players: when they died (p.updated_at)
+            // - Alive players: use Date.now() for solo mode or non-finished rooms.
+            //   When room is finished, fallback to gameRoomData.updated_at
+            //   but note: solo mode rooms may not auto-update updated_at,
+            //   so always use Date.now() for solo (totalPlayers === 1).
             const isRoomFinished = gameRoomData?.room_status === "finished";
             const matchEnd =
                 p.status === "alive"
-                    ? isRoomFinished
-                        ? parseDBDate(gameRoomData?.updated_at)
-                        : Date.now()
+                    ? totalPlayers === 1 || !isRoomFinished
+                        ? Date.now()
+                        : parseDBDate(gameRoomData?.updated_at)
                     : parseDBDate(p.updated_at);
 
             const survivalTime = calculateDuration(matchStart, matchEnd);
@@ -565,17 +570,36 @@ export const gameRoomService = {
                 health: p.health || 0,
                 status: p.status,
                 deathRound:
-                    p.status !== "alive"
-                        ? pAnswers.length > 0
-                            ? Math.max(...pAnswers.map((a) => a.round_number))
-                            : 0
-                        : 999,
+                    pAnswers.length > 0
+                        ? Math.max(...pAnswers.map((a) => a.round_number))
+                        : 0,
                 answerCount: pAnswers.length,
                 win: winCount,
                 lose: loseCount,
                 survivalTime,
+                matchStartMs: matchStart,
+                matchEndMs: matchEnd,
             };
         });
+
+        // Safety net: if winner (alive player) has 0 survival time,
+        // recalculate using the latest matchEnd across all players
+        const alivePlayers = playersStats.filter((p) => p.status === "alive");
+        if (alivePlayers.length === 1) {
+            const winner = alivePlayers[0];
+            if (winner.survivalTime === "00:00") {
+                const maxMatchEndMs = Math.max(
+                    ...playersStats.map((p) => p.matchEndMs),
+                );
+                winner.survivalTime = calculateDuration(
+                    winner.matchStartMs,
+                    maxMatchEndMs,
+                );
+                console.log(
+                    `[EndgameService] Corrected winner's survivalTime from 00:00 to ${winner.survivalTime}`,
+                );
+            }
+        }
 
         // 5. Determine Placements via Sorting
         playersStats.sort((a, b) => {

@@ -13,6 +13,7 @@ import {
     BuffEffectOverlay,
     BuffEffectType,
 } from "@/components/match/BuffEffectOverlay";
+import { RoundResultOverlay } from "@/components/match/RoundResultOverlay";
 import NextImage from "next/image";
 import {
     CHARACTER_SKILL_MAP,
@@ -57,6 +58,11 @@ export default function GamePage() {
     const [hasShownOverlay, setHasShownOverlay] = useState(false);
     const [isLoadingEliminationData, setIsLoadingEliminationData] =
         useState(false);
+
+    // Round result overlay state
+    const [showRoundResult, setShowRoundResult] = useState(false);
+    const lastShownRound = React.useRef(0);
+    const playerAnsweredThisRound = React.useRef(false);
 
     // State untuk animasi buff ability
     const [buffEffect, setBuffEffect] = useState<BuffEffectType>(null);
@@ -106,6 +112,86 @@ export default function GamePage() {
             refreshMyInventory(gameRoomId, currentUser.id);
         }
     }, [currentUser?.id, gameRoomId, refreshMyInventory]);
+
+    // Round result overlay state & coordination
+    const [pendingBuffEffect, setPendingBuffEffect] = useState<BuffEffectType>(null);
+
+    const firstAnswerCorrect = firstAnswerId ? firstAnswerId === correctAnswerId : null;
+
+    // Reset overlay & queue buff when overlay shows while buff is playing
+    useEffect(() => {
+        if (showRoundResult && buffEffect) {
+            setPendingBuffEffect(buffEffect);
+            setBuffEffect(null);
+        }
+    }, [showRoundResult]);
+
+    // Dismiss overlay when round advances (selectedAnswerId cleared by advanceRound)
+    useEffect(() => {
+        if (!selectedAnswerId && showRoundResult) {
+            setShowRoundResult(false);
+        }
+    }, [selectedAnswerId]);
+
+    // Show round result overlay when answer is submitted
+    useEffect(() => {
+        if (
+            selectedAnswerId &&
+            !isSubmitting &&
+            lastAnswerCorrect !== null
+        ) {
+            // Reset guard so overlay can show after opponent-first overlay dismisses
+            if (playerAnsweredThisRound.current) {
+                lastShownRound.current = 0;
+            }
+            playerAnsweredThisRound.current = true;
+            if (
+                !showRoundResult &&
+                lastShownRound.current !== currentOrder
+            ) {
+                lastShownRound.current = currentOrder;
+                setShowRoundResult(true);
+            }
+        }
+    }, [selectedAnswerId, isSubmitting, lastAnswerCorrect, showRoundResult, currentOrder]);
+
+    // Reset per-round state when round advances
+    useEffect(() => {
+        playerAnsweredThisRound.current = false;
+    }, [currentOrder]);
+
+    // Trigger overlay when opponent answered first (via Realtime update)
+    useEffect(() => {
+        if (
+            firstAnswerPlayerId &&
+            firstAnswerPlayerId !== currentUser?.id &&
+            firstAnswerCorrect !== null &&
+            !showRoundResult &&
+            lastShownRound.current !== currentOrder
+        ) {
+            lastShownRound.current = currentOrder;
+            setShowRoundResult(true);
+        }
+    }, [firstAnswerPlayerId, currentUser?.id, firstAnswerCorrect, showRoundResult, currentOrder]);
+
+    const roundDamage = useMemo(() => {
+        if (!showRoundResult) return 0;
+        return Math.floor(5 + (currentOrder / (totalQuestions || 20)) * 20);
+    }, [showRoundResult, currentOrder, totalQuestions]);
+
+    const roundIsFirst = useMemo(() => {
+        if (isSolo) return true;
+        if (!firstAnswerPlayerId) return true;
+        return firstAnswerPlayerId === currentUser?.id;
+    }, [isSolo, firstAnswerPlayerId, currentUser?.id]);
+
+    const handleRoundResultComplete = useCallback(() => {
+        setShowRoundResult(false);
+        if (pendingBuffEffect) {
+            setBuffEffect(pendingBuffEffect);
+            setPendingBuffEffect(null);
+        }
+    }, [pendingBuffEffect]);
 
     // Handle Error (Ongoing room or not found)
     useEffect(() => {
@@ -514,8 +600,8 @@ export default function GamePage() {
                         <p className="text-sm font-medium text-white/70 md:text-base">
                             Kamu telah menyelesaikan{" "}
                             {eliminationData?.deathRound ??
-                                totalQuestions ??
-                                currentOrder}{" "}
+                                currentOrder ??
+                                totalQuestions}{" "}
                             soal.
                         </p>
                     </div>
@@ -627,6 +713,9 @@ export default function GamePage() {
         );
     }
 
+    const opponentAnsweredFirst = !!firstAnswerPlayerId && firstAnswerPlayerId !== currentUser?.id;
+    const opponentName = firstAnswerPlayerId ? players.find(p => p.id === firstAnswerPlayerId)?.name : undefined;
+
     return (
         <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
             {/* Header Info */}
@@ -670,9 +759,13 @@ export default function GamePage() {
                                 <BuffList
                                     buffs={myInventory}
                                     className="h-full"
-                                    onAbilityUsed={(type) =>
-                                        setBuffEffect(type)
-                                    }
+                                    onAbilityUsed={(type) => {
+                                        if (showRoundResult) {
+                                            setPendingBuffEffect(type);
+                                        } else {
+                                            setBuffEffect(type);
+                                        }
+                                    }}
                                 />
                             </div>
                         </div>
@@ -746,6 +839,9 @@ export default function GamePage() {
                                     firstAnswerId={firstAnswerId}
                                     correctAnswerId={correctAnswerId}
                                     lastAnswerCorrect={lastAnswerCorrect}
+                                    opponentAnsweredFirst={opponentAnsweredFirst}
+                                    opponentName={opponentName}
+                                    firstAnswerCorrect={firstAnswerCorrect}
                                     className="h-auto w-full"
                                 />
                             </>
@@ -786,6 +882,17 @@ export default function GamePage() {
                     isLoading={isLoadingEliminationData}
                 />
             )}
+
+            {/* Round Result Overlay */}
+            <RoundResultOverlay
+                isOpen={showRoundResult}
+                isSolo={isSolo}
+                isFirst={roundIsFirst}
+                isCorrect={lastAnswerCorrect ?? false}
+                firstAnswerCorrect={firstAnswerCorrect}
+                damage={roundDamage}
+                onComplete={handleRoundResultComplete}
+            />
 
             {/* Buff Ability Animation Overlay */}
             <BuffEffectOverlay

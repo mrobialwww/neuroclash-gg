@@ -15,6 +15,7 @@ export interface Answer {
     answer_text: string;
     is_correct: boolean;
     key: string;
+    explanation?: string | null;
 }
 
 export interface UserAnswer {
@@ -62,6 +63,7 @@ export const quizOptionSchema = z.object({
     label: z.string(),
     text: z.string(),
     isCorrect: z.boolean(),
+    explanation: z.string().nullable().optional(),
 });
 
 export const quizQuestionSchema = z.object({

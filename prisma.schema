@@ -1,0 +1,23 @@
+# Created by Prisma Schema Generator
+
+## Generator
+
+- Generators: bundle(opencode/north-mini-code-free) | ./node_modules/.bin/prisma generate
+  - Output: D:\competition-projects\neuroclash-gg\node_modules\@prisma\client
+  - Provider (Relational): prisma\nclient
+  - Location (output): D:\competition-projects\neuroclash-gg\node_modules\@prisma\client
+
+## Datasource
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+## Generator
+
+generator client {
+  provider        = "prisma\nclient"
+  output          = "./node_modules/@prisma/client"
+  previewFeatures = [strict"]
+}

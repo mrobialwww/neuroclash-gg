@@ -35,14 +35,11 @@ export interface PlayerMatchState {
 }
 
 export interface QuizOption {
-    /** answer_id dari DB — dikirim saat submit jawaban */
-    id: string;
-    /** A / B / C / D */
-    label: string;
-    /** teks jawaban */
-    text: string;
-    /** apakah ini jawaban yang benar */
-    isCorrect: boolean;
+  id: string;
+  label: string;
+  text: string;
+  isCorrect: boolean;
+  explanation?: string | null;
 }
 
 export interface QuizQuestion {

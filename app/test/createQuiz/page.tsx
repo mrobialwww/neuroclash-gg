@@ -237,9 +237,16 @@ export default function CreateQuizDummy() {
                                         id="pdf-file"
                                         type="file"
                                         accept="application/pdf"
-                                        onChange={(e) =>
-                                            setFile(e.target.files?.[0] || null)
-                                        }
+                                        onChange={(e) => {
+                                            const selectedFile = e.target.files?.[0] || null;
+                                            if (selectedFile && selectedFile.size > 10 * 1024 * 1024) {
+                                                alert("Ukuran file PDF terlalu besar (maksimal 10MB).");
+                                                e.target.value = "";
+                                                setFile(null);
+                                                return;
+                                            }
+                                            setFile(selectedFile);
+                                        }}
                                     />
                                     <p className="text-muted-foreground text-sm">
                                         Hanya menerima format .pdf
