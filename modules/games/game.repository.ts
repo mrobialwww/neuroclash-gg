@@ -842,7 +842,7 @@ export const gameRoomRepository = {
         const { data, error } = await supabase
             .from("game_players")
             .select(
-                "user_id, health, status, win, user_game_id, created_at, updated_at, users!inner(username, total_trophy)",
+                "user_id, health, status, win, created_at, updated_at, users!inner(username, total_trophy)",
             )
             .eq("game_room_id", roomId);
 
@@ -1172,6 +1172,24 @@ export const gameRoomRepository = {
                 `[EndGameRepo] getEarliestRoundTime Error: ${error.message}`,
             );
         return data as EarliestRoundTime | null;
+    },
+
+    /**
+     * Fetch user_game_id for all players in a room from user_games table.
+     */
+    async getUserGameIds(
+        roomId: string,
+    ): Promise<{ user_id: string; user_game_id: string }[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("user_games")
+            .select("user_id, user_game_id")
+            .eq("game_room_id", roomId);
+        if (error)
+            throw new Error(
+                `[EndGameRepo] getUserGameIds Error: ${error.message}`,
+            );
+        return data as { user_id: string; user_game_id: string }[];
     },
 
     /**
