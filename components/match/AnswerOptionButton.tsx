@@ -37,7 +37,7 @@ export const AnswerOptionButton = ({
             onClick={() => onSelect?.(option.id)}
             disabled={isDisabled}
             className={cn(
-                "group relative flex rounded-2xl p-4 lg:p-6 transition-all duration-300",
+                "group relative flex cursor-pointer rounded-2xl p-4 lg:p-6 transition-all duration-300",
                 "border-2 bg-[#D9D9D9]/20 backdrop-blur-md",
                 showExplanation 
                     ? "flex-col items-start justify-start w-full text-left" 

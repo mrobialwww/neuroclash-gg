@@ -253,7 +253,7 @@ export function Navbar({ initialData }: NavbarProps) {
                     </div>
 
                     <button
-                        className="p-2 text-[#555555] md:hidden"
+                        className="cursor-pointer p-2 text-[#555555] md:hidden"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         {isMenuOpen ? <X size={28} /> : <Menu size={28} />}

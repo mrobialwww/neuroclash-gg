@@ -134,6 +134,7 @@ export interface EndgameResult {
     lose: number;
     coinBoost: number;
     trophyBoost: number;
+    userGameId: string;
 }
 
 export interface UserGameRecord {

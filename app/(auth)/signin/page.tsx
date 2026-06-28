@@ -93,7 +93,7 @@ export default function SignInPage() {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-white"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-white/40 transition-colors hover:text-white"
                         >
                             {showPassword ? (
                                 <EyeOff size={18} />
@@ -113,7 +113,7 @@ export default function SignInPage() {
                 <button
                     type="submit"
                     disabled={isLoading || isGoogleLoading}
-                    className="flex w-full items-center justify-center rounded-xl bg-[#256AF4] py-3.5 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(59,110,245,0.4)] transition-all hover:bg-blue-600 disabled:opacity-70"
+                    className="flex w-full items-center justify-center rounded-xl bg-[#256AF4] py-3.5 text-[15px] font-semibold text-white shadow-[0_4px_18px_rgba(59,110,245,0.4)] transition-all hover:bg-blue-600 disabled:opacity-70 cursor-pointer"
                 >
                     {isLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -127,7 +127,7 @@ export default function SignInPage() {
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={isLoading || isGoogleLoading}
-                className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl bg-white/95 py-3 text-sm font-semibold text-[#1a1a2e] transition-colors hover:bg-white disabled:opacity-70"
+                className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl bg-white/95 py-3 text-sm font-semibold text-[#1a1a2e] transition-colors hover:bg-white disabled:opacity-70 cursor-pointer"
             >
                 {isGoogleLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />

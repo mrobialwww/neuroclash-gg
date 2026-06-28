@@ -44,6 +44,7 @@ export const roundManagementService = {
                 damage_dealt: 0,
                 new_health: null,
                 message: "Answer recorded",
+                first_answer_user_id: userId,
             };
         }
 
@@ -239,6 +240,7 @@ export const roundManagementService = {
             damage_applied: true,
             damage_dealt: damage,
             message: secondIsCorrect ? "Correct answer!" : "Wrong answer",
+            first_answer_user_id: battleRoom.first_answer_user_id,
         };
     },
 

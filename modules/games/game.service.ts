@@ -395,18 +395,25 @@ export const gameRoomService = {
         const userIds = players.map((p) => p.user_id);
 
         // 2. Parallelize data enrichment fetches
-        const [chars, answersData, earlyRound, battleRooms, abilitiesResults] =
-            await Promise.all([
-                gameRoomRepository.getUserCharacters(userIds),
-                gameRoomRepository.getUserAnswers(roomId),
-                gameRoomRepository.getEarliestRoundTime(roomId),
-                gameRoomRepository.getBattleRooms(roomId),
-                Promise.all(
-                    userIds.map((id: string) =>
-                        gameRoomRepository.getUserAbilities(roomId, id),
-                    ),
+        const [
+            chars,
+            answersData,
+            earlyRound,
+            battleRooms,
+            abilitiesResults,
+            userGameRecords,
+        ] = await Promise.all([
+            gameRoomRepository.getUserCharacters(userIds),
+            gameRoomRepository.getUserAnswers(roomId),
+            gameRoomRepository.getEarliestRoundTime(roomId),
+            gameRoomRepository.getBattleRooms(roomId),
+            Promise.all(
+                userIds.map((id: string) =>
+                    gameRoomRepository.getUserAbilities(roomId, id),
                 ),
-            ]);
+            ),
+            gameRoomRepository.getUserGameIds(roomId),
+        ]);
 
         const abilitiesMap = new Map<
             string,
@@ -414,6 +421,11 @@ export const gameRoomService = {
         >();
         userIds.forEach((id: string, index: number) => {
             abilitiesMap.set(id, abilitiesResults[index] || []);
+        });
+
+        const userGameIdMap = new Map<string, string>();
+        userGameRecords.forEach((r) => {
+            userGameIdMap.set(r.user_id, r.user_game_id);
         });
 
         const charMap = new Map();
@@ -563,6 +575,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.user_id,
+                userGameId: userGameIdMap.get(p.user_id) || "",
                 username: userObj?.username || "Unknown",
                 totalTrophy: userObj?.total_trophy || 0,
                 characterImage: cData?.image_url || "/default/Slime.webp",
@@ -661,6 +674,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.userId,
+                userGameId: p.userGameId,
                 username: p.username,
                 characterImage: p.characterImage,
                 baseCharacter: p.baseCharacter,
