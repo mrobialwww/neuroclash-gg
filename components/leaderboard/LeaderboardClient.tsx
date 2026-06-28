@@ -183,7 +183,7 @@ export function LeaderboardClient() {
                             <button
                                 onClick={handlePrev}
                                 disabled={page === 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
+                                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -193,7 +193,7 @@ export function LeaderboardClient() {
                             <button
                                 onClick={handleNext}
                                 disabled={page === totalPages}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
+                                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </button>

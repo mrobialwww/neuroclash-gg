@@ -94,3 +94,41 @@ export interface PaginatedUserGameHistory {
         firstPlaces: number;
     };
 }
+
+/* ── Game Recap / Detail ── */
+
+export interface RecapAnswer {
+    answer_id: string;
+    answer_text: string;
+    key: string;
+    is_correct: boolean;
+    is_selected: boolean;
+    explanation: string | null;
+}
+
+export interface RecapQuestion {
+    question_id: string;
+    question_text: string;
+    question_order: number;
+    answers: RecapAnswer[];
+    state: "correct" | "wrong" | "unanswered";
+}
+
+export interface GameRecap {
+    user_game_id: string;
+    game_room_id: string;
+    room_title: string | null;
+    category: string;
+    placement: number | null;
+    trophy_won: number;
+    coins_earned: number;
+    win: number;
+    lose: number;
+    total_soal: number;
+    total_benar: number;
+    total_salah: number;
+    tidak_terjawab: number;
+    waktu: string;
+    created_at: string;
+    questions: RecapQuestion[];
+}

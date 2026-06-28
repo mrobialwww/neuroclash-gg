@@ -137,12 +137,27 @@ export default function EndgamePage({
             </div>
 
             {/* TABLE SECTION */}
-            <div className="relative z-20 -mt-32 mb-8 w-full max-w-5xl sm:-mt-48 md:-mt-56 lg:-mt-64">
+            <div className="relative z-20 -mt-32 mb-4 w-full max-w-5xl sm:-mt-48 md:-mt-56 lg:-mt-64">
                 <EndgameTable
                     players={tablePlayers}
                     currentUserId={currentUserId}
                 />
             </div>
+
+            {/* Lihat Detail button */}
+            {myResult?.userGameId && (
+                <div className="relative z-20 mb-8 flex w-full max-w-5xl justify-center">
+                    <MainButton
+                        variant="white"
+                        className="cursor-pointer px-6 py-2 text-sm font-bold md:text-base"
+                        onClick={() =>
+                            router.push(`/recap/${myResult.userGameId}`)
+                        }
+                    >
+                        Lihat Detail
+                    </MainButton>
+                </div>
+            )}
         </main>
     );
 }

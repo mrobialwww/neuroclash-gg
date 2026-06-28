@@ -563,6 +563,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.user_id,
+                userGameId: p.user_game_id,
                 username: userObj?.username || "Unknown",
                 totalTrophy: userObj?.total_trophy || 0,
                 characterImage: cData?.image_url || "/default/Slime.webp",
@@ -661,6 +662,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.userId,
+                userGameId: p.userGameId,
                 username: p.username,
                 characterImage: p.characterImage,
                 baseCharacter: p.baseCharacter,

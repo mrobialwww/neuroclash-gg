@@ -52,6 +52,7 @@ export type CreateRoomParams = z.infer<typeof createRoomParamsSchema>;
 
 export interface GamePlayerWithUser {
     user_id: string;
+    user_game_id: string;
     health: number;
     status: string;
     win: number;
@@ -134,6 +135,7 @@ export interface EndgameResult {
     lose: number;
     coinBoost: number;
     trophyBoost: number;
+    userGameId: string;
 }
 
 export interface UserGameRecord {

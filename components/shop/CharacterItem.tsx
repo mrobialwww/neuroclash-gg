@@ -34,7 +34,7 @@ export const CharacterItem = ({
     return (
         <button
             onClick={onClick}
-            className="group flex w-full flex-col items-center gap-1"
+            className="group flex w-full cursor-pointer flex-col items-center gap-1"
         >
             <div
                 className={cn(

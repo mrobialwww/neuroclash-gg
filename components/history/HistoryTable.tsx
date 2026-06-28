@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { HistoryItem } from "@/types/HistoryItem";
 import { getCharacterBgColor } from "@/lib/constants/characters";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 import { useUserStore } from "@/store/useUserStore";
 
@@ -22,6 +23,7 @@ export function HistoryTable({
     onPageChange,
     isLoading = false,
 }: HistoryTableProps) {
+    const router = useRouter();
     const { avatar: equippedAvatar, baseCharacter: equippedBaseCharacter } =
         useUserStore();
 
@@ -56,6 +58,9 @@ export function HistoryTable({
                                 </th>
                                 <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
                                     Coin
+                                </th>
+                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                    Aksi
                                 </th>
                             </tr>
                         </thead>
@@ -101,7 +106,7 @@ export function HistoryTable({
                             ) : historyData.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="py-20 text-center text-gray-400"
                                     >
                                         Belum ada riwayat pertandingan.
@@ -157,15 +162,15 @@ export function HistoryTable({
                                         </td>
 
                                         {/* Materi */}
-                                        <td className="px-4 py-3 text-left md:px-6 md:py-5">
-                                            <span className="text-sm font-semibold text-[#555555] md:text-base">
+                                        <td className="max-w-[120px] px-4 py-3 text-left md:max-w-[200px] md:px-6 md:py-5">
+                                            <span className="block truncate text-sm font-semibold text-[#555555] md:text-base">
                                                 {item.material}
                                             </span>
                                         </td>
 
                                         {/* Kategori */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
-                                            <span className="whitespace-nowrap text-sm font-medium text-[#555555] md:text-base">
+                                        <td className="max-w-[120px] px-4 py-3 md:max-w-[120px] md:px-6 md:py-5">
+                                            <span className="block truncate text-sm font-medium text-[#555555] md:text-base">
                                                 {item.category
                                                     ?.toLowerCase()
                                                     .replace(/\b\w/g, (char) =>
@@ -227,6 +232,20 @@ export function HistoryTable({
                                                 </span>
                                             </div>
                                         </td>
+
+                                        {/* Aksi */}
+                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                            <button
+                                                onClick={() =>
+                                                    router.push(
+                                                        `/recap/${item.id}`,
+                                                    )
+                                                }
+                                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#4D70E8] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#3D5BD8] md:px-4 md:py-2 md:text-sm"
+                                            >
+                                                Lihat Detail
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -242,7 +261,7 @@ export function HistoryTable({
                         <button
                             onClick={() => onPageChange?.(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </button>
@@ -252,7 +271,7 @@ export function HistoryTable({
                         <button
                             onClick={() => onPageChange?.(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30 sm:h-9 sm:w-9"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </button>
