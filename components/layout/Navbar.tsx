@@ -147,7 +147,7 @@ export function Navbar({ initialData }: NavbarProps) {
     }, [pathname]);
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white">
+        <header className="sticky top-0 z-50 w-full border-b border-white/25 bg-white/70 backdrop-blur-xl">
             <div className="mx-auto flex h-[72px] max-w-[1440px] items-stretch justify-between px-4 md:px-8 lg:gap-4 lg:px-12">
                 {/* Left: Logo & Search */}
                 <div className="flex flex-1 items-center gap-8 lg:flex-none">
@@ -187,7 +187,7 @@ export function Navbar({ initialData }: NavbarProps) {
                                     "group relative flex h-full items-center gap-2 px-4 transition-all duration-300 ease-in-out",
                                     isActive
                                         ? "text-[#256AF4]"
-                                        : "text-[#A1A1A1] hover:text-[#555555]",
+                                        : "text-[#444444] hover:text-black",
                                 )}
                             >
                                 <div className="h-6 w-6">
@@ -237,7 +237,7 @@ export function Navbar({ initialData }: NavbarProps) {
                         />
                     </Link>
 
-                    <div className="flex items-center gap-2 rounded-full border border-[#DFB200] bg-[#F9DA61]/50 py-1 pl-1 pr-4 shadow-sm">
+                    <div className="flex items-center gap-2 rounded-full border border-[#DFB200] bg-[#F9DA61] py-1 pl-1 pr-4 shadow-sm">
                         <div className="relative h-7 w-7 md:h-8 md:w-8">
                             <Image
                                 src="/icons/coin-color.svg"
@@ -247,13 +247,13 @@ export function Navbar({ initialData }: NavbarProps) {
                                 className="object-contain"
                             />
                         </div>
-                        <span className="text-sm font-bold tracking-tight text-[#AD8A00] md:text-base">
+                        <span className="text-sm font-bold tracking-tight text-[#7A6000] md:text-base">
                             {user.coins.toLocaleString("id-ID")}
                         </span>
                     </div>
 
                     <button
-                        className="cursor-pointer p-2 text-[#555555] md:hidden"
+                        className="cursor-pointer p-2 text-[#444444] hover:text-black md:hidden"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -263,7 +263,7 @@ export function Navbar({ initialData }: NavbarProps) {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="absolute left-0 top-full w-full space-y-2 border-b bg-white p-4 shadow-lg transition-all md:hidden">
+                <div className="absolute left-0 top-full w-full space-y-2 border-b border-white/25 bg-black/60 p-4 shadow-lg backdrop-blur-xl transition-all md:hidden">
                     {navLinks.map((link) => {
                         const isActive = pathname === link.href;
                         return (
@@ -274,8 +274,8 @@ export function Navbar({ initialData }: NavbarProps) {
                                 className={cn(
                                     "flex items-center gap-4 rounded-xl p-3 transition-all",
                                     isActive
-                                        ? "bg-blue-50 text-[#256AF4]"
-                                        : "text-[#A1A1A1]",
+                                        ? "bg-blue-500/20 text-blue-400"
+                                        : "text-white/60",
                                 )}
                             >
                                 <div className="h-6 w-6">

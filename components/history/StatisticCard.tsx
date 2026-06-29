@@ -19,12 +19,12 @@ export function StatisticCard({
     return (
         <div
             className={cn(
-                "group relative flex min-h-[90px] flex-col justify-between overflow-hidden rounded-xl border border-gray-100 bg-white p-3 shadow-[0_2px_15px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] md:min-h-[120px] md:p-5",
+                "group relative flex min-h-[90px] flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-3 shadow-lg backdrop-blur-md transition-all hover:bg-[#D9D9D9]/30 md:min-h-[120px] md:p-5",
                 className,
             )}
         >
             <div className="flex items-start justify-between gap-2">
-                <span className="sm:text-md text-sm font-medium tracking-wide text-[#555555] md:text-lg">
+                <span className="sm:text-md text-sm font-bold tracking-wide text-white/80 md:text-lg">
                     {label}
                 </span>
 
@@ -45,7 +45,7 @@ export function StatisticCard({
             </div>
 
             <div className="mt-2 md:mt-auto">
-                <span className="text-3xl font-extrabold text-[#111111] sm:text-4xl md:text-5xl">
+                <span className="text-3xl font-black text-white sm:text-4xl md:text-5xl">
                     {value}
                 </span>
             </div>
