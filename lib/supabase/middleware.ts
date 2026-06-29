@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Public routes — tidak memerlukan autentikasi sama sekali
-    const PUBLIC_ROUTES: string[] = [];
+    const PUBLIC_ROUTES: string[] = ["/demo"];
 
     const isPublicRoute = PUBLIC_ROUTES.some((route) =>
         pathname.startsWith(route),
