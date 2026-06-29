@@ -51,7 +51,11 @@ const Particles = ({ count, color }: { count: number; color: string }) => {
                         opacity: [1, 0.8, 0],
                         y: -80 - Math.random() * 100,
                         scale: [0.5, 1.2, 0.3],
-                        x: [0, (i % 2 === 0 ? 1 : -1) * (20 + Math.random() * 30), 0],
+                        x: [
+                            0,
+                            (i % 2 === 0 ? 1 : -1) * (20 + Math.random() * 30),
+                            0,
+                        ],
                     }}
                     transition={{
                         duration: 1.2,
@@ -83,45 +87,80 @@ export const RoundResultOverlay = ({
 
     const resultType = useMemo(() => {
         if (isSolo) {
-            return isCorrect ? "solo_correct" as const : "solo_wrong" as const;
+            return isCorrect
+                ? ("solo_correct" as const)
+                : ("solo_wrong" as const);
         }
         if (isFirst) {
-            return isCorrect ? "mp_first_correct" as const : "mp_first_wrong" as const;
+            return isCorrect
+                ? ("mp_first_correct" as const)
+                : ("mp_first_wrong" as const);
         }
-        return firstAnswerCorrect ? "mp_opponent_correct" as const : "mp_opponent_wrong" as const;
+        return firstAnswerCorrect
+            ? ("mp_opponent_correct" as const)
+            : ("mp_opponent_wrong" as const);
     }, [isSolo, isFirst, isCorrect, firstAnswerCorrect]);
 
     const { line1, message, isGood } = useMemo(() => {
         switch (resultType) {
             case "solo_correct":
-                return { line1: "Kamu menjawab benar!", message: randomMessage(true), isGood: true };
+                return {
+                    line1: "Kamu menjawab benar!",
+                    message: randomMessage(true),
+                    isGood: true,
+                };
             case "solo_wrong":
-                return { line1: "Jawabanmu kurang tepat!", message: randomMessage(false), isGood: false };
+                return {
+                    line1: "Jawabanmu kurang tepat!",
+                    message: randomMessage(false),
+                    isGood: false,
+                };
             case "mp_first_correct":
-                return { line1: "Kamu menjawab benar pertama!", message: randomMessage(true), isGood: true };
+                return {
+                    line1: "Kamu menjawab benar pertama!",
+                    message: randomMessage(true),
+                    isGood: true,
+                };
             case "mp_first_wrong":
-                return { line1: "Jawabanmu kurang tepat!", message: randomMessage(false), isGood: false };
+                return {
+                    line1: "Jawabanmu kurang tepat!",
+                    message: randomMessage(false),
+                    isGood: false,
+                };
             case "mp_opponent_correct":
-                return { line1: "Musuh menjawab benar lebih dulu!", message: randomMessage(false), isGood: false };
+                return {
+                    line1: "Musuh menjawab benar lebih dulu!",
+                    message: randomMessage(false),
+                    isGood: false,
+                };
             case "mp_opponent_wrong":
-                return { line1: "Musuh menjawab salah, kamu aman!", message: randomMessage(true), isGood: true };
+                return {
+                    line1: "Musuh menjawab salah, kamu aman!",
+                    message: randomMessage(true),
+                    isGood: true,
+                };
         }
     }, [resultType]);
 
     const damageText = useMemo(() => {
         if (damage <= 0) return "Tidak ada damage";
         if (isSolo) {
-            return isCorrect ? `Damage diberikan: ${damage}` : `Damage diterima: ${damage}`;
+            return isCorrect
+                ? `Damage diberikan: ${damage}`
+                : `Damage diterima: ${damage}`;
         }
         if (isFirst) {
-            return isCorrect ? `Damage diberikan: ${damage}` : `Damage diterima: ${damage}`;
+            return isCorrect
+                ? `Damage diberikan: ${damage}`
+                : `Damage diterima: ${damage}`;
         }
-        return firstAnswerCorrect ? `Musuh memberikan damage: ${damage}` : "Tidak ada damage";
+        return firstAnswerCorrect
+            ? `Musuh memberikan damage: ${damage}`
+            : "Tidak ada damage";
     }, [damage, isSolo, isFirst, isCorrect, firstAnswerCorrect]);
 
     const accentColor = isGood ? "text-green-400" : "text-red-400";
     const bgGlow = isGood ? "bg-green-500/10" : "bg-red-500/10";
-    const borderColor = isGood ? "border-green-500/30" : "border-red-500/30";
     const ringColor = isGood ? "border-green-400/30" : "border-red-400/30";
 
     return (
@@ -154,7 +193,11 @@ export const RoundResultOverlay = ({
                         className={`pointer-events-none absolute h-32 w-32 rounded-full border ${ringColor}`}
                         initial={{ scale: 0.2, opacity: 1 }}
                         animate={{ scale: 4, opacity: 0 }}
-                        transition={{ duration: 0.9, delay: 0.05, ease: "easeOut" }}
+                        transition={{
+                            duration: 0.9,
+                            delay: 0.05,
+                            ease: "easeOut",
+                        }}
                     />
 
                     <motion.div
@@ -163,7 +206,7 @@ export const RoundResultOverlay = ({
                         animate={{ scale: [0, 1.3, 1], y: [30, -10, 0] }}
                         transition={{ duration: 0.45, ease: "backOut" }}
                     >
-                        <div className="pointer-events-none absolute inset-[-100%] z-0 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.8)_0%,transparent_70%)]" />
+                        <div className="pointer-events-none absolute -inset-full z-0 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.8)_0%,transparent_70%)]" />
                         <div className="relative z-10 text-lg font-bold text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]">
                             {line1}
                         </div>
@@ -173,7 +216,9 @@ export const RoundResultOverlay = ({
                         >
                             {damage > 0 ? `${damage}` : "—"}
                         </div>
-                        <div className={`relative z-10 text-sm font-semibold tracking-wide ${accentColor}`}>
+                        <div
+                            className={`relative z-10 text-sm font-semibold tracking-wide ${accentColor}`}
+                        >
                             {damageText}
                         </div>
 

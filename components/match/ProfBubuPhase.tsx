@@ -40,32 +40,34 @@ export const ProfBubuPhase = ({
         }
     }, [profBubuQuestion]);
 
-    const scheduleContinue = useCallback(() => {
-        setTimeout(() => {
-            onPhaseComplete();
-        }, 4000);
-    }, [onPhaseComplete]);
+    const [isPhaseEnding, setIsPhaseEnding] = useState(false);
 
-    const handleTimeOut = useCallback(() => {
-        setIsRevealed(true);
-        setIsCorrect(false);
-        scheduleContinue();
-    }, [scheduleContinue]);
-
-    // Timer logic
+    // Timer Logic using setTimeout to avoid clearInterval race conditions
     useEffect(() => {
-        if (isRevealed) return;
+        if (isPhaseEnding) return;
+
         if (timeLeft <= 0) {
-            handleTimeOut();
+            setIsPhaseEnding(true);
+
+            if (!isRevealed) {
+                setIsRevealed(true);
+                setIsCorrect(false);
+            }
+
+            // Karena kita menggunakan return kosong, timeout ini TIDAK AKAN PERNAH dibatalkan (cleared)
+            // oleh React saat komponen re-render. Ini menjamin onPhaseComplete pasti dipanggil!
+            setTimeout(() => {
+                onPhaseComplete();
+            }, 2000);
             return;
         }
 
-        const timer = setInterval(() => {
+        const timer = setTimeout(() => {
             setTimeLeft((prev) => prev - 1);
         }, 1000);
 
-        return () => clearInterval(timer);
-    }, [timeLeft, isRevealed, handleTimeOut]);
+        return () => clearTimeout(timer);
+    }, [timeLeft, isPhaseEnding, isRevealed, onPhaseComplete]);
 
     const handleSelectAnswer = async (answerId: string) => {
         if (isRevealed || selectedId) return;
@@ -100,7 +102,7 @@ export const ProfBubuPhase = ({
             }
         }
 
-        scheduleContinue();
+        // Timer biarkan tetap berjalan hingga 0, onPhaseComplete akan dipanggil oleh useEffect timer
     };
 
     const meCardData = currentUser
@@ -133,13 +135,30 @@ export const ProfBubuPhase = ({
                 </div>
 
                 <div className="block flex-1 px-2 md:px-4 lg:px-10">
-                    <MatchProgressBar
-                        key="prof-bubu-progress"
-                        duration={15}
-                        timeLeft={timeLeft}
-                        activeStepIndex={1}
-                        isSolo={true}
-                    />
+                    {!isRevealed ? (
+                        <div className="animate-in fade-in duration-300">
+                            <MatchProgressBar
+                                key="prof-bubu-progress"
+                                duration={15}
+                                timeLeft={timeLeft}
+                                activeStepIndex={1}
+                                isSolo={true}
+                            />
+                        </div>
+                    ) : (
+                        <div className="animate-in zoom-in fade-in slide-in-from-top-2 flex w-full items-center justify-center duration-500">
+                            <div className="bg-linear-to-b relative flex items-center gap-3 rounded-full border-2 border-[#FFCB66]/60 from-[#2A1F0D]/90 to-[#0D0A04]/90 px-6 py-2 shadow-[0_0_30px_rgba(255,203,102,0.3)] backdrop-blur-xl">
+                                <div className="absolute inset-0 rounded-full border border-white/10" />
+                                <div className="relative h-5 w-5 animate-spin rounded-full border-[3px] border-[#FFCB66]/20 border-t-[#FFCB66] drop-shadow-[0_0_8px_rgba(255,203,102,1)]" />
+                                <p className="relative animate-pulse text-sm font-black uppercase tracking-widest text-[#FFCB66] drop-shadow-[0_2px_8px_rgba(255,203,102,0.6)] md:text-base">
+                                    Menunggu Pemain Lain...{" "}
+                                    <span className="ml-1 text-white">
+                                        {timeLeft}S
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <MainButton
@@ -228,8 +247,8 @@ export const ProfBubuPhase = ({
                         )}
 
                         {isRevealed && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 mt-4 flex flex-col items-center justify-center duration-500">
-                                {isCorrect ? (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 mt-4 flex flex-col items-center justify-center gap-4 duration-500">
+                                {isCorrect === true && (
                                     <div className="rounded-xl border border-green-400 bg-green-500/20 px-6 py-3 text-center backdrop-blur-md">
                                         <p className="text-xl font-bold text-green-400">
                                             Tepat Sekali!
@@ -239,7 +258,9 @@ export const ProfBubuPhase = ({
                                             Inventory-mu.
                                         </p>
                                     </div>
-                                ) : (
+                                )}
+
+                                {isCorrect === false && (
                                     <div className="rounded-xl border border-red-400 bg-red-500/20 px-6 py-3 text-center backdrop-blur-md">
                                         <p className="text-xl font-bold text-red-400">
                                             Sayang Sekali!

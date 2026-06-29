@@ -570,12 +570,10 @@ export default function GamePage() {
                     <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_20px_rgba(61,121,243,0.3)]" />
                     <div className="space-y-3">
                         <p className="text-xl font-extrabold uppercase tracking-tighter text-white md:text-2xl ">
-                            Menunggu...
+                            Memuat Arena...
                         </p>
                         <p className="text-sm font-medium text-white/60 md:text-base">
-                            Ronde {currentOrder} segera berakhir.
-                            <br />
-                            Pertempuran lain masih berlangsung!
+                            Mempersiapkan Ronde {currentOrder}...
                         </p>
                     </div>
                 </div>
@@ -759,6 +757,7 @@ export default function GamePage() {
                         timeLeft={timeLeft}
                         activeStepIndex={activeStepIndex}
                         isSolo={isSolo}
+                        isFinished={!canAnswer() || !!selectedAnswerId}
                     />
                 </div>
 
