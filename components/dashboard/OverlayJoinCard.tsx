@@ -140,7 +140,7 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
 
     return (
         <>
-            <div className="font-(family-name:--font-baloo-2) animate-in fade-in zoom-in relative w-full max-w-[400px] overflow-hidden rounded-[24px] border border-white/10 bg-[#D9D9D9]/20 shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-md duration-300 md:max-w-[500px]">
+            <div className="font-(family-name:--font-baloo-2) animate-in fade-in zoom-in relative w-full max-w-[400px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] duration-300 md:max-w-[500px]">
                 {/* Top Banner Section */}
                 <div
                     className={`relative flex h-[200px] items-center justify-center transition-all md:h-[240px] ${bannerColor}`}
@@ -186,19 +186,19 @@ function OverlayCardContent({ room, onClose }: OverlayJoinCardProps) {
 
                 {/* Content Section */}
                 <div className="space-y-5 p-6 sm:p-8">
-                    <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">
+                    <h2 className="text-2xl font-extrabold leading-tight text-slate-800 sm:text-3xl">
                         {displayTitle}
                     </h2>
 
                     {/* Stats Row */}
-                    <div className="flex flex-wrap items-center justify-start gap-4 border-b border-white/20 pb-4 sm:gap-6">
-                        <div className="flex items-center gap-2 text-white/80">
+                    <div className="flex flex-wrap items-center justify-start gap-4 border-b border-gray-200 pb-4 sm:gap-6">
+                        <div className="flex items-center gap-2 text-slate-600/80">
                             <Users size={22} className="text-[#3B82F6]" />
                             <span className="text-base font-bold">
                                 {room.player_count}/{room.max_player} Pemain
                             </span>
                         </div>
-                        <div className="flex items-center gap-2 text-white/80">
+                        <div className="flex items-center gap-2 text-slate-600/80">
                             <Flag size={20} className="text-[#3B82F6]" />
                             <span className="text-base font-bold">
                                 {room.total_round} Ronde

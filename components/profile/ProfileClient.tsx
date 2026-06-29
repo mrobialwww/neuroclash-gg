@@ -168,7 +168,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                 </div>
 
                 {/* Username Row */}
-                <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-1 shadow-lg backdrop-blur-md">
+                <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#D9D9D9]/20 shadow-lg backdrop-blur-md">
                     {isEditing ? (
                         <div className="flex items-center gap-2 p-2 md:p-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white md:h-10 md:w-10">

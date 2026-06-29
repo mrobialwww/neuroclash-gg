@@ -38,7 +38,6 @@ export function Navbar({ initialData }: NavbarProps) {
     });
     const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
-    // Sinkronisasi data awal dari server ke global store
     useEffect(() => {
         if (initialData && !isInitialized) {
             setUserData({
@@ -50,7 +49,6 @@ export function Navbar({ initialData }: NavbarProps) {
         }
     }, [initialData, isInitialized, setUserData]);
 
-    // Fetch user data on client side if not initialized
     useEffect(() => {
         if (!isInitialized && !initialData) {
             const fetchUserData = async () => {
@@ -147,7 +145,7 @@ export function Navbar({ initialData }: NavbarProps) {
     }, [pathname]);
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-white/25 bg-white/70 backdrop-blur-xl">
+        <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0D14]/80 backdrop-blur-xl">
             <div className="mx-auto flex h-[72px] max-w-[1440px] items-stretch justify-between px-4 md:px-8 lg:gap-4 lg:px-12">
                 {/* Left: Logo & Search */}
                 <div className="flex flex-1 items-center gap-8 lg:flex-none">
@@ -156,7 +154,7 @@ export function Navbar({ initialData }: NavbarProps) {
                         className="flex shrink-0 items-center transition-opacity hover:opacity-80"
                     >
                         <Image
-                            src="/icons/neuroclash.svg"
+                            src="/icons/neuroclash-white.svg"
                             alt="Neuroclash Logo"
                             width={50}
                             height={50}
@@ -187,7 +185,7 @@ export function Navbar({ initialData }: NavbarProps) {
                                     "group relative flex h-full items-center gap-2 px-4 transition-all duration-300 ease-in-out",
                                     isActive
                                         ? "text-[#256AF4]"
-                                        : "text-[#444444] hover:text-black",
+                                        : "text-white/80 hover:text-white",
                                 )}
                             >
                                 <div className="h-6 w-6">
@@ -253,7 +251,7 @@ export function Navbar({ initialData }: NavbarProps) {
                     </div>
 
                     <button
-                        className="cursor-pointer p-2 text-[#444444] hover:text-black md:hidden"
+                        className="cursor-pointer p-2 text-white/50 hover:text-white md:hidden"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -263,7 +261,7 @@ export function Navbar({ initialData }: NavbarProps) {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="absolute left-0 top-full w-full space-y-2 border-b border-white/25 bg-black/60 p-4 shadow-lg backdrop-blur-xl transition-all md:hidden">
+                <div className="absolute left-0 top-full w-full space-y-2 border-b border-white/10 bg-[#0B0D14]/95 p-4 shadow-lg backdrop-blur-xl transition-all md:hidden">
                     {navLinks.map((link) => {
                         const isActive = pathname === link.href;
                         return (
@@ -275,7 +273,7 @@ export function Navbar({ initialData }: NavbarProps) {
                                     "flex items-center gap-4 rounded-xl p-3 transition-all",
                                     isActive
                                         ? "bg-blue-500/20 text-blue-400"
-                                        : "text-white/60",
+                                        : "text-white/50",
                                 )}
                             >
                                 <div className="h-6 w-6">

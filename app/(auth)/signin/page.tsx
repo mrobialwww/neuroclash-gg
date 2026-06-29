@@ -69,7 +69,7 @@ export default function SignInPage() {
                         {...form.register("email")}
                         type="email"
                         placeholder="email@contoh.com"
-                        className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-blue-500/60"
+                        className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-blue-500/60 autofill:bg-transparent autofill:text-white autofill:shadow-[inset_0_0_0_1000px_transparent]"
                     />
                     {form.formState.errors.email && (
                         <p className="ml-1 mt-1.5 text-xs text-red-400">
@@ -84,21 +84,21 @@ export default function SignInPage() {
                         Password
                     </label>
                     <div className="relative">
-                        <input
-                            {...form.register("password")}
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Password kamu"
-                            className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-blue-500/60"
-                        />
+                            <input
+                                {...form.register("password")}
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Password kamu"
+                                className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-blue-500/60 autofill:bg-transparent autofill:text-white autofill:shadow-[inset_0_0_0_1000px_transparent]"
+                            />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-white/40 transition-colors hover:text-white"
                         >
                             {showPassword ? (
-                                <EyeOff size={18} />
-                            ) : (
                                 <Eye size={18} />
+                            ) : (
+                                <EyeOff size={18} />
                             )}
                         </button>
                     </div>

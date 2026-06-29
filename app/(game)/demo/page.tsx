@@ -101,7 +101,7 @@ function KitabOverlay({
                         {hint}
                     </p>
                 </div>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-white/60">
                     Gunakan petunjuk ini untuk menjawab soal!
                 </p>
                 <MainButton
@@ -130,7 +130,7 @@ function PlayerResultLine({
 }) {
     if (!revealed) {
         return (
-            <div className="flex animate-pulse items-center gap-2 text-xs text-white/40 md:text-sm">
+            <div className="flex animate-pulse items-center gap-2 text-xs text-white/60 md:text-sm">
                 <span className="h-3 w-3 rounded-full border border-white/30" />
                 <span>{playerName}: berpikir...</span>
             </div>
@@ -189,7 +189,7 @@ function DemoBuffItem({
             {buff.used ? (
                 <span className="text-[10px] text-green-400">Terpakai</span>
             ) : (
-                <span className="text-[10px] text-white/50">
+                <span className="text-[10px] text-white/60">
                     Klik untuk pakai
                 </span>
             )}
@@ -227,21 +227,32 @@ function DemoBuffPanel({
                 </h2>
             </div>
             <div className="scrollbar-hide w-full flex-1 overflow-y-auto pb-2">
-                <div
-                    className="grid gap-x-2 gap-y-4"
-                    style={{
-                        gridTemplateColumns:
-                            "repeat(auto-fit, minmax(70px, 1fr))",
-                    }}
-                >
-                    {buffs.slice(0, 5).map((buff) => (
-                        <DemoBuffItem
-                            key={buff.id}
-                            buff={buff}
-                            onClick={() => onUse(buff.id)}
-                        />
-                    ))}
-                </div>
+                {buffs.length > 0 ? (
+                    <div
+                        className="grid gap-x-2 gap-y-4"
+                        style={{
+                            gridTemplateColumns:
+                                "repeat(auto-fit, minmax(70px, 1fr))",
+                        }}
+                    >
+                        {buffs.slice(0, 5).map((buff) => (
+                            <DemoBuffItem
+                                key={buff.id}
+                                buff={buff}
+                                onClick={() => onUse(buff.id)}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <p className="text-xs text-white/60">
+                            Belum ada item
+                        </p>
+                        <p className="mt-1 text-[10px] text-white/20">
+                            Item StarBox akan muncul di sini
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -261,7 +272,7 @@ function MatchResultScreen() {
     const sortedPlayers = [...players].sort((a, b) => b.health - a.health);
 
     return (
-        <main className="flex min-h-screen w-full flex-col items-center bg-[#0B0D14] px-4 py-8">
+            <main className="flex min-h-screen w-full flex-col items-center px-4 py-8">
             <div className="flex w-full max-w-lg flex-col items-center space-y-6">
                 <p className="text-6xl">
                     <TIcon />
@@ -286,7 +297,7 @@ function MatchResultScreen() {
                                     p.isMe
                                         ? "border border-[#3D79F3]/40 bg-[#3D79F3]/20"
                                         : "border border-white/5 bg-white/5",
-                                    !p.isAlive && "opacity-60",
+                                    // solid color for eliminated players
                                 )}
                             >
                                 <div className="flex items-center gap-3">
@@ -342,7 +353,7 @@ function MatchResultScreen() {
                                     #
                                     {sortedPlayers.findIndex((p) => p.isMe) + 1}
                                 </p>
-                                <p className="text-xs text-white/50">
+                                <p className="text-xs text-white/60">
                                     Peringkat
                                 </p>
                             </div>
@@ -350,7 +361,7 @@ function MatchResultScreen() {
                                 <p className="text-xl font-extrabold text-green-400">
                                     {userPlayer.health}
                                 </p>
-                                <p className="text-xs text-white/50">
+                                <p className="text-xs text-white/60">
                                     HP Tersisa
                                 </p>
                             </div>
@@ -358,7 +369,7 @@ function MatchResultScreen() {
                                 <p className="text-xl font-extrabold text-[#3D79F3]">
                                     {roundsWon}/{DEMO_TOTAL_ROUNDS}
                                 </p>
-                                <p className="text-xs text-white/50">
+                                <p className="text-xs text-white/60">
                                     Ronde Menang
                                 </p>
                             </div>
@@ -366,7 +377,7 @@ function MatchResultScreen() {
                                 <p className="truncate text-xl font-extrabold text-[#FFCC00]">
                                     {userPickedAbilityName ?? "-"}
                                 </p>
-                                <p className="text-xs text-white/50">
+                                <p className="text-xs text-white/60">
                                     Item StarBox
                                 </p>
                             </div>
@@ -382,7 +393,7 @@ function MatchResultScreen() {
                                 <p className="text-xl font-extrabold text-yellow-400">
                                     +<TIcon /> {trophyEarned}
                                 </p>
-                                <p className="text-[10px] text-white/50">
+                                <p className="text-[10px] text-white/60">
                                     Trophy
                                 </p>
                             </div>
@@ -390,7 +401,7 @@ function MatchResultScreen() {
                                 <p className="text-xl font-extrabold text-amber-400">
                                     +<CIcon /> {coinsEarned}
                                 </p>
-                                <p className="text-[10px] text-white/50">
+                                <p className="text-[10px] text-white/60">
                                     Koin
                                 </p>
                             </div>
@@ -410,7 +421,7 @@ function MatchResultScreen() {
                                     <p className="text-xs font-semibold text-white">
                                         Trophy & Ranking
                                     </p>
-                                    <p className="text-[11px] text-white/50">
+                                    <p className="text-xs text-white/80">
                                         Trophy menentukan peringkatmu (Bronze{" "}
                                         {"\u2192"} Silver {"\u2192"} Gold{" "}
                                         {"\u2192"} Platinum {"\u2192"} Diamond).
@@ -427,7 +438,7 @@ function MatchResultScreen() {
                                     <p className="text-xs font-semibold text-white">
                                         Koin & Skin
                                     </p>
-                                    <p className="text-[11px] text-white/50">
+                                    <p className="text-xs text-white/80">
                                         Koin digunakan untuk membeli karakter
                                         dan skin di toko. Skin memberikan
                                         tampilan unik dan skill khusus.
@@ -442,7 +453,7 @@ function MatchResultScreen() {
                                     <p className="text-xs font-semibold text-white">
                                         StarBox & Item
                                     </p>
-                                    <p className="text-[11px] text-white/50">
+                                    <p className="text-xs text-white/80">
                                         Item dari StarBox disimpan di panel kiri
                                         atas arena. Klik item untuk
                                         menggunakannya saat dibutuhkan.
@@ -453,14 +464,14 @@ function MatchResultScreen() {
                     </div>
 
                     <div className="border-t border-white/10 pt-4">
-                        <h4 className="mb-2 text-xs uppercase tracking-wider text-white/60">
+                        <h4 className="mb-2 text-sm font-bold text-white text-center">
                             Riwayat Ronde
                         </h4>
                         <div className="space-y-1">
                             {roundHistory.map((h) => (
                                 <div
                                     key={h.round}
-                                    className="flex justify-between text-xs text-white/50"
+                                    className="flex justify-between text-sm text-white/80"
                                 >
                                     <span>
                                         Ronde {h.round} vs {h.opponentName}
@@ -483,7 +494,7 @@ function MatchResultScreen() {
                     </div>
                 </div>
 
-                <div className="flex w-full max-w-sm flex-col gap-4 sm:flex-row">
+                <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:flex-row sm:justify-center">
                     <MainButton
                         variant="green"
                         hasShadow
@@ -671,7 +682,7 @@ export default function DemoPage() {
     // --- INTRO ---
     if (phase === "intro") {
         return (
-            <main className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0B0D14] px-4">
+            <main className="flex min-h-screen w-full flex-col items-center justify-center px-4">
                 <div className="flex max-w-lg flex-col items-center space-y-6 text-center">
                     <p className="text-6xl">
                         <GameIcon />
@@ -711,7 +722,7 @@ export default function DemoPage() {
     // --- LOBBY ---
     if (phase === "lobby") {
         return (
-            <main className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#0B0D14] px-4 py-8">
+            <main className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-8">
                 {showTutorialOverlay && (
                     <TutorialOverlay
                         message={TUTORIAL_MESSAGES.lobby}
@@ -723,7 +734,7 @@ export default function DemoPage() {
                         <h1 className="text-2xl font-extrabold text-white">
                             Room Tutorial
                         </h1>
-                        <p className="inline-block rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/50">
+                        <p className="inline-block rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/60">
                             Kode: NEURO-DEMO
                         </p>
                     </div>
@@ -750,7 +761,7 @@ export default function DemoPage() {
                             4 pemain siap &bull; Maks. 40 pemain di mode
                             sungguhan
                         </p>
-                        <p className="text-xs text-white/40">
+                        <p className="text-xs text-white/60">
                             Hanya Host yang bisa memulai pertandingan
                         </p>
                     </div>
@@ -780,10 +791,10 @@ export default function DemoPage() {
         const remainingItems = abilities.reduce((sum, a) => sum + a.stock, 0);
 
         return (
-            <main className="relative flex min-h-screen w-full flex-col items-center overflow-x-hidden bg-[#0B0D14] px-4 py-6 md:px-8">
+            <main className="relative flex min-h-screen w-full flex-col items-center overflow-x-hidden px-4 py-6 md:px-8">
                 {showTutorialOverlay && (
                     <TutorialOverlay
-                        title={<StarIcon /> + " STARBOX"}
+                        title={"\uD83C\uDF1F STARBOX"}
                         message={TUTORIAL_MESSAGES.starbox}
                         onDismiss={dismissTutorialOverlay}
                     />
@@ -810,7 +821,7 @@ export default function DemoPage() {
                                         "relative flex h-5 w-5 items-center justify-center transition-all duration-500 md:h-6 md:w-6",
                                         idx === 6
                                             ? "text-[#FFCC00]"
-                                            : "text-white/40",
+                                            : "text-white/60",
                                     )}
                                 >
                                     <div
@@ -989,7 +1000,7 @@ export default function DemoPage() {
     }));
 
     return (
-        <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden bg-[#0B0D14] px-4 py-6 sm:px-8 md:px-12">
+        <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
             {showKitabHint && (
                 <KitabOverlay hint={kitabHintText} onDismiss={closeKitab} />
             )}
@@ -1023,7 +1034,7 @@ export default function DemoPage() {
                 </MainButton>
             </header>
 
-            <p className="text-sm font-medium text-white/50">
+            <p className="text-sm font-medium text-white/60">
                 Soal {currentRound} / {DEMO_TOTAL_ROUNDS}
             </p>
 
@@ -1031,14 +1042,12 @@ export default function DemoPage() {
                 <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
                     {/* LEFT: User + Buff panel */}
                     <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
-                        <div className="hidden max-h-[320px] overflow-hidden lg:block">
-                            {activeBuffs.length > 0 ? (
-                                <DemoBuffPanel
-                                    buffs={activeBuffs}
-                                    onUse={useBuff}
-                                    className="h-full"
-                                />
-                            ) : null}
+                        <div className="hidden h-[320px] lg:block">
+                            <DemoBuffPanel
+                                buffs={activeBuffs}
+                                onUse={useBuff}
+                                className="h-full"
+                            />
                         </div>
                         <div className="w-full max-w-[320px] lg:max-w-none">
                             <PlayerCard
@@ -1051,7 +1060,7 @@ export default function DemoPage() {
 
                     {/* RIGHT: Opponent + Player list */}
                     <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
-                        <div className="hidden max-h-[320px] overflow-hidden lg:block">
+                        <div className="hidden h-[320px] lg:block">
                             <PlayerList
                                 players={playerListData}
                                 className="h-full"

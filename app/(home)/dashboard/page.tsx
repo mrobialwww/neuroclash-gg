@@ -143,7 +143,7 @@ function GameRoomsSkeleton() {
             {[1, 2].map((categoryIdx) => (
                 <div key={categoryIdx} className="w-full space-y-4">
                     <div className="mb-4 flex items-center justify-between px-1 md:mb-6">
-                        <div className="h-8 w-48 animate-pulse rounded-md bg-gray-200" />
+                        <div className="h-8 w-48 animate-pulse rounded-md bg-white/10" />
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

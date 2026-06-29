@@ -21,13 +21,13 @@ const RecapExplanation = dynamic(
                         key={i}
                         className="rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
                     >
-                        <div className="mb-3 h-5 w-24 rounded bg-gray-200" />
-                        <div className="mb-4 h-4 w-full rounded bg-gray-200" />
+                        <div className="mb-3 h-5 w-24 animate-pulse rounded bg-white/10" />
+                        <div className="mb-4 h-4 w-full animate-pulse rounded bg-white/10" />
                         <div className="space-y-2.5">
                             {Array.from({ length: 4 }).map((_, j) => (
                                 <div
                                     key={j}
-                                    className="h-14 rounded-xl bg-gray-100"
+                                    className="h-14 animate-pulse rounded-xl bg-white/5"
                                 />
                             ))}
                         </div>
@@ -101,10 +101,10 @@ export default function RecapPage() {
                     {Array.from({ length: 3 }).map((_, i) => (
                         <div
                             key={i}
-                            className="rounded-2xl bg-white/10 p-5 md:p-6"
+                            className="animate-pulse rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
                         >
-                            <div className="mb-3 h-5 w-24 rounded bg-white/5" />
-                            <div className="mb-4 h-4 w-full rounded bg-white/5" />
+                            <div className="mb-3 h-5 w-24 rounded bg-white/10" />
+                            <div className="mb-4 h-4 w-full rounded bg-white/10" />
                             <div className="space-y-2.5">
                                 {Array.from({ length: 4 }).map((_, j) => (
                                     <div
