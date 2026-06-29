@@ -129,10 +129,12 @@ export interface EndgameResult {
     isAlive: boolean;
     deathRound: number;
     answerTime: number; // For tie-breaker
+    survivalTime: string;
     win: number;
     lose: number;
     coinBoost: number;
     trophyBoost: number;
+    userGameId: string;
 }
 
 export interface UserGameRecord {

@@ -1,5 +1,6 @@
 import { CreateArenaCard } from "@/components/dashboard/CreateArenaCard";
 import { JoinArenaCard } from "@/components/dashboard/JoinArenaCard";
+import { TutorialBanner } from "@/components/dashboard/TutorialBanner";
 import { CategorySection } from "@/components/dashboard/CategorySection";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -46,6 +47,8 @@ export default async function DashboardPage(props: {
                 />
                 <CreateArenaCard />
             </div>
+
+            <TutorialBanner />
 
             <div className="space-y-12">
                 <Suspense fallback={<GameRoomsSkeleton />}>

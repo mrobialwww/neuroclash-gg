@@ -7,6 +7,9 @@ import {
     UserGameHistory,
     PaginatedUserGameHistory,
     HistoryItem,
+    GameRecap,
+    RecapQuestion,
+    RecapAnswer,
 } from "@/modules/histories/history.schema";
 
 /**
@@ -179,5 +182,125 @@ export const historyService = {
             summary.user_id,
         );
         return { summary, historyAnswer };
+    },
+
+    /**
+     * Get structured game recap for display on the recap page.
+     */
+    async getGameRecap(userGameId: string): Promise<GameRecap> {
+        const userGame = await historyRepository.getUserGameSummary(userGameId);
+        const gameRoom = await historyRepository.getGameRoomById(
+            userGame.game_room_id,
+        );
+        const questions = await historyRepository.getQuestionsWithAnswers(
+            userGame.game_room_id,
+        );
+        const userAnswers = await historyRepository.getUserAnswersForRoom(
+            userGame.game_room_id,
+            userGame.user_id,
+        );
+
+        // Build a map: question_id → answer_id chosen by user
+        const userAnswerMap = new Map<string, string>();
+        for (const ua of userAnswers) {
+            const qId = (ua as any).answers?.question_id;
+            if (qId) {
+                userAnswerMap.set(qId, ua.answer_id);
+            }
+        }
+
+        let totalBenar = 0;
+        let totalSalah = 0;
+        let tidakTerjawab = 0;
+
+        const recapQuestions: RecapQuestion[] = questions.map((q: any) => {
+            // Find the answer the user selected (if any)
+            const selectedAnswerId = userAnswerMap.get(q.question_id);
+
+            // Determine state per question
+            let state: RecapQuestion["state"] = "unanswered";
+            if (selectedAnswerId) {
+                const selectedAnswer = (q.answers || []).find(
+                    (a: any) => a.answer_id === selectedAnswerId,
+                );
+                if (selectedAnswer?.is_correct) {
+                    state = "correct";
+                    totalBenar++;
+                } else {
+                    state = "wrong";
+                    totalSalah++;
+                }
+            } else {
+                tidakTerjawab++;
+            }
+
+            const recapAnswers: RecapAnswer[] = (q.answers || []).map(
+                (a: any) => ({
+                    answer_id: a.answer_id,
+                    answer_text: a.answer_text,
+                    key: a.key,
+                    is_correct: a.is_correct,
+                    is_selected: a.answer_id === selectedAnswerId,
+                    explanation: a.explanation ?? null,
+                }),
+            );
+
+            // Sort answers by key (A, B, C, D)
+            recapAnswers.sort((a, b) => a.key.localeCompare(b.key));
+
+            return {
+                question_id: q.question_id,
+                question_text: q.question_text,
+                question_order: q.question_order,
+                answers: recapAnswers,
+                state,
+            };
+        });
+
+        const totalSoal = questions.length;
+
+        // Calculate duration from user_answers (first answer → last answer)
+        // This is more accurate than updated_at - created_at which is often ~0
+        let totalSeconds = 0;
+        if (userAnswers.length > 0) {
+            const timestamps = userAnswers.map((ua: any) =>
+                new Date(ua.created_at).getTime(),
+            );
+            const firstAnswer = Math.min(...timestamps);
+            const lastAnswer = Math.max(...timestamps);
+            totalSeconds = Math.max(
+                1,
+                Math.round((lastAnswer - firstAnswer) / 1000),
+            );
+        }
+        // If no answers at all, estimate based on round time
+        if (totalSeconds <= 0) {
+            totalSeconds = totalSoal * 15;
+        }
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const waktu =
+            minutes > 0
+                ? `${minutes} menit ${seconds} detik`
+                : `${seconds} detik`;
+
+        return {
+            user_game_id: userGame.user_game_id,
+            game_room_id: userGame.game_room_id,
+            room_title: gameRoom?.title || null,
+            category: gameRoom?.category || "umum",
+            placement: userGame.placement,
+            trophy_won: userGame.trophy_won,
+            coins_earned: userGame.coins_earned,
+            win: userGame.win,
+            lose: userGame.lose,
+            total_soal: totalSoal,
+            total_benar: totalBenar,
+            total_salah: totalSalah,
+            tidak_terjawab: tidakTerjawab,
+            waktu,
+            created_at: userGame.created_at,
+            questions: recapQuestions,
+        };
     },
 };

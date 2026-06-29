@@ -125,7 +125,7 @@ export function LobbyRoom({
                         {!isSolo && isHost && (
                             <button
                                 onClick={handleCopy}
-                                className="group mt-2 flex items-center justify-center gap-2 rounded-full border border-white/10 bg-[#D9D9D9]/20 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-sm transition-all hover:bg-[#D9D9D9]/30 active:scale-95 md:text-base"
+                                className="group mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/10 bg-[#D9D9D9]/20 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-sm transition-all hover:bg-[#D9D9D9]/30 active:scale-95 md:text-base"
                             >
                                 <span className="uppercase tracking-wide opacity-90 group-hover:opacity-100">
                                     {roomCode}

@@ -27,7 +27,8 @@ export const gameRoomRepository = {
      * Digunakan oleh Server Components — query Supabase langsung (tanpa HTTP round-trip).
      */
     async getPublicOpenRooms(): Promise<GameRoomWithPlayerCount[]> {
-        const supabase = await createClient();
+        const { createPublicClient } = await import("@/lib/supabase/public");
+        const supabase = createPublicClient();
 
         const { data, error } = await supabase
             .from("game_rooms")
@@ -469,10 +470,12 @@ export const gameRoomRepository = {
         questions: {
             question_order: number;
             question_text: string;
+            explanation?: string;
             answers?: {
                 answer_text: string;
                 is_correct: boolean;
                 key?: string;
+                explanation?: string | null;
             }[];
         }[],
     ): Promise<{ questionsInserted: number; answersInserted: number }> {
@@ -559,6 +562,7 @@ export const gameRoomRepository = {
                             answer_text: answer.answer_text,
                             is_correct: answer.is_correct === true,
                             key: answer.key,
+                            explanation: answer.explanation || null,
                         })
                         .select()
                         .single();
@@ -652,7 +656,8 @@ export const gameRoomRepository = {
                         answer_id,
                         answer_text,
                         is_correct,
-                        key
+                        key,
+                        explanation
                     )
                 `,
             )
@@ -741,46 +746,91 @@ export const gameRoomRepository = {
      */
     async upsertNextRound(gameId: string, nextRoundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: nextRoundNumber,
-                status: "waiting",
-                all_battles_finished: false,
-                damage_applied: false,
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
 
-        if (error) {
-            throw new Error(
-                `[GameRoomRepo] upsertNextRound Error: ${error.message}`,
-            );
+        const { data: existing } = await supabase
+            .from("match_rounds")
+            .select("match_round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", nextRoundNumber)
+            .maybeSingle();
+
+        if (existing) {
+            const { error } = await supabase
+                .from("match_rounds")
+                .update({
+                    status: "waiting",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                })
+                .eq("match_round_id", existing.match_round_id);
+
+            if (error) {
+                throw new Error(
+                    `[GameRoomRepo] upsertNextRound Error updating: ${error.message}`,
+                );
+            }
+        } else {
+            const { error } = await supabase
+                .from("match_rounds")
+                .insert({
+                    game_room_id: gameId,
+                    round_number: nextRoundNumber,
+                    status: "waiting",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                });
+
+            if (error) {
+                throw new Error(
+                    `[GameRoomRepo] upsertNextRound Error inserting: ${error.message}`,
+                );
+            }
         }
     },
 
-    /**
-     * Activate a match round — upsert with status 'ongoing'.
-     * Handles both insert (new round) and update (existing round) idempotently.
-     */
     async activateMatchRound(gameId: string, roundNumber: number) {
         const supabase = await createClient();
-        const { error } = await supabase.from("match_rounds").upsert(
-            {
-                game_room_id: gameId,
-                round_number: roundNumber,
-                status: "ongoing",
-                all_battles_finished: false,
-                damage_applied: false,
-                updated_at: getWIBNow(),
-            },
-            { onConflict: "game_room_id,round_number" },
-        );
 
-        if (error) {
-            throw new Error(
-                `[GameRoomRepo] activateMatchRound Error: ${error.message}`,
-            );
+        const { data: existing } = await supabase
+            .from("match_rounds")
+            .select("match_round_id")
+            .eq("game_room_id", gameId)
+            .eq("round_number", roundNumber)
+            .maybeSingle();
+
+        if (existing) {
+            const { error } = await supabase
+                .from("match_rounds")
+                .update({
+                    status: "ongoing",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                    updated_at: getWIBNow(),
+                })
+                .eq("match_round_id", existing.match_round_id);
+
+            if (error) {
+                throw new Error(
+                    `[GameRoomRepo] activateMatchRound Error updating: ${error.message}`,
+                );
+            }
+        } else {
+            const { error } = await supabase
+                .from("match_rounds")
+                .insert({
+                    game_room_id: gameId,
+                    round_number: roundNumber,
+                    status: "ongoing",
+                    all_battles_finished: false,
+                    damage_applied: false,
+                    updated_at: getWIBNow(),
+                });
+
+            if (error) {
+                throw new Error(
+                    `[GameRoomRepo] activateMatchRound Error inserting: ${error.message}`,
+                );
+            }
         }
     },
 
@@ -1122,6 +1172,24 @@ export const gameRoomRepository = {
                 `[EndGameRepo] getEarliestRoundTime Error: ${error.message}`,
             );
         return data as EarliestRoundTime | null;
+    },
+
+    /**
+     * Fetch user_game_id for all players in a room from user_games table.
+     */
+    async getUserGameIds(
+        roomId: string,
+    ): Promise<{ user_id: string; user_game_id: string }[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("user_games")
+            .select("user_id, user_game_id")
+            .eq("game_room_id", roomId);
+        if (error)
+            throw new Error(
+                `[EndGameRepo] getUserGameIds Error: ${error.message}`,
+            );
+        return data as { user_id: string; user_game_id: string }[];
     },
 
     /**

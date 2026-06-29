@@ -7,30 +7,32 @@ interface MatchProgressBarProps {
     timeLeft: number;
     activeStepIndex?: number;
     isSolo?: boolean;
+    steps?: { id: string; icon: string }[];
     className?: string;
 }
+
+const DEFAULT_STEPS = [
+    { id: "book", icon: "/icons/book.svg" },
+    { id: "battle-1", icon: "/icons/battle.svg" },
+    { id: "battle-2", icon: "/icons/battle.svg" },
+    { id: "battle-3", icon: "/icons/battle.svg" },
+    { id: "battle-4", icon: "/icons/battle.svg" },
+    { id: "battle-5", icon: "/icons/battle.svg" },
+    { id: "treasure", icon: "/icons/treasure.svg" },
+];
 
 export function MatchProgressBar({
     duration = 30,
     timeLeft,
     activeStepIndex = 0,
     isSolo = false,
+    steps: customSteps,
     className,
 }: MatchProgressBarProps) {
     const progressPercentage = (timeLeft / duration) * 100;
 
-    const allSteps = [
-        { id: "book", icon: "/icons/book.svg" },
-        { id: "battle-1", icon: "/icons/battle.svg" },
-        { id: "battle-2", icon: "/icons/battle.svg" },
-        { id: "battle-3", icon: "/icons/battle.svg" },
-        { id: "battle-4", icon: "/icons/battle.svg" },
-        { id: "battle-5", icon: "/icons/battle.svg" },
-        { id: "treasure", icon: "/icons/treasure.svg" },
-    ];
+    const allSteps = customSteps ?? DEFAULT_STEPS;
 
-    // Solo: hanya tampilkan 5 ikon battle (tanpa book & treasure)
-    // activeStepIndex dari store adalah 1-based (round % 5), jadi battle-N = index N-1
     const steps = isSolo
         ? allSteps.filter((s) => s.id.startsWith("battle"))
         : allSteps;

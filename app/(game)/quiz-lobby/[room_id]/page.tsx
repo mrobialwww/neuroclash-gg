@@ -156,7 +156,7 @@ export default function QuizLobbyPage() {
                 </p>
                 <button
                     onClick={() => router.push("/dashboard")}
-                    className="rounded-md bg-white/20 px-6 py-2 font-bold text-white"
+                    className="cursor-pointer rounded-md bg-white/20 px-6 py-2 font-bold text-white"
                 >
                     Kembali
                 </button>

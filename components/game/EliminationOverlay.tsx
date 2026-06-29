@@ -91,8 +91,9 @@ export function EliminationOverlay({
                             Waktu Bertahan
                         </span>
                         <span className="text-xl font-bold text-white">
-                            {Math.floor(parseInt(survivalTime.split(":")[0]))}{" "}
-                            Menit {parseInt(survivalTime.split(":")[1])} Detik
+                            {survivalTime === "00:00"
+                                ? "Bertahan"
+                                : `${Math.floor(parseInt(survivalTime.split(":")[0]))} Menit ${parseInt(survivalTime.split(":")[1])} Detik`}
                         </span>
                     </div>
                 </div>

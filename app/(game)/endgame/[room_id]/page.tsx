@@ -71,7 +71,11 @@ export default function EndgamePage({
             if (parts.length === 2) {
                 const mins = parseInt(parts[0]);
                 const secs = parseInt(parts[1]);
-                formattedPlayTime = `${mins} Menit ${secs} Detik`;
+                if (mins === 0 && secs === 0 && r.isAlive) {
+                    formattedPlayTime = "Bertahan";
+                } else {
+                    formattedPlayTime = `${mins} Menit ${secs} Detik`;
+                }
             } else {
                 formattedPlayTime = r.survivalTime;
             }
@@ -133,12 +137,27 @@ export default function EndgamePage({
             </div>
 
             {/* TABLE SECTION */}
-            <div className="relative z-20 -mt-32 mb-8 w-full max-w-5xl sm:-mt-48 md:-mt-56 lg:-mt-64">
+            <div className="relative z-20 -mt-32 mb-4 w-full max-w-5xl sm:-mt-48 md:-mt-56 lg:-mt-64">
                 <EndgameTable
                     players={tablePlayers}
                     currentUserId={currentUserId}
                 />
             </div>
+
+            {/* Lihat Detail button */}
+            {myResult?.userGameId && (
+                <div className="relative z-20 my-4 flex w-full max-w-5xl justify-center">
+                    <MainButton
+                        variant="white"
+                        className="cursor-pointer px-16 py-2 text-base font-bold md:text-lg"
+                        onClick={() =>
+                            router.push(`/recap/${myResult.userGameId}`)
+                        }
+                    >
+                        Lihat Detail
+                    </MainButton>
+                </div>
+            )}
         </main>
     );
 }

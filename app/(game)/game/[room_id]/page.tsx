@@ -13,7 +13,10 @@ import {
     BuffEffectOverlay,
     BuffEffectType,
 } from "@/components/match/BuffEffectOverlay";
+import { RoundResultOverlay } from "@/components/match/RoundResultOverlay";
+import { ProfBubuPhase } from "@/components/match/ProfBubuPhase";
 import NextImage from "next/image";
+import { CHARACTER_SKILL_MAP, SkillType } from "@/lib/constants/characters";
 
 import {
     useMatchStore,
@@ -53,6 +56,11 @@ export default function GamePage() {
     const [isLoadingEliminationData, setIsLoadingEliminationData] =
         useState(false);
 
+    // Round result overlay state
+    const [showRoundResult, setShowRoundResult] = useState(false);
+    const lastShownRound = React.useRef(0);
+    const playerAnsweredThisRound = React.useRef(false);
+
     // State untuk animasi buff ability
     const [buffEffect, setBuffEffect] = useState<BuffEffectType>(null);
 
@@ -83,6 +91,8 @@ export default function GamePage() {
         decrementTimer,
         isOpponent,
         canAnswer,
+        isProfBubuPhase,
+        endProfBubuPhase,
     } = useMatchStore();
 
     const { myInventory, refreshMyInventory } = useStarboxStore();
@@ -101,6 +111,94 @@ export default function GamePage() {
             refreshMyInventory(gameRoomId, currentUser.id);
         }
     }, [currentUser?.id, gameRoomId, refreshMyInventory]);
+
+    // Round result overlay state & coordination
+    const [pendingBuffEffect, setPendingBuffEffect] =
+        useState<BuffEffectType>(null);
+
+    const firstAnswerCorrect = firstAnswerId
+        ? firstAnswerId === correctAnswerId
+        : null;
+
+    // Reset overlay & queue buff when overlay shows while buff is playing
+    useEffect(() => {
+        if (showRoundResult && buffEffect) {
+            setPendingBuffEffect(buffEffect);
+            setBuffEffect(null);
+        }
+    }, [showRoundResult]);
+
+    // Dismiss overlay when round advances (selectedAnswerId cleared by advanceRound)
+    useEffect(() => {
+        if (!selectedAnswerId && showRoundResult) {
+            setShowRoundResult(false);
+        }
+    }, [selectedAnswerId]);
+
+    // Show round result overlay when answer is submitted
+    useEffect(() => {
+        if (selectedAnswerId && !isSubmitting && lastAnswerCorrect !== null) {
+            // Reset guard so overlay can show after opponent-first overlay dismisses
+            if (playerAnsweredThisRound.current) {
+                lastShownRound.current = 0;
+            }
+            playerAnsweredThisRound.current = true;
+            if (!showRoundResult && lastShownRound.current !== currentOrder) {
+                lastShownRound.current = currentOrder;
+                setShowRoundResult(true);
+            }
+        }
+    }, [
+        selectedAnswerId,
+        isSubmitting,
+        lastAnswerCorrect,
+        showRoundResult,
+        currentOrder,
+    ]);
+
+    // Reset per-round state when round advances
+    useEffect(() => {
+        playerAnsweredThisRound.current = false;
+    }, [currentOrder]);
+
+    // Trigger overlay when opponent answered first (via Realtime update)
+    useEffect(() => {
+        if (
+            firstAnswerPlayerId &&
+            firstAnswerPlayerId !== currentUser?.id &&
+            firstAnswerCorrect !== null &&
+            !showRoundResult &&
+            lastShownRound.current !== currentOrder
+        ) {
+            lastShownRound.current = currentOrder;
+            setShowRoundResult(true);
+        }
+    }, [
+        firstAnswerPlayerId,
+        currentUser?.id,
+        firstAnswerCorrect,
+        showRoundResult,
+        currentOrder,
+    ]);
+
+    const roundDamage = useMemo(() => {
+        if (!showRoundResult) return 0;
+        return Math.floor(5 + (currentOrder / (totalQuestions || 20)) * 20);
+    }, [showRoundResult, currentOrder, totalQuestions]);
+
+    const roundIsFirst = useMemo(() => {
+        if (isSolo) return true;
+        if (!firstAnswerPlayerId) return true;
+        return firstAnswerPlayerId === currentUser?.id;
+    }, [isSolo, firstAnswerPlayerId, currentUser?.id]);
+
+    const handleRoundResultComplete = useCallback(() => {
+        setShowRoundResult(false);
+        if (pendingBuffEffect) {
+            setBuffEffect(pendingBuffEffect);
+            setPendingBuffEffect(null);
+        }
+    }, [pendingBuffEffect]);
 
     // Handle Error (Ongoing room or not found)
     useEffect(() => {
@@ -267,19 +365,25 @@ export default function GamePage() {
 
     // 2. Local Timer
     useEffect(() => {
-        if (isLoadingQuestion || isFinished || error) return;
+        if (isLoadingQuestion || isFinished || error || isProfBubuPhase) return;
 
         const timer = setInterval(() => {
             decrementTimer();
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isLoadingQuestion, isFinished, decrementTimer, error, timeLeft]);
+    }, [
+        isLoadingQuestion,
+        isFinished,
+        decrementTimer,
+        error,
+        timeLeft,
+        isProfBubuPhase,
+    ]);
 
     // 3. Mapping Players for UI
     const { meCard, opponentCard, sortedForList } = useMemo(() => {
         const meData = players.find((p) => p.id === currentUser?.id);
-        const others = players.filter((p) => p.id !== currentUser?.id);
 
         // Gunakan opponentIds dari battle room untuk menentukan lawan
         const battleOpponents = opponentIds
@@ -291,14 +395,32 @@ export default function GamePage() {
 
         const mapToCard = (p: any) =>
             p
-                ? {
-                      id: p.id,
-                      name: p.name,
-                      character: p.character || "Slime",
-                      image: p.image,
-                      health: p.health,
-                      maxHealth: 100,
-                  }
+                ? (() => {
+                      // Resolve skill dari nama karakter — hanya ada di epic/legend
+                      const skinLevel = p.skin_level as
+                          | "default"
+                          | "epic"
+                          | "legend"
+                          | undefined;
+                      const skillType: SkillType | null =
+                          skinLevel && skinLevel !== "default"
+                              ? CHARACTER_SKILL_MAP[p.character] ?? null
+                              : null;
+
+                      return {
+                          id: p.id,
+                          name: p.name,
+                          character: p.character || "Slime",
+                          image: p.image,
+                          health: p.health,
+                          maxHealth: 100,
+                          skillType,
+                          skinLevel:
+                              skillType && skinLevel !== "default"
+                                  ? (skinLevel as "epic" | "legend")
+                                  : undefined,
+                      };
+                  })()
                 : null;
 
         // Prof. Bubu card untuk Solo mode (lawan)
@@ -428,6 +550,18 @@ export default function GamePage() {
         );
     }
 
+    // Tampilan Fase Prof Bubu
+    if (isProfBubuPhase) {
+        return (
+            <ProfBubuPhase
+                gameRoomId={gameRoomId}
+                onPhaseComplete={() => {
+                    endProfBubuPhase();
+                }}
+            />
+        );
+    }
+
     // Tampilan ketika Menunggu Semua Battle Room Selesai
     if (isWaitingForAllBattles && !error) {
         return (
@@ -491,8 +625,8 @@ export default function GamePage() {
                         <p className="text-sm font-medium text-white/70 md:text-base">
                             Kamu telah menyelesaikan{" "}
                             {eliminationData?.deathRound ??
-                                totalQuestions ??
-                                currentOrder}{" "}
+                                currentOrder ??
+                                totalQuestions}{" "}
                             soal.
                         </p>
                     </div>
@@ -604,6 +738,12 @@ export default function GamePage() {
         );
     }
 
+    const opponentAnsweredFirst =
+        !!firstAnswerPlayerId && firstAnswerPlayerId !== currentUser?.id;
+    const opponentName = firstAnswerPlayerId
+        ? players.find((p) => p.id === firstAnswerPlayerId)?.name
+        : undefined;
+
     return (
         <main className="flex min-h-screen w-full flex-col items-center gap-4 overflow-x-hidden px-4 py-6 sm:px-8 md:px-12">
             {/* Header Info */}
@@ -647,9 +787,13 @@ export default function GamePage() {
                                 <BuffList
                                     buffs={myInventory}
                                     className="h-full"
-                                    onAbilityUsed={(type) =>
-                                        setBuffEffect(type)
-                                    }
+                                    onAbilityUsed={(type) => {
+                                        if (showRoundResult) {
+                                            setPendingBuffEffect(type);
+                                        } else {
+                                            setBuffEffect(type);
+                                        }
+                                    }}
                                 />
                             </div>
                         </div>
@@ -659,6 +803,8 @@ export default function GamePage() {
                                     player={meCard as any}
                                     isMe={true}
                                     className="w-full"
+                                    skillType={(meCard as any).skillType}
+                                    skinLevel={(meCard as any).skinLevel}
                                 />
                             ) : (
                                 <div className="h-[90px] w-full" />
@@ -686,6 +832,8 @@ export default function GamePage() {
                                     isMe={false}
                                     hideHealthBar={isSolo}
                                     className="w-full"
+                                    skillType={(opponentCard as any).skillType}
+                                    skinLevel={(opponentCard as any).skinLevel}
                                 />
                             ) : (
                                 <div className="h-[90px] w-full" />
@@ -719,6 +867,11 @@ export default function GamePage() {
                                     firstAnswerId={firstAnswerId}
                                     correctAnswerId={correctAnswerId}
                                     lastAnswerCorrect={lastAnswerCorrect}
+                                    opponentAnsweredFirst={
+                                        opponentAnsweredFirst
+                                    }
+                                    opponentName={opponentName}
+                                    firstAnswerCorrect={firstAnswerCorrect}
                                     className="h-auto w-full"
                                 />
                             </>
@@ -759,6 +912,17 @@ export default function GamePage() {
                     isLoading={isLoadingEliminationData}
                 />
             )}
+
+            {/* Round Result Overlay */}
+            <RoundResultOverlay
+                isOpen={showRoundResult}
+                isSolo={isSolo}
+                isFirst={roundIsFirst}
+                isCorrect={lastAnswerCorrect ?? false}
+                firstAnswerCorrect={firstAnswerCorrect}
+                damage={roundDamage}
+                onComplete={handleRoundResultComplete}
+            />
 
             {/* Buff Ability Animation Overlay */}
             <BuffEffectOverlay

@@ -15,6 +15,7 @@ import { PlayerOpponents } from "@/modules/gamePlayers/gamePlayers.schema";
 import { battleRoomService } from "@/modules/battles/battle.service";
 import { lockManager } from "@/lib/utils/lockManager";
 import { gamePlayersService } from "@/modules/gamePlayers/gamePlayers.service";
+import { getPlayerCharacterSkill } from "@/lib/game/characterSkill";
 
 // In-memory track opponents untuk setiap game (reset per round)
 const playerOpponentsCache: Map<string, PlayerOpponents[]> = new Map();
@@ -182,10 +183,12 @@ export const gameRoomService = {
             (q: any) => ({
                 question_order: q.question_order || q.order || 1,
                 question_text: q.question_text || q.question || "",
+                explanation: q.explanation || "",
                 answers: (q.options || q.answers || []).map((opt: any) => ({
                     answer_text: opt.answer_text || opt.text || "",
                     is_correct: opt.is_correct || opt.isCorrect || false,
                     key: opt.key || "",
+                    explanation: opt.explanation || null,
                 })),
             }),
         );
@@ -392,18 +395,25 @@ export const gameRoomService = {
         const userIds = players.map((p) => p.user_id);
 
         // 2. Parallelize data enrichment fetches
-        const [chars, answersData, earlyRound, battleRooms, abilitiesResults] =
-            await Promise.all([
-                gameRoomRepository.getUserCharacters(userIds),
-                gameRoomRepository.getUserAnswers(roomId),
-                gameRoomRepository.getEarliestRoundTime(roomId),
-                gameRoomRepository.getBattleRooms(roomId),
-                Promise.all(
-                    userIds.map((id: string) =>
-                        gameRoomRepository.getUserAbilities(roomId, id),
-                    ),
+        const [
+            chars,
+            answersData,
+            earlyRound,
+            battleRooms,
+            abilitiesResults,
+            userGameRecords,
+        ] = await Promise.all([
+            gameRoomRepository.getUserCharacters(userIds),
+            gameRoomRepository.getUserAnswers(roomId),
+            gameRoomRepository.getEarliestRoundTime(roomId),
+            gameRoomRepository.getBattleRooms(roomId),
+            Promise.all(
+                userIds.map((id: string) =>
+                    gameRoomRepository.getUserAbilities(roomId, id),
                 ),
-            ]);
+            ),
+            gameRoomRepository.getUserGameIds(roomId),
+        ]);
 
         const abilitiesMap = new Map<
             string,
@@ -411,6 +421,11 @@ export const gameRoomService = {
         >();
         userIds.forEach((id: string, index: number) => {
             abilitiesMap.set(id, abilitiesResults[index] || []);
+        });
+
+        const userGameIdMap = new Map<string, string>();
+        userGameRecords.forEach((r) => {
+            userGameIdMap.set(r.user_id, r.user_game_id);
         });
 
         const charMap = new Map();
@@ -529,25 +544,28 @@ export const gameRoomService = {
             let loseCount = Math.max(0, N - winCount);
 
             // Start of match: preference order:
-            // 1. created_at of round 1 (most accurate for game board interaction)
-            // 2. created_at of the game_room (when lobby was ready)
-            // 3. created_at of the game_player record (when player joined or match was initialized)
-            // 4. updated_at of the game_room (last fallback)
+            // 1. created_at of the game_player record (when player joined the room — most reliable)
+            // 2. created_at of round 1 (if match_rounds exist)
+            // 3. created_at of the game_room (when lobby was ready)
             const matchStart = parseDBDate(
-                earlyRound?.created_at ||
+                p.created_at ||
+                    earlyRound?.created_at ||
                     gameRoomData?.created_at ||
-                    p.created_at ||
-                    gameRoomData?.updated_at,
+                    Date.now().toString(),
             );
 
             // End time logic:
-            // If player is still alive, survival time is until the room finished
+            // - Dead players: when they died (p.updated_at)
+            // - Alive players: use Date.now() for solo mode or non-finished rooms.
+            //   When room is finished, fallback to gameRoomData.updated_at
+            //   but note: solo mode rooms may not auto-update updated_at,
+            //   so always use Date.now() for solo (totalPlayers === 1).
             const isRoomFinished = gameRoomData?.room_status === "finished";
             const matchEnd =
                 p.status === "alive"
-                    ? isRoomFinished
-                        ? parseDBDate(gameRoomData?.updated_at)
-                        : Date.now()
+                    ? totalPlayers === 1 || !isRoomFinished
+                        ? Date.now()
+                        : parseDBDate(gameRoomData?.updated_at)
                     : parseDBDate(p.updated_at);
 
             const survivalTime = calculateDuration(matchStart, matchEnd);
@@ -557,6 +575,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.user_id,
+                userGameId: userGameIdMap.get(p.user_id) || "",
                 username: userObj?.username || "Unknown",
                 totalTrophy: userObj?.total_trophy || 0,
                 characterImage: cData?.image_url || "/default/Slime.webp",
@@ -564,17 +583,36 @@ export const gameRoomService = {
                 health: p.health || 0,
                 status: p.status,
                 deathRound:
-                    p.status !== "alive"
-                        ? pAnswers.length > 0
-                            ? Math.max(...pAnswers.map((a) => a.round_number))
-                            : 0
-                        : 999,
+                    pAnswers.length > 0
+                        ? Math.max(...pAnswers.map((a) => a.round_number))
+                        : 0,
                 answerCount: pAnswers.length,
                 win: winCount,
                 lose: loseCount,
                 survivalTime,
+                matchStartMs: matchStart,
+                matchEndMs: matchEnd,
             };
         });
+
+        // Safety net: if winner (alive player) has 0 survival time,
+        // recalculate using the latest matchEnd across all players
+        const alivePlayers = playersStats.filter((p) => p.status === "alive");
+        if (alivePlayers.length === 1) {
+            const winner = alivePlayers[0];
+            if (winner.survivalTime === "00:00") {
+                const maxMatchEndMs = Math.max(
+                    ...playersStats.map((p) => p.matchEndMs),
+                );
+                winner.survivalTime = calculateDuration(
+                    winner.matchStartMs,
+                    maxMatchEndMs,
+                );
+                console.log(
+                    `[EndgameService] Corrected winner's survivalTime from 00:00 to ${winner.survivalTime}`,
+                );
+            }
+        }
 
         // 5. Determine Placements via Sorting
         playersStats.sort((a, b) => {
@@ -636,6 +674,7 @@ export const gameRoomService = {
 
             return {
                 userId: p.userId,
+                userGameId: p.userGameId,
                 username: p.username,
                 characterImage: p.characterImage,
                 baseCharacter: p.baseCharacter,
@@ -1727,7 +1766,50 @@ export const gameRoomService = {
             );
         }
 
-        // 3. Create/update match_rounds status (idempotent upsert)
+        // 3. [SKILL] Terapkan Heal di awal ronde untuk player yang punya skill Heal
+        // Heal diterapkan SEBELUM soal dijawab (di awal ronde)
+        const allPlayerIds = [
+            ...new Set(
+                battleRooms.flatMap((br) =>
+                    [
+                        br.player1_id,
+                        br.player2_id,
+                        br.player3_id,
+                    ].filter((id): id is string => id !== null),
+                ),
+            ),
+        ];
+
+        console.log(
+            `[RoundService] [Heal Skill] Checking heal skill for ${allPlayerIds.length} players`,
+        );
+
+        await Promise.all(
+            allPlayerIds.map(async (playerId) => {
+                const skill = await getPlayerCharacterSkill(playerId);
+                if (!skill || skill.type !== "heal") return;
+
+                const participants =
+                    await gamePlayersService.getParticipantsList(gameId);
+                const playerState = participants.find(
+                    (p) => p.id === playerId,
+                );
+                if (!playerState || playerState.health <= 0) return;
+
+                const newHp = playerState.health + skill.value;
+                await gamePlayersService.updateHealth(
+                    playerId,
+                    gameId,
+                    newHp,
+                    roundNumber,
+                );
+                console.log(
+                    `[RoundService] [Heal Skill] Player ${playerId.substring(0, 8)}: ${playerState.health} → ${newHp} (+${skill.value} HP dari skill ${skill.type})`,
+                );
+            }),
+        );
+
+        // 4. Create/update match_rounds status (idempotent upsert)
         console.log(`[RoundService] Updating match_rounds status`);
         await gameRoomRepository.activateMatchRound(gameId, roundNumber);
         console.log(
