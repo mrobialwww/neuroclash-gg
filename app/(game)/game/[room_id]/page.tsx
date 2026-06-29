@@ -137,24 +137,17 @@ export default function GamePage() {
 
     // Show round result overlay when answer is submitted
     useEffect(() => {
-        if (selectedAnswerId && !isSubmitting && lastAnswerCorrect !== null) {
-            // Reset guard so overlay can show after opponent-first overlay dismisses
-            if (playerAnsweredThisRound.current) {
-                lastShownRound.current = 0;
-            }
-            playerAnsweredThisRound.current = true;
-            if (!showRoundResult && lastShownRound.current !== currentOrder) {
-                lastShownRound.current = currentOrder;
-                setShowRoundResult(true);
-            }
+        if (
+            selectedAnswerId &&
+            !isSubmitting &&
+            lastAnswerCorrect !== null &&
+            !showRoundResult &&
+            lastShownRound.current !== currentOrder
+        ) {
+            lastShownRound.current = currentOrder;
+            setShowRoundResult(true);
         }
-    }, [
-        selectedAnswerId,
-        isSubmitting,
-        lastAnswerCorrect,
-        showRoundResult,
-        currentOrder,
-    ]);
+    }, [selectedAnswerId, isSubmitting, lastAnswerCorrect, currentOrder]);
 
     // Reset per-round state when round advances
     useEffect(() => {
@@ -167,19 +160,12 @@ export default function GamePage() {
             firstAnswerPlayerId &&
             firstAnswerPlayerId !== currentUser?.id &&
             firstAnswerCorrect !== null &&
-            !showRoundResult &&
             lastShownRound.current !== currentOrder
         ) {
             lastShownRound.current = currentOrder;
             setShowRoundResult(true);
         }
-    }, [
-        firstAnswerPlayerId,
-        currentUser?.id,
-        firstAnswerCorrect,
-        showRoundResult,
-        currentOrder,
-    ]);
+    }, [firstAnswerPlayerId, currentUser?.id, firstAnswerCorrect, currentOrder]);
 
     const roundDamage = useMemo(() => {
         if (!showRoundResult) return 0;
@@ -562,27 +548,6 @@ export default function GamePage() {
         );
     }
 
-    // Tampilan ketika Menunggu Semua Battle Room Selesai
-    if (isWaitingForAllBattles && !error) {
-        return (
-            <div className="z-100 fixed inset-0 flex items-center justify-center bg-black/40 px-6 backdrop-blur-md">
-                <div className="animate-in fade-in zoom-in-95 relative flex w-full max-w-[400px] flex-col items-center gap-6 rounded-2xl border-2 border-[#383347] bg-[#040619]/60 p-10 text-center shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl duration-200">
-                    <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_20px_rgba(61,121,243,0.3)]" />
-                    <div className="space-y-3">
-                        <p className="text-xl font-extrabold uppercase tracking-tighter text-white md:text-2xl ">
-                            Menunggu...
-                        </p>
-                        <p className="text-sm font-medium text-white/60 md:text-base">
-                            Ronde {currentOrder} segera berakhir.
-                            <br />
-                            Pertempuran lain masih berlangsung!
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     // Tampilan Layar Kemenangan / Selesai
     if (isFinished) {
         const isWinner = eliminationData?.isWinner;
@@ -929,6 +894,15 @@ export default function GamePage() {
                 type={buffEffect}
                 onComplete={() => setBuffEffect(null)}
             />
+
+            {/* Non-blocking waiting indicator */}
+            {isWaitingForAllBattles && !error && (
+                <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white/10 px-5 py-2.5 backdrop-blur-md">
+                    <p className="whitespace-nowrap text-xs font-medium text-white/70">
+                        Menyiapkan ronde berikutnya...
+                    </p>
+                </div>
+            )}
         </main>
     );
 }

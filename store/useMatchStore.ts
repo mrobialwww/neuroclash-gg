@@ -983,8 +983,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             }`,
         );
 
-        // Wait 2 seconds for players to see results
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Brief pause for visual stability before advancing
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
         // Now advance the round (this will generate new battle rooms and start next round)
         await get().advanceRound();

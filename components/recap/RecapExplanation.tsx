@@ -22,15 +22,15 @@ export function RecapExplanation({ questions }: RecapExplanationProps) {
             {questions.map((q, i) => (
                 <div
                     key={q.question_id}
-                    className="rounded-2xl border border-white/10 bg-white p-5 shadow-sm md:p-6"
+                    className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-lg backdrop-blur-md md:p-6"
                 >
                     <div className="mb-2 flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-gray-700 md:text-base">
+                        <h3 className="text-sm font-bold text-white/90 md:text-base">
                             Soal {i + 1}
                         </h3>
                         <StateBadge state={q.state} />
                     </div>
-                    <p className="mb-4 text-sm md:text-base leading-relaxed text-black">
+                    <p className="mb-4 text-sm md:text-base leading-relaxed text-white">
                         {q.question_text}
                     </p>
                     <div className="space-y-2.5">

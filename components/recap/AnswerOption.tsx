@@ -58,16 +58,16 @@ export function AnswerOption({
                 {key_label}
             </div>
             <div className="flex-1 pt-0.5">
-                <p className="text-sm leading-relaxed text-gray-800">{text}</p>
+                <p className="text-sm leading-relaxed text-white/90">{text}</p>
                 {labelOverride && (
                     <span
-                        className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs md:text-sm font-semibold ${is_correct ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                        className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs md:text-sm font-semibold ${is_correct ? "bg-emerald-400/20 text-emerald-400" : "bg-red-400/20 text-red-400"}`}
                     >
                         {labelOverride}
                     </span>
                 )}
                 {showExplanation && explanation && (
-                    <p className="pt-2 text-xs md:text-sm leading-relaxed text-gray-800">
+                    <p className="pt-2 text-xs md:text-sm leading-relaxed text-white/80">
                         {explanation}
                     </p>
                 )}
