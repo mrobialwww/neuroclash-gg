@@ -33,7 +33,7 @@ export function HistoryTable({
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-center">
                         <thead>
-                            <tr className="border-b border-white/20 text-xs font-bold uppercase tracking-wider text-white/80 md:text-sm">
+                            <tr className="border-b border-white/20 text-xs font-bold uppercase tracking-wider text-white md:text-sm">
                                 <th className="px-4 py-3 md:px-3 md:py-4"></th>
                                 <th className="px-4 py-3 font-bold md:px-3 md:py-4">
                                     Waktu

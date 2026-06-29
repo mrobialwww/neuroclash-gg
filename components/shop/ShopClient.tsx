@@ -8,6 +8,7 @@ import { ToastOverlay } from "@/components/common/ToastOverlay";
 import Image from "next/image";
 import { useUserStore } from "@/store/useUserStore";
 import { cn } from "@/lib/utils/utils";
+import { CHARACTER_SKILL_MAP, SkillType } from "@/lib/constants/characters";
 
 import ShowroomView from "./ShowroomView";
 import Sidebar from "./ShopSidebar";
@@ -421,21 +422,35 @@ export default function ShopClient({ userId }: Props) {
                                     </div>
                                 ) : (
                                     <div className="animate-in fade-in slide-in-from-bottom-4 grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3 duration-500 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] md:gap-4">
-                                        {displayed.map((item) => (
-                                            <CharacterCard
-                                                key={`${item.character_id}-${item.skin_level}`}
-                                                id={String(item.character_id)}
-                                                image_url={item.image_url}
-                                                skin_name={item.skin_name}
-                                                cost={item.cost}
-                                                skin_level={item.skin_level}
-                                                name={item.base_character}
-                                                owned={item.owned}
-                                                onPurchase={() =>
-                                                    handlePurchaseClick(item)
-                                                }
-                                            />
-                                        ))}
+                                        {displayed.map((item) => {
+                                            const skillType: SkillType | null =
+                                                item.skin_level !== "default"
+                                                    ? CHARACTER_SKILL_MAP[
+                                                          item.skin_name ?? ""
+                                                      ] ?? null
+                                                    : null;
+
+                                            return (
+                                                <CharacterCard
+                                                    key={`${item.character_id}-${item.skin_level}`}
+                                                    id={String(
+                                                        item.character_id,
+                                                    )}
+                                                    image_url={item.image_url}
+                                                    skin_name={item.skin_name}
+                                                    cost={item.cost}
+                                                    skin_level={item.skin_level}
+                                                    name={item.base_character}
+                                                    owned={item.owned}
+                                                    skillType={skillType}
+                                                    onPurchase={() =>
+                                                        handlePurchaseClick(
+                                                            item,
+                                                        )
+                                                    }
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </>

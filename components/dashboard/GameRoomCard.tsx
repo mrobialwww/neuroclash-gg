@@ -127,37 +127,25 @@ export function GameRoomCardSkeleton({ className }: { className?: string }) {
     return (
         <div
             className={cn(
-                "flex w-full flex-col items-center rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 pb-6 shadow-lg backdrop-blur-md",
+                "flex w-full animate-pulse flex-col items-center rounded-2xl bg-white/[0.03] p-5 pb-6",
                 className,
             )}
         >
-            {/* Center Icon Skeleton */}
-            <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-white/50 bg-[#D9D9D9]/30 shadow-lg" />
-
-            {/* Title Skeleton */}
-            <div className="min-h-10 mb-2 mt-2 w-3/4 animate-pulse rounded-md bg-[#D9D9D9]/20" />
-
-            {/* Progress Bar Skeleton */}
-            <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-[#D9D9D9]/20">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-[#D9D9D9]/30" />
-            </div>
-
-            {/* Footer Stats Row Skeleton */}
+            <div className="mb-2 mt-1 h-32 w-32 rounded-full bg-white/10" />
+            <div className="mb-2 mt-2 h-10 w-3/4 rounded-md bg-white/10" />
+            <div className="mb-5 h-2.5 w-full rounded-full bg-white/10" />
             <div className="mt-auto flex w-full items-center justify-between">
-                {/* AvatarCircles Skeleton */}
-                <div className="flex -space-x-3">
+                <div className="flex gap-1">
                     {[1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-[44px] w-[44px] animate-pulse rounded-full border-2 border-white/50 bg-[#D9D9D9]/30"
+                            className="h-[44px] w-[44px] rounded-full bg-white/10"
                         />
                     ))}
                 </div>
-
-                {/* Player & round stats skeleton */}
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-8 animate-pulse rounded-md bg-[#D9D9D9]/20" />
-                    <div className="h-10 w-8 animate-pulse rounded-md bg-[#D9D9D9]/20" />
+                    <div className="h-10 w-8 rounded-md bg-white/10" />
+                    <div className="h-10 w-8 rounded-md bg-white/10" />
                 </div>
             </div>
         </div>

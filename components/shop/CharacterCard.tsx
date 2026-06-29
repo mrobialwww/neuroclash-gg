@@ -1,5 +1,7 @@
 import NextImage from "next/image";
 import { cn } from "@/lib/utils/utils";
+import { SkillBadge } from "@/components/match/SkillBadge";
+import { SkillType } from "@/lib/constants/characters";
 
 export type Level = "default" | "epic" | "legend";
 
@@ -12,6 +14,7 @@ export type CardProps = {
     skin_level?: Level;
     owned?: boolean;
     character_bg?: string;
+    skillType?: SkillType | null;
     onPurchase?: () => void;
 };
 
@@ -29,6 +32,7 @@ export default function CharacterCard({
     skin_level = "default",
     owned = false,
     character_bg,
+    skillType,
     onPurchase,
 }: CardProps) {
     let bg: string;
@@ -104,6 +108,14 @@ export default function CharacterCard({
                 <h3 className="w-full truncate text-center text-sm font-bold text-white drop-shadow-md sm:text-lg md:text-xl lg:text-2xl">
                     {displayName}
                 </h3>
+
+                {skillType && skin_level !== "default" && (
+                    <SkillBadge
+                        skillType={skillType}
+                        skinLevel={skin_level as "epic" | "legend"}
+                        className="px-3 py-1 text-xs text-white sm:text-sm"
+                    />
+                )}
 
                 {/* Action Button / Owned State */}
                 {owned ? (
