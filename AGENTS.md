@@ -811,6 +811,35 @@ npx supabase status       # Check DB connection
 
 ---
 
-**Last Updated:** March 20, 2026
+---
+
+## 13. SESSION SUMMARY — June 29, 2026
+
+### All UI Polish & Animation Tasks Completed
+
+**Landing Page (`components/home/LandingPage.tsx`)** — Every section animated with framer-motion `whileInView`:
+- **Hero**: motion.section with fade-up, stagger on subtitle + buttons
+- **Fitur**: 6 cards mapped via array with staggered stagger (0.1 + idx*0.08)
+- **Cara Main**: loop pill, 5 node rows, 2 desc cards, bottom note, CTA — all individually staggered
+- **Strategi**: left card grid + right text column slide from opposite sides
+- **Karakter**: section wrapper animated
+- **Peringkat**: text side + image side slide-in
+- **Pengetahuan adalah Senjata**: section, terminal, tag row staggered
+- **CTA Final**: motion.section fade-up
+- **Footer**: motion.footer fade-in
+
+**Other UI Fixes**:
+- **Navbar** (`components/layout/Navbar.tsx`): redesigned to dark theme `bg-[#0B0D14]/80 backdrop-blur-xl`
+- **Shop** (`components/shop/CharacterCard.tsx` + `ShopClient.tsx`): SkillBadge bigger (`text-xs sm:text-sm px-3 py-1`) with `text-white`, skillType passed via `CHARACTER_SKILL_MAP`
+- **Skeletons** (recap page, GameRoomCardSkeleton, dashboard loading): replaced `bg-gray-200` with `bg-white/10` / `animate-pulse`
+- **Autofill fix** (`app/globals.css`, signin/signup): global CSS `input:-webkit-autofill` with transparent box-shadow + per-input Tailwind classes
+- **`[object Object]` STARBOX**: changed `title={<StarIcon /> + " STARBOX"}` to plain string
+- **Demo page**: removed all `bg-[#0B0D14]` from containers so root background shows; DemoBuffPanel empty state message; MatchResultScreen: solid color eliminated players, bigger text, centered buttons
+- **Eye/EyeOff swapped**: hidden → EyeOff icon, visible → Eye icon
+- **Hero bigger**: `min-h-dvh`, scaled logo (280→380→500), bigger text/buttons
+- **Landing smooth scroll**: `scroll-smooth` on wrapper div
+
+**Last Updated:** March 20, 2026 (original)
+**Session Update:** June 29, 2026
 **Project Phase:** Development
 **Team:** Tim Ditolak Magang

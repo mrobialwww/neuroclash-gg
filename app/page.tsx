@@ -6,7 +6,7 @@ export default async function RootPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
-  if (data.user) redirect("/dashboard");
+  // if (data.user) redirect("/dashboard");
 
   return <LandingPage />;
 }
