@@ -47,13 +47,13 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
         <>
             <div
                 className={cn(
-                    "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-gray-50 bg-white p-5 pb-6 shadow-[0_4px_25px_rgba(0,0,0,0.05)] transition-all hover:shadow-[0_8px_35px_rgba(0,0,0,0.08)]",
+                    "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 pb-6 shadow-lg backdrop-blur-md transition-all hover:bg-[#D9D9D9]/30",
                     className,
                 )}
                 onClick={handleClick}
             >
                 {/* Center Icon Container */}
-                <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white shadow-lg transition-transform duration-300 group-hover:scale-105">
+                <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-105">
                     <Image
                         src={resolveImage(room.image_url, imgError)}
                         alt={displayTitle}
@@ -66,12 +66,12 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
                 </div>
 
                 {/* Title */}
-                <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-[#555555]">
+                <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-white group-hover:text-blue-400">
                     {displayTitle}
                 </h3>
 
                 {/* Progress Bar */}
-                <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-white/30">
                     <div
                         className="h-full rounded-full bg-[#256AF4] transition-all duration-500"
                         style={{ width: `${progress}%` }}
@@ -97,18 +97,18 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
                         <div className="flex flex-col items-center">
                             <Users
                                 size={22}
-                                className="mb-0.5 text-[#256AF4] opacity-80"
+                                className="mb-0.5 text-[#3B82F6]"
                             />
-                            <span className="text-sm font-bold text-[#555555]">
+                            <span className="text-sm font-bold text-white/80">
                                 {room.player_count}/{room.max_player}
                             </span>
                         </div>
                         <div className="flex flex-col items-center">
                             <Flag
                                 size={22}
-                                className="mb-0.5 text-[#256AF4] opacity-80"
+                                className="mb-0.5 text-[#3B82F6]"
                             />
-                            <span className="text-sm font-bold text-[#555555]">
+                            <span className="text-sm font-bold text-white/80">
                                 {room.total_round}
                             </span>
                         </div>
@@ -127,19 +127,19 @@ export function GameRoomCardSkeleton({ className }: { className?: string }) {
     return (
         <div
             className={cn(
-                "flex w-full flex-col items-center rounded-2xl border border-gray-50 bg-white p-5 pb-6 shadow-[0_4px_25px_rgba(0,0,0,0.05)]",
+                "flex w-full flex-col items-center rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 pb-6 shadow-lg backdrop-blur-md",
                 className,
             )}
         >
             {/* Center Icon Skeleton */}
-            <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-200 shadow-lg" />
+            <div className="relative mb-2 mt-1 flex h-32 w-32 shrink-0 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-white/50 bg-[#D9D9D9]/30 shadow-lg" />
 
             {/* Title Skeleton */}
-            <div className="min-h-10 mb-2 mt-2 w-3/4 animate-pulse rounded-md bg-gray-200" />
+            <div className="min-h-10 mb-2 mt-2 w-3/4 animate-pulse rounded-md bg-[#D9D9D9]/20" />
 
             {/* Progress Bar Skeleton */}
-            <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-gray-200" />
+            <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full bg-[#D9D9D9]/20">
+                <div className="h-full w-1/3 animate-pulse rounded-full bg-[#D9D9D9]/30" />
             </div>
 
             {/* Footer Stats Row Skeleton */}
@@ -149,15 +149,15 @@ export function GameRoomCardSkeleton({ className }: { className?: string }) {
                     {[1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-[44px] w-[44px] animate-pulse rounded-full border-2 border-white bg-gray-200"
+                            className="h-[44px] w-[44px] animate-pulse rounded-full border-2 border-white/50 bg-[#D9D9D9]/30"
                         />
                     ))}
                 </div>
 
                 {/* Player & round stats skeleton */}
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-8 animate-pulse rounded-md bg-gray-200" />
-                    <div className="h-10 w-8 animate-pulse rounded-md bg-gray-200" />
+                    <div className="h-10 w-8 animate-pulse rounded-md bg-[#D9D9D9]/20" />
+                    <div className="h-10 w-8 animate-pulse rounded-md bg-[#D9D9D9]/20" />
                 </div>
             </div>
         </div>

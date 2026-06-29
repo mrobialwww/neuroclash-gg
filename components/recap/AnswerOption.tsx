@@ -1,17 +1,17 @@
 "use client";
 
 const LABEL_COLORS: Record<string, string> = {
-    A: "border-blue-400 text-blue-400",
-    B: "border-yellow-400 text-yellow-400",
-    C: "border-green-400 text-green-400",
-    D: "border-purple-400 text-purple-400",
+    A: "border-blue-500 text-blue-500",
+    B: "border-yellow-500 text-yellow-500",
+    C: "border-green-500 text-green-500",
+    D: "border-purple-500 text-purple-500",
 };
 
 const LABEL_BG: Record<string, string> = {
-    A: "bg-blue-400/10",
-    B: "bg-yellow-400/10",
-    C: "bg-green-400/10",
-    D: "bg-purple-400/10",
+    A: "bg-blue-500/20",
+    B: "bg-yellow-500/20",
+    C: "bg-green-500/20",
+    D: "bg-purple-500/20",
 };
 
 interface AnswerOptionProps {
@@ -29,36 +29,40 @@ export function AnswerOption({
     is_selected,
     explanation,
 }: AnswerOptionProps) {
-    let borderColor = "border-gray-200/30";
+    let borderColor = "border-white/10";
     let bgColor = "bg-transparent";
+    let borderWidth = "border";
     let labelOverride: string | null = null;
 
     if (is_selected && is_correct) {
-        borderColor = "border-emerald-400";
-        bgColor = "bg-emerald-400/10";
+        borderColor = "border-emerald-500";
+        bgColor = "bg-emerald-500/20";
+        borderWidth = "border-2";
         labelOverride = "benar";
     } else if (is_selected && !is_correct) {
-        borderColor = "border-red-400";
-        bgColor = "bg-red-400/10";
+        borderColor = "border-red-500";
+        bgColor = "bg-red-500/20";
+        borderWidth = "border-2";
         labelOverride = "salah";
     } else if (!is_selected && is_correct) {
-        borderColor = "border-emerald-400/50";
-        bgColor = "bg-emerald-400/5";
+        borderColor = "border-emerald-500/60";
+        bgColor = "bg-emerald-500/10";
+        borderWidth = "border-2";
     }
 
     const showExplanation = is_correct || is_selected;
 
     return (
         <div
-            className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${borderColor} ${bgColor}`}
+            className={`flex items-start gap-3 rounded-xl p-4 transition-colors ${borderWidth} ${borderColor} ${bgColor}`}
         >
             <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs md:text-sm font-bold ${is_selected && !is_correct ? "border-red-400 bg-red-400/10 text-red-400" : is_correct ? "border-emerald-400 bg-emerald-400/10 text-emerald-400" : `${LABEL_COLORS[key_label]} ${LABEL_BG[key_label]}`}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs md:text-sm font-bold ${is_selected && !is_correct ? "border-red-500 bg-red-500/20 text-red-500" : is_correct ? "border-emerald-500 bg-emerald-500/20 text-emerald-500" : `${LABEL_COLORS[key_label]} ${LABEL_BG[key_label]}`}`}
             >
                 {key_label}
             </div>
             <div className="flex-1 pt-0.5">
-                <p className="text-sm leading-relaxed text-gray-800">{text}</p>
+                <p className="text-sm leading-relaxed text-white/90">{text}</p>
                 {labelOverride && (
                     <span
                         className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs md:text-sm font-semibold ${is_correct ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
@@ -67,7 +71,7 @@ export function AnswerOption({
                     </span>
                 )}
                 {showExplanation && explanation && (
-                    <p className="pt-2 text-xs md:text-sm leading-relaxed text-gray-800">
+                    <p className="pt-2 text-xs md:text-sm leading-relaxed text-white/90">
                         {explanation}
                     </p>
                 )}

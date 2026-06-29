@@ -152,7 +152,7 @@ export const historyRepository = {
             .from("game_rooms")
             .select("title, category, total_round")
             .eq("game_room_id", roomId)
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error("Supabase Error game_room:", error.message);

@@ -29,77 +29,77 @@ export function HistoryTable({
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.05)]">
+            <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-[#D9D9D9]/20 shadow-lg backdrop-blur-md">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-center">
                         <thead>
-                            <tr className="bg-[#4D70E8] text-white">
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base"></th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                            <tr className="border-b border-white/20 text-xs font-bold uppercase tracking-wider text-white/80 md:text-sm">
+                                <th className="px-4 py-3 md:px-3 md:py-4"></th>
+                                <th className="px-4 py-3 font-bold md:px-3 md:py-4">
                                     Waktu
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 font-bold md:px-3 md:py-4">
                                     Tanggal
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Materi
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Kategori
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Menang
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Kalah
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Tropi
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Coin
                                 </th>
-                                <th className="px-4 py-3 text-sm font-bold md:px-6 md:py-4 md:text-base">
+                                <th className="px-4 py-3 text-sm font-bold md:px-3 md:py-4 md:text-base">
                                     Aksi
                                 </th>
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-white/10">
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr
                                         key={`skeleton-${i}`}
                                         className="animate-pulse"
                                     >
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
                                             <div className="flex justify-end">
-                                                <div className="h-10 w-10 rounded-full bg-gray-100 md:h-12 md:w-12"></div>
+                                                <div className="h-10 w-10 rounded-full bg-[#D9D9D9]/20 md:h-12 md:w-12"></div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-4 w-16 rounded bg-gray-100 md:h-5 md:w-20"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-4 w-16 rounded bg-[#D9D9D9]/20 md:h-5 md:w-20"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="h-4 w-28 rounded bg-gray-100 md:h-5 md:w-36"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="h-4 w-28 rounded bg-[#D9D9D9]/20 md:h-5 md:w-36"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-4 w-20 rounded bg-gray-100 md:h-5 md:w-24"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-4 w-20 rounded bg-[#D9D9D9]/20 md:h-5 md:w-24"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-5 w-6 rounded bg-gray-100 md:h-6 md:w-8"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-5 w-6 rounded bg-[#D9D9D9]/20 md:h-6 md:w-8"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-5 w-6 rounded bg-gray-100 md:h-6 md:w-8"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-5 w-6 rounded bg-[#D9D9D9]/20 md:h-6 md:w-8"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
                                         </td>
-                                        <td className="px-4 py-3 md:px-6 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-gray-100 md:h-5 md:w-16"></div>
+                                        <td className="px-4 py-3 md:px-3 md:py-4">
+                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
                                         </td>
                                     </tr>
                                 ))
@@ -107,7 +107,7 @@ export function HistoryTable({
                                 <tr>
                                     <td
                                         colSpan={10}
-                                        className="py-20 text-center text-gray-400"
+                                        className="py-20 text-center text-white/60"
                                     >
                                         Belum ada riwayat pertandingan.
                                     </td>
@@ -116,10 +116,10 @@ export function HistoryTable({
                                 historyData.map((item) => (
                                     <tr
                                         key={item.id}
-                                        className="transition-colors hover:bg-gray-50/50"
+                                        className="transition-colors hover:bg-[#D9D9D9]/30"
                                     >
                                         {/* Avatar */}
-                                        <td className="px-4 py-2 md:px-6 md:py-3">
+                                        <td className="px-4 py-2 md:px-3 md:py-3">
                                             <div className="flex justify-end">
                                                 <div
                                                     className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-sm md:h-12 md:w-12"
@@ -148,29 +148,29 @@ export function HistoryTable({
                                         </td>
 
                                         {/* Waktu */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
-                                            <span className="whitespace-nowrap text-sm font-medium text-[#555555] md:text-base">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
+                                            <span className="whitespace-nowrap text-sm font-medium text-white md:text-base">
                                                 {item.time}
                                             </span>
                                         </td>
 
                                         {/* Tanggal */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
-                                            <span className="whitespace-nowrap text-sm font-medium text-[#555555] md:text-base">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
+                                            <span className="whitespace-nowrap text-sm font-medium text-white md:text-base">
                                                 {item.date}
                                             </span>
                                         </td>
 
                                         {/* Materi */}
-                                        <td className="max-w-[120px] px-4 py-3 text-left md:max-w-[200px] md:px-6 md:py-5">
-                                            <span className="block truncate text-sm font-semibold text-[#555555] md:text-base">
+                                        <td className="max-w-[120px] px-4 py-3 text-left md:max-w-[200px] md:px-3 md:py-5">
+                                            <span className="block truncate text-sm font-semibold text-white/80 md:text-base">
                                                 {item.material}
                                             </span>
                                         </td>
 
                                         {/* Kategori */}
-                                        <td className="max-w-[120px] px-4 py-3 md:max-w-[120px] md:px-6 md:py-5">
-                                            <span className="block truncate text-sm font-medium text-[#555555] md:text-base">
+                                        <td className="max-w-[120px] px-4 py-3 md:max-w-[120px] md:px-3 md:py-5">
+                                            <span className="block truncate text-sm font-medium text-white/80 md:text-base">
                                                 {item.category
                                                     ?.toLowerCase()
                                                     .replace(/\b\w/g, (char) =>
@@ -180,21 +180,21 @@ export function HistoryTable({
                                         </td>
 
                                         {/* Menang */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
                                             <span className="text-base font-bold text-green-600 md:text-lg">
                                                 {item.win ?? 0}
                                             </span>
                                         </td>
 
                                         {/* Kalah */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
                                             <span className="text-base font-bold text-red-600 md:text-lg">
                                                 {item.lose ?? 0}
                                             </span>
                                         </td>
 
                                         {/* Tropi */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
                                             <div className="flex items-center justify-center gap-1.5 md:gap-2">
                                                 <div className="relative h-5 w-5 md:h-6 md:w-6">
                                                     <Image
@@ -205,7 +205,7 @@ export function HistoryTable({
                                                         className="object-contain"
                                                     />
                                                 </div>
-                                                <span className="text-sm font-medium text-[#555555] md:text-base">
+                                                <span className="text-sm font-medium text-white/80 md:text-base">
                                                     {item.trophy >= 0
                                                         ? "+"
                                                         : ""}
@@ -215,7 +215,7 @@ export function HistoryTable({
                                         </td>
 
                                         {/* Coin */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
                                             <div className="flex items-center justify-center gap-1.5 md:gap-2">
                                                 <div className="relative h-5 w-5 md:h-6 md:w-6">
                                                     <Image
@@ -226,7 +226,7 @@ export function HistoryTable({
                                                         className="object-contain"
                                                     />
                                                 </div>
-                                                <span className="text-sm font-medium text-[#555555] md:text-base">
+                                                <span className="text-sm font-medium text-white/80 md:text-base">
                                                     {item.coin >= 0 ? "+" : ""}
                                                     {item.coin}
                                                 </span>
@@ -234,7 +234,7 @@ export function HistoryTable({
                                         </td>
 
                                         {/* Aksi */}
-                                        <td className="px-4 py-3 md:px-6 md:py-5">
+                                        <td className="px-4 py-3 md:px-3 md:py-5">
                                             <button
                                                 onClick={() =>
                                                     router.push(

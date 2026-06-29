@@ -19,7 +19,7 @@ const RecapExplanation = dynamic(
                 {Array.from({ length: 3 }).map((_, i) => (
                     <div
                         key={i}
-                        className="rounded-2xl border border-white/10 bg-white p-5 shadow-sm md:p-6"
+                        className="rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
                     >
                         <div className="mb-3 h-5 w-24 rounded bg-gray-200" />
                         <div className="mb-4 h-4 w-full rounded bg-gray-200" />
@@ -85,7 +85,7 @@ export default function RecapPage() {
                     {Array.from({ length: 4 }).map((_, i) => (
                         <div
                             key={i}
-                            className="rounded-xl bg-white/10 p-4"
+                            className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 shadow-lg backdrop-blur-md"
                         >
                             <div className="mx-auto h-3 w-16 rounded bg-white/5" />
                             <div className="mx-auto mt-3 h-8 w-10 rounded bg-white/5" />
@@ -196,27 +196,27 @@ export default function RecapPage() {
 
             {/* Stats row — cards have white bg */}
             <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <div className="rounded-xl border border-white/10 bg-white p-4 text-center shadow-sm">
-                    <p className="text-xs md:text-sm text-gray-800 font-semibold">Total Soal</p>
-                    <p className="mt-1 text-xl md:text-2xl font-bold text-gray-900">
+                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                    <p className="text-xs md:text-sm text-white/80 font-semibold">Total Soal</p>
+                    <p className="mt-1 text-xl md:text-2xl font-bold text-white">
                         {data.total_soal}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white p-4 text-center shadow-sm">
-                    <p className="text-xs md:text-sm text-gray-800 font-semibold">Total Benar</p>
-                    <p className="mt-1 text-xl md:text-2xl font-bold text-emerald-600">
+                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                    <p className="text-xs md:text-sm text-white/80 font-semibold">Total Benar</p>
+                    <p className="mt-1 text-xl md:text-2xl font-bold text-[#4ade80]">
                         {data.total_benar}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white p-4 text-center shadow-sm">
-                    <p className="text-xs md:text-sm text-gray-800 font-semibold">Total Salah</p>
-                    <p className="mt-1 text-xl md:text-2xl font-bold text-red-500">
+                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                    <p className="text-xs md:text-sm text-white/80 font-semibold">Total Salah</p>
+                    <p className="mt-1 text-xl md:text-2xl font-bold text-[#f87171]">
                         {data.total_salah}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white p-4 text-center shadow-sm">
-                    <p className="text-xs md:text-sm text-gray-800 font-semibold">Tidak Terjawab</p>
-                    <p className="mt-1 text-xl md:text-2xl font-bold text-gray-800">
+                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                    <p className="text-xs md:text-sm text-white/80 font-semibold">Tidak Terjawab</p>
+                    <p className="mt-1 text-xl md:text-2xl font-bold text-white">
                         {data.tidak_terjawab}
                     </p>
                 </div>
