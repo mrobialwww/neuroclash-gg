@@ -37,13 +37,17 @@ export const roundManagementService = {
             console.log(`[RoundService] First answer by ${userId.substring(0, 8)} — recording, no damage yet`);
             await gamePlayersService.markFirstAnswer(userId, answerId, roundNumber, battleRoomId);
 
+            // Karena aturan baru: 1 pemain menjawab = battle selesai,
+            // langsung panggil handleTimeout untuk memproses finalisasi dan damage!
+            await this.handleTimeout(battleRoomId, gameId, roundNumber);
+
             return {
                 success: true,
                 is_correct: answerDetail.is_correct,
-                damage_applied: false,
+                damage_applied: true,
                 damage_dealt: 0,
                 new_health: null,
-                message: "Answer recorded",
+                message: "Answer recorded and battle resolved",
                 first_answer_user_id: userId,
             };
         }

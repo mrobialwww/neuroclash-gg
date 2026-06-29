@@ -167,11 +167,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             state.currentBattleRoom?.player2_id === state.currentUser?.id ||
             state.currentBattleRoom?.player3_id === state.currentUser?.id;
 
+        const hasFirstAnswer = !!state.currentBattleRoom?.first_answer_user_id;
+
         return !!(
             state.currentUser &&
             state.currentBattleRoom &&
             !state.selectedAnswerId &&
             !state.isSubmitting &&
+            !hasFirstAnswer &&
             isUserInBattleRoom
         );
     },
@@ -506,30 +509,47 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             .on(
                 "postgres_changes",
                 {
-                    event: "UPDATE",
+                    event: "*", // Listen to INSERT, UPDATE, DELETE
                     schema: "public",
                     table: "match_rounds",
                     filter: `game_room_id=eq.${roomId}`,
                 },
                 async (payload) => {
-                    // Handle round changes
-                    if (payload.eventType === "UPDATE") {
+                    if (
+                        payload.eventType === "UPDATE" ||
+                        payload.eventType === "INSERT"
+                    ) {
                         const { new: newRound, old: oldRound } = payload;
+                        const state = get();
+
+                        // Perbaikan: Kita tidak bisa selalu mengandalkan oldRound.status karena
+                        // Supabase Realtime mungkin tidak mengirimkan data 'old' jika REPLICA IDENTITY FULL tidak aktif.
+                        // Jadi kita cukup mengecek apakah status barunya "ongoing" dan round_number-nya lebih besar dari yang sedang aktif di state.
                         if (
-                            oldRound.status === "waiting" &&
-                            newRound.status === "ongoing"
+                            newRound.status === "ongoing" &&
+                            state.currentOrder < newRound.round_number
                         ) {
-                            // Only sync + load if we haven't advanced to this round yet
-                            // (advanceRound already does this; avoids premature overlay clearing)
+                            console.log(
+                                `[MatchStore] Realtime update: Round advanced to ${newRound.round_number}!`,
+                            );
+
+                            // Penting: Update currentOrder SEBELUM memanggil syncBattleRoomFromDB
+                            // Jika tidak di-update, syncBattleRoomFromDB akan menarik data dari ronde SEBELUMNYA!
+                            // Juga set isWaitingForAllBattles = true agar pemain ini melihat layar "Mempersiapkan Ronde..."
+                            set({
+                                currentOrder: newRound.round_number,
+                                isWaitingForAllBattles: true,
+                            });
+
                             await get().syncBattleRoomFromDB();
                             await get().syncPlayersFromDB(roomId, true);
-                            const state = get();
-                            if (state.currentOrder < newRound.round_number) {
-                                await get().loadQuestion(
-                                    roomId,
-                                    newRound.round_number,
-                                );
-                            }
+                            await get().loadQuestion(
+                                roomId,
+                                newRound.round_number,
+                            );
+
+                            // Matikan layar "Mempersiapkan Ronde" setelah semuanya termuat
+                            set({ isWaitingForAllBattles: false });
                         }
                     }
                 },
@@ -851,9 +871,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         // Set flag to prevent multiple concurrent calls
         set({ isAdvancingRound: true });
 
-        // Show loading state
-        set({ isWaitingForAllBattles: true });
-
         // Wait for all battles to finish with polling
         // NOTE: read currentOrder from LIVE store on each iteration, not stale snapshot,
         // so that if a Realtime event already advanced the round we don't poll the old one.
@@ -985,6 +1002,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Wait 2 seconds for players to see results
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Show loading screen BEFORE generating next round
+        set({ isWaitingForAllBattles: true });
 
         // Now advance the round (this will generate new battle rooms and start next round)
         await get().advanceRound();
@@ -1118,6 +1138,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             console.error("[MatchStore] Failed to submit answer:", e);
         } finally {
             set({ isSubmitting: false });
+
+            // Langsung mulai polling untuk lanjut ronde tanpa menunggu timer habis
+            if (get().selectedAnswerId && !isSolo) {
+                get().waitForAllBattlesAndAdvance();
+            }
         }
     },
 
@@ -1138,9 +1163,12 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         if (isLoadingQuestion || isFinished) return;
 
         // Prevent calling waitForAllBattlesAndAdvance multiple times
-        if (isAdvancingRound || timeLeft === 0) {
+        // Jika sudah submit (atau tidak bisa menjawab lagi karena musuh submit duluan), timer stop
+        const cannotAnswer = !get().canAnswer() || !!get().selectedAnswerId;
+
+        if (isAdvancingRound || timeLeft === 0 || cannotAnswer) {
             console.log(
-                `[MatchStore] Timer check: already advancing or timer at 0, skipping`,
+                `[MatchStore] Timer check: already advancing, timer at 0, or cannot answer, skipping`,
             );
             return;
         }

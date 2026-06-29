@@ -1,12 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface MatchProgressBarProps {
     duration?: number;
     timeLeft: number;
     activeStepIndex?: number;
     isSolo?: boolean;
+    isFinished?: boolean;
     steps?: { id: string; icon: string }[];
     className?: string;
 }
@@ -26,6 +28,7 @@ export function MatchProgressBar({
     timeLeft,
     activeStepIndex = 0,
     isSolo = false,
+    isFinished = false,
     steps: customSteps,
     className,
 }: MatchProgressBarProps) {
@@ -48,16 +51,31 @@ export function MatchProgressBar({
                 className,
             )}
         >
-            <div className="relative flex items-center">
+            {/* Wrapper Timer */}
+            <div className="relative flex h-4 w-full items-center md:h-5">
                 {/* Track Dasar */}
-                <div className="absolute h-3 w-full rounded-full border border-white/40 bg-white/10 backdrop-blur-md md:h-4" />
+                <div
+                    className={cn(
+                        "absolute h-3 w-full rounded-full border border-white/40 bg-white/10 backdrop-blur-md transition-all duration-700 md:h-4",
+                        isFinished ? "scale-y-75 opacity-30" : "opacity-100",
+                    )}
+                />
 
                 {/* Progres Kiri */}
                 <div className="pointer-events-none absolute left-0 right-1/2 flex h-full items-center justify-start pr-8 md:pr-11">
                     <div className="flex h-2.5 w-full justify-end overflow-hidden md:h-3">
                         <div
-                            className="h-full origin-right rounded-l-full bg-[#FFCB66] transition-all duration-1000 ease-linear"
-                            style={{ width: `${progressPercentage}%` }}
+                            className={cn(
+                                "h-full origin-right rounded-l-full bg-[#FFCB66] transition-all duration-1000 ease-linear",
+                                isFinished
+                                    ? "duration-500! opacity-0"
+                                    : "opacity-100",
+                            )}
+                            style={{
+                                width: isFinished
+                                    ? "0%"
+                                    : `${progressPercentage}%`,
+                            }}
                         />
                     </div>
                 </div>
@@ -66,17 +84,54 @@ export function MatchProgressBar({
                 <div className="pointer-events-none absolute left-1/2 right-0 flex h-full items-center justify-start pl-8 md:pl-11">
                     <div className="h-2.5 w-full overflow-hidden md:h-3">
                         <div
-                            className="h-full origin-left rounded-r-full bg-[#FFCB66] transition-all duration-1000 ease-linear"
-                            style={{ width: `${progressPercentage}%` }}
+                            className={cn(
+                                "h-full origin-left rounded-r-full bg-[#FFCB66] transition-all duration-1000 ease-linear",
+                                isFinished
+                                    ? "duration-500! opacity-0"
+                                    : "opacity-100",
+                            )}
+                            style={{
+                                width: isFinished
+                                    ? "0%"
+                                    : `${progressPercentage}%`,
+                            }}
                         />
                     </div>
                 </div>
 
                 {/* Timer Badge (Pusat) */}
-                <div className="relative z-30 mx-auto flex h-6 w-20 items-center justify-center rounded-xl border border-white/40 bg-[#0F111A] shadow-2xl md:h-8 md:w-24 md:rounded-2xl">
-                    <span className="text-lg font-bold text-white md:text-xl">
-                        {timeLeft}
-                    </span>
+                <div
+                    className={cn(
+                        "relative z-30 mx-auto flex h-6 items-center justify-center rounded-xl border border-white/40 shadow-2xl transition-all duration-500 ease-out md:h-8 md:rounded-2xl",
+                        isFinished
+                            ? "w-28 border-[#FFCB66]/40 bg-[#FFCB66]/20 md:w-32"
+                            : "w-20 bg-[#0F111A] md:w-24",
+                    )}
+                >
+                    <AnimatePresence mode="wait">
+                        {!isFinished ? (
+                            <motion.span
+                                key="time"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ duration: 0.2 }}
+                                className="text-lg font-bold text-white md:text-xl"
+                            >
+                                {timeLeft}
+                            </motion.span>
+                        ) : (
+                            <motion.span
+                                key="done"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.3, delay: 0.1 }}
+                                className="text-xs font-bold uppercase tracking-wider text-[#FFCB66] md:text-sm"
+                            >
+                                Selesai
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
