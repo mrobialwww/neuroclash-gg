@@ -577,7 +577,7 @@ export const gamePlayersRepository = {
 
         const { data, error } = await supabase
             .from("game_players")
-            .update({ status, updated_at: getWIBNow() })
+            .update({ status })
             .eq("user_id", userId)
             .eq("game_room_id", roomId)
             .select()
@@ -793,14 +793,12 @@ export const gamePlayersRepository = {
             health: number;
             status?: string;
             eliminated_at?: number;
-            updated_at?: string;
         } = {
             health: newHealth,
         };
         if (newHealth <= 0) {
             updateData.status = "died";
             updateData.eliminated_at = roundNumber || 0;
-            updateData.updated_at = getWIBNow();
             console.log(
                 `[GamePlayerRepo] Player will be marked as died at round ${roundNumber}`,
             );

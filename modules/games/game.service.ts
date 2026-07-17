@@ -543,67 +543,30 @@ export const gameRoomService = {
 
             let loseCount = Math.max(0, N - winCount);
 
-            // Start of match: use the earliest round creation time (most reliable).
-            // battle_rooms.created_at is never null and represents actual game activity.
-            const earliestBattleTime = battleRooms?.length
-                ? Math.min(
-                      ...battleRooms.map((br) =>
-                          parseDBDate(br.created_at),
-                      ),
-                  )
-                : null;
-            const matchStart =
-                earliestBattleTime ||
-                parseDBDate(
+            // Start of match: preference order:
+            // 1. created_at of the game_player record (when player joined the room — most reliable)
+            // 2. created_at of round 1 (if match_rounds exist)
+            // 3. created_at of the game_room (when lobby was ready)
+            const matchStart = parseDBDate(
+                p.created_at ||
                     earlyRound?.created_at ||
-                        gameRoomData?.created_at ||
-                        Date.now().toString(),
-                );
+                    gameRoomData?.created_at ||
+                    Date.now().toString(),
+            );
 
             // End time logic:
             // - Dead players: when they died (p.updated_at)
-            // - Alive players: the latest battle_room updated_at for this player,
-            //   or the latest battle_room across all players as fallback.
+            // - Alive players: use Date.now() for solo mode or non-finished rooms.
+            //   When room is finished, fallback to gameRoomData.updated_at
+            //   but note: solo mode rooms may not auto-update updated_at,
+            //   so always use Date.now() for solo (totalPlayers === 1).
             const isRoomFinished = gameRoomData?.room_status === "finished";
-            let matchEnd: number;
-
-            if (p.status !== "alive") {
-                matchEnd = parseDBDate(p.updated_at);
-            } else if (totalPlayers === 1 || !isRoomFinished) {
-                matchEnd = Date.now();
-            } else {
-                // Find the latest battle involving this player
-                const playerBattles = battleRooms?.filter(
-                    (br) =>
-                        br.player1_id === p.user_id ||
-                        br.player2_id === p.user_id ||
-                        br.player3_id === p.user_id,
-                );
-                const latestPlayerBattle =
-                    playerBattles?.length
-                        ? Math.max(
-                              ...playerBattles.map((br) =>
-                                  parseDBDate(br.updated_at || br.created_at),
-                              ),
-                          )
-                        : null;
-
-                // Fallback: latest battle across all players
-                const latestBattle =
-                    battleRooms?.length
-                        ? Math.max(
-                              ...battleRooms.map((br) =>
-                                  parseDBDate(br.updated_at || br.created_at),
-                              ),
-                          )
-                        : null;
-
-                matchEnd =
-                    latestPlayerBattle ||
-                    latestBattle ||
-                    parseDBDate(gameRoomData?.updated_at) ||
-                    Date.now();
-            }
+            const matchEnd =
+                p.status === "alive"
+                    ? totalPlayers === 1 || !isRoomFinished
+                        ? Date.now()
+                        : parseDBDate(gameRoomData?.updated_at)
+                    : parseDBDate(p.updated_at);
 
             const survivalTime = calculateDuration(matchStart, matchEnd);
 
@@ -632,28 +595,21 @@ export const gameRoomService = {
             };
         });
 
-        // Safety net: recalculate survival time for any player with "00:00"
-        // Use the latest battle room timestamp across all players as reference
-        const latestBattleTime =
-            battleRooms?.length
-                ? Math.max(
-                      ...battleRooms.map((br) =>
-                          parseDBDate(br.updated_at || br.created_at),
-                      ),
-                  )
-                : 0;
-        const maxMatchEndMs = Math.max(
-            latestBattleTime,
-            ...playersStats.map((p) => p.matchEndMs),
-        );
-        for (const p of playersStats) {
-            if (p.survivalTime === "00:00") {
-                p.survivalTime = calculateDuration(
-                    p.matchStartMs,
-                    maxMatchEndMs || Date.now(),
+        // Safety net: if winner (alive player) has 0 survival time,
+        // recalculate using the latest matchEnd across all players
+        const alivePlayers = playersStats.filter((p) => p.status === "alive");
+        if (alivePlayers.length === 1) {
+            const winner = alivePlayers[0];
+            if (winner.survivalTime === "00:00") {
+                const maxMatchEndMs = Math.max(
+                    ...playersStats.map((p) => p.matchEndMs),
+                );
+                winner.survivalTime = calculateDuration(
+                    winner.matchStartMs,
+                    maxMatchEndMs,
                 );
                 console.log(
-                    `[EndgameService] Corrected ${p.username}'s survivalTime from 00:00 to ${p.survivalTime}`,
+                    `[EndgameService] Corrected winner's survivalTime from 00:00 to ${winner.survivalTime}`,
                 );
             }
         }

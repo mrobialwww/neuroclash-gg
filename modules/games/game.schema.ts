@@ -85,10 +85,7 @@ export interface BattleRoomData {
     game_room_id: string;
     player1_id: string;
     player2_id: string;
-    player3_id: string | null;
     status: string;
-    created_at: string;
-    updated_at: string;
     [key: string]: unknown;
 }
 
