@@ -522,13 +522,42 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         const { new: newRound, old: oldRound } = payload;
                         const state = get();
 
-                        // Perbaikan: Kita tidak bisa selalu mengandalkan oldRound.status karena
-                        // Supabase Realtime mungkin tidak mengirimkan data 'old' jika REPLICA IDENTITY FULL tidak aktif.
-                        // Jadi kita cukup mengecek apakah status barunya "ongoing" dan round_number-nya lebih besar dari yang sedang aktif di state.
+                        // Hanya advance jika:
+                        // 1. Status "ongoing" (ronde sudah aktif)
+                        // 2. Tepat 1 round lebih maju (currentOrder + 1 === round_number)
+                        //    — mencegah cascade skip multiple round
+                        //
+                        // STARBOX CHECK: Jika round SEBELUMNYA adalah Starbox round
+                        // (currentOrder % STARBOX_INTERVAL === 0), maka player harus
+                        // melewati Starbox DULU sebelum melanjutkan ke round berikutnya.
+                        // Tanpa ini, player akan langsung sync ke round baru tanpa
+                        // pernah masuk Starbox — terutama jika Realtime fires sebelum
+                        // waitForAllBattlesAndAdvance sempat memproses Starbox redirect.
                         if (
                             newRound.status === "ongoing" &&
-                            state.currentOrder < newRound.round_number
+                            state.currentOrder + 1 === newRound.round_number
                         ) {
+                            // Cek apakah kita skip Starbox
+                            if (
+                                state.currentOrder %
+                                    STARBOX_INTERVAL ===
+                                0
+                            ) {
+                                console.log(
+                                    `[MatchStore] Starbox round! (Realtime handler, round ${state.currentOrder})`,
+                                );
+                                set({
+                                    nextRoundUrl: `/starbox?roomId=${roomId}&code=${
+                                        state.roomCode
+                                    }&nextRound=${
+                                        newRound.round_number
+                                    }`,
+                                    isWaitingForAllBattles: false,
+                                    isAdvancingRound: false,
+                                });
+                                return;
+                            }
+
                             console.log(
                                 `[MatchStore] Realtime update: Round advanced to ${newRound.round_number}!`,
                             );
@@ -856,24 +885,15 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             return;
         }
 
-        // Check if this is a Starbox round (multiplayer only)
-        const isSolo = state.roomInfo?.max_player === 1;
-        if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
-            console.log(`[MatchStore] Starbox round!`);
-            set({
-                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
-                    state.roomCode
-                }&nextRound=${state.currentOrder + 1}`,
-            });
-            return;
-        }
-
         // Set flag to prevent multiple concurrent calls
         set({ isAdvancingRound: true });
 
+        // ✨ FIX: Simpan target round di awal — jangan pakai live state.
+        // Agar polling loop tidak berubah arah kalau Realtime handler mengubah currentOrder
+        // (misalnya karena event match_rounds "ongoing" tiba di tengah-tengah polling).
+        const targetRound = state.currentOrder;
+
         // Wait for all battles to finish with polling
-        // NOTE: read currentOrder from LIVE store on each iteration, not stale snapshot,
-        // so that if a Realtime event already advanced the round we don't poll the old one.
         let allFinished = false;
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds before force-recovery
@@ -881,13 +901,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         while (!allFinished && attempts < maxAttempts) {
             attempts++;
 
-            // Always read the current round from the live store — the round may have
-            // already been advanced by a Realtime event on a concurrent client.
-            const liveOrder = get().currentOrder;
-
             try {
                 const res = await fetch(
-                    `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${liveOrder}`,
+                    `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${targetRound}`,
                     {
                         credentials: "include",
                     },
@@ -898,7 +914,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     allFinished = data.all_finished;
 
                     console.log(
-                        `[MatchStore] Polling round ${liveOrder}: all_finished=${allFinished}, attempt=${attempts}`,
+                        `[MatchStore] Polling round ${targetRound}: all_finished=${allFinished}, attempt=${attempts}`,
                     );
 
                     // Check if game should end (only 1 player alive)
@@ -938,9 +954,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             // ── RECOVERY: force-finish any stuck battle rooms server-side ──
             // This prevents both clients from freezing when a battle room was
             // never properly closed (e.g. due to a race condition or failed API call).
-            const liveOrder = get().currentOrder;
             console.warn(
-                `[MatchStore] Polling timed out for round ${liveOrder}. Attempting force-advance-round...`,
+                `[MatchStore] Polling timed out for round ${targetRound}. Attempting force-advance-round...`,
             );
 
             try {
@@ -951,7 +966,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             game_room_id: state.gameRoomId,
-                            round_number: liveOrder,
+                            round_number: targetRound,
                         }),
                         credentials: "include",
                     },
@@ -994,9 +1009,34 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             }
         }
 
+        // ✨ FIX: Cek apakah Realtime sudah advance currentOrder selama polling.
+        // Kalau iya, skip advanceRound() agar tidak terjadi double-advance.
+        const currentOrderAfterPoll = get().currentOrder;
+        if (currentOrderAfterPoll !== targetRound) {
+            console.log(
+                `[MatchStore] Realtime already advanced from ${targetRound} to ${currentOrderAfterPoll}, skipping advanceRound`,
+            );
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+            return;
+        }
+
+        // Check if this is a Starbox round (multiplayer only) — AFTER polling
+        const isSolo = state.roomInfo?.max_player === 1;
+        if (!isSolo && targetRound % STARBOX_INTERVAL === 0) {
+            console.log(`[MatchStore] Starbox round!`);
+            set({
+                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
+                    state.roomCode
+                }&nextRound=${targetRound + 1}`,
+                isWaitingForAllBattles: false,
+                isAdvancingRound: false,
+            });
+            return;
+        }
+
         console.log(
             `[MatchStore] All battles finished, preparing to advance to round ${
-                get().currentOrder + 1
+                targetRound + 1
             }`,
         );
 
@@ -1162,9 +1202,28 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         if (isLoadingQuestion || isFinished) return;
 
+        // ── OPPONENT ANSWERED FIRST: jangan diam — harus tetap polling untuk Starbox ──
+        // Ketika opponent menjawab duluan, canAnswer() return false (hasFirstAnswer).
+        // Tanpa ini, decrementTimer return early dan waitForAllBattlesAndAdvance tidak pernah
+        // dipanggil → player kehilangan Starbox redirect dan cuma bisa menunggu Realtime.
+        const stateForCheck = get();
+        if (
+            !isSolo &&
+            !stateForCheck.selectedAnswerId &&
+            stateForCheck.currentBattleRoom?.first_answer_user_id &&
+            stateForCheck.currentBattleRoom.first_answer_user_id !==
+                stateForCheck.currentUser?.id
+        ) {
+            console.log(
+                `[MatchStore] Opponent answered first, starting waitForAllBattlesAndAdvance...`,
+            );
+            get().waitForAllBattlesAndAdvance();
+            return;
+        }
+
         // Prevent calling waitForAllBattlesAndAdvance multiple times
-        // Jika sudah submit (atau tidak bisa menjawab lagi karena musuh submit duluan), timer stop
-        const cannotAnswer = !get().canAnswer() || !!get().selectedAnswerId;
+        const cannotAnswer =
+            !get().canAnswer() || !!get().selectedAnswerId;
 
         if (isAdvancingRound || timeLeft === 0 || cannotAnswer) {
             console.log(
