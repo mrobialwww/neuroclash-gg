@@ -912,12 +912,6 @@ export default function GamePage() {
                     isOpen={showEliminationOverlay || isLoadingEliminationData}
                     onClose={() => setShowEliminationOverlay(false)}
                     placement={eliminationData?.placement || 0}
-                    win={eliminationData?.win || 0}
-                    lose={eliminationData?.lose || 0}
-                    trophyWon={eliminationData?.trophyWon || 0}
-                    coinsEarned={eliminationData?.coinsEarned || 0}
-                    coinBoost={eliminationData?.coinBoost || 0}
-                    trophyBoost={eliminationData?.trophyBoost || 0}
                     survivalTime={eliminationData?.survivalTime || "00:00"}
                     isWinner={eliminationData?.isWinner || false}
                     isLoading={isLoadingEliminationData}

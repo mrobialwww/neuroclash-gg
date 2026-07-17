@@ -529,6 +529,14 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             newRound.status === "ongoing" &&
                             state.currentOrder < newRound.round_number
                         ) {
+                            // Skip if this client is already advancing — let the local advanceRound handle it
+                            if (state.isAdvancingRound) {
+                                console.log(
+                                    `[MatchStore] Realtime: round ${newRound.round_number} arrived but isAdvancingRound=true, skipping`,
+                                );
+                                return;
+                            }
+
                             console.log(
                                 `[MatchStore] Realtime update: Round advanced to ${newRound.round_number}!`,
                             );
@@ -821,6 +829,15 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             }
         } catch (error) {
             console.error("[MatchStore] Error starting round:", error);
+        }
+
+        // Check if Realtime already advanced the round while we were waiting
+        const currentAfterApi = get().currentOrder;
+        if (currentAfterApi >= nextOrder) {
+            console.log(
+                `[MatchStore] Round already advanced to ${currentAfterApi} by Realtime, skipping local advance`,
+            );
+            return;
         }
 
         // Sync battle room for new round (after generating)

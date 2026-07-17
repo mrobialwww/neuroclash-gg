@@ -7,13 +7,7 @@ interface EliminationOverlayProps {
     isOpen: boolean;
     onClose: () => void;
     placement: number;
-    win: number;
-    lose: number;
-    trophyWon: number;
-    coinsEarned: number;
-    survivalTime: string; // Format: mm:ss
-    coinBoost?: number;
-    trophyBoost?: number;
+    survivalTime: string;
     isWinner: boolean;
     isLoading?: boolean;
 }
@@ -22,12 +16,6 @@ export function EliminationOverlay({
     isOpen,
     onClose,
     placement,
-    win,
-    lose,
-    trophyWon,
-    coinsEarned,
-    coinBoost = 0,
-    trophyBoost = 0,
     survivalTime,
     isWinner,
     isLoading = false,
@@ -95,75 +83,6 @@ export function EliminationOverlay({
                                 ? "Bertahan"
                                 : `${Math.floor(parseInt(survivalTime.split(":")[0]))} Menit ${parseInt(survivalTime.split(":")[1])} Detik`}
                         </span>
-                    </div>
-                </div>
-
-                {/* Stats Box */}
-                <div className="w-full rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div className="grid grid-cols-4 gap-2">
-                        {/* Win */}
-                        <div className="flex flex-col items-center">
-                            <span className="text-lg font-bold text-[#4ade80] md:text-xl">
-                                {win}
-                            </span>
-                            <span className="text-xs font-semibold text-white/80">
-                                Menang
-                            </span>
-                        </div>
-
-                        {/* Lose */}
-                        <div className="flex flex-col items-center">
-                            <span className="text-lg font-bold text-[#f87171] md:text-xl">
-                                {lose}
-                            </span>
-                            <span className="text-xs font-semibold text-white/80">
-                                Kalah
-                            </span>
-                        </div>
-
-                        {/* Trophy */}
-                        <div className="relative flex flex-col items-center">
-                            <span
-                                className={`text-lg font-bold md:text-xl ${
-                                    trophyWon >= 0
-                                        ? "text-[#4ade80]"
-                                        : "text-[#f87171]"
-                                }`}
-                            >
-                                {trophyWon >= 0 ? "+" : ""}
-                                {trophyWon}
-                            </span>
-                            <span className="text-xs font-semibold text-white/80">
-                                Trofi
-                            </span>
-                            {trophyBoost > 0 && (
-                                <span className="absolute -top-3 text-[10px] font-bold text-[#4ade80]">
-                                    +{trophyBoost}%
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Coins */}
-                        <div className="relative flex flex-col items-center">
-                            <span
-                                className={`text-lg font-bold md:text-xl ${
-                                    coinsEarned >= 0
-                                        ? "text-[#fbbf24]"
-                                        : "text-[#f87171]"
-                                }`}
-                            >
-                                {coinsEarned >= 0 ? "+" : ""}
-                                {coinsEarned}
-                            </span>
-                            <span className="text-xs font-semibold text-white/80">
-                                Koin
-                            </span>
-                            {coinBoost > 0 && (
-                                <span className="absolute -top-3 text-[10px] font-bold text-[#4ade80]">
-                                    +{coinBoost}%
-                                </span>
-                            )}
-                        </div>
                     </div>
                 </div>
 
