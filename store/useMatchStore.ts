@@ -429,12 +429,25 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
 
         try {
-            const battleRes = await fetch(
-                `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
-            );
-            const battleRoom: BattleRoom | null = battleRes.ok
-                ? await battleRes.json()
-                : null;
+            let battleRoom: BattleRoom | null = null;
+            let retryCount = 0;
+            const maxRetries = 5;
+
+            while (!battleRoom && retryCount < maxRetries) {
+                const battleRes = await fetch(
+                    `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
+                );
+                
+                battleRoom = battleRes.ok ? await battleRes.json() : null;
+
+                if (!battleRoom) {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        console.log(`[MatchStore] Battle room not found, retrying... (${retryCount}/${maxRetries})`);
+                        await new Promise((resolve) => setTimeout(resolve, 500 * retryCount));
+                    }
+                }
+            }
 
             if (battleRoom) {
                 // Get opponent IDs from battle room
@@ -861,15 +874,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     },
 
     waitForAllBattlesAndAdvance: async () => {
-        const state = get();
-
-        // Prevent multiple concurrent calls
-        if (state.isAdvancingRound) {
+        // Atomic check-and-set to prevent multiple concurrent calls
+        if (get().isAdvancingRound) {
             console.log(
                 `[MatchStore] ⚠️ Already advancing round, skipping duplicate call`,
             );
             return;
         }
+        set({ isAdvancingRound: true });
+
+        const state = get();
 
         console.log(
             `[MatchStore] waitForAllBattlesAndAdvance called - current round: ${state.currentOrder}`,
@@ -881,12 +895,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             state.currentOrder >= state.totalQuestions
         ) {
             console.log(`[MatchStore] Game finished!`);
-            set({ isFinished: true });
+            set({ isFinished: true, isAdvancingRound: false });
             return;
         }
-
-        // Set flag to prevent multiple concurrent calls
-        set({ isAdvancingRound: true });
 
         // ✨ FIX: Simpan target round di awal — jangan pakai live state.
         // Agar polling loop tidak berubah arah kalau Realtime handler mengubah currentOrder
@@ -1042,6 +1053,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Wait 2 seconds for players to see results
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // ✨ FIX: Final check before actually advancing, in case Realtime fired during the 2s wait
+        if (get().currentOrder !== targetRound) {
+            console.log(`[MatchStore] Realtime advanced round during 2s delay, cancelling advanceRound.`);
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+            return;
+        }
 
         // Show loading screen BEFORE generating next round
         set({ isWaitingForAllBattles: true });
