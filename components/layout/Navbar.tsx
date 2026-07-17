@@ -251,7 +251,7 @@ export function Navbar({ initialData }: NavbarProps) {
                     </div>
 
                     <button
-                        className="cursor-pointer p-2 text-white/50 hover:text-white md:hidden"
+                        className="cursor-pointer p-2 text-white/60 hover:text-white md:hidden"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -273,7 +273,7 @@ export function Navbar({ initialData }: NavbarProps) {
                                     "flex items-center gap-4 rounded-xl p-3 transition-all",
                                     isActive
                                         ? "bg-blue-500/20 text-blue-400"
-                                        : "text-white/50",
+                                        : "text-white/60",
                                 )}
                             >
                                 <div className="h-6 w-6">

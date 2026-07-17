@@ -101,6 +101,7 @@ interface DemoStore {
   pickingAbilityId: string | null;
   allStarboxPicked: boolean;
   userPickedAbilityName: string | null;
+  starboxProgress: number;
 
   activeBuffs: ActiveBuff[];
   attackBuffRounds: number;
@@ -135,6 +136,7 @@ interface DemoStore {
   finishTutorial: () => void;
   dismissTutorialOverlay: () => void;
   decrementTimer: () => void;
+  setStarboxProgress: (progress: number) => void;
 }
 
 const createInitialPlayers = (): DemoPlayerState[] => {
@@ -193,6 +195,7 @@ const getInitialState = () => ({
   pickingAbilityId: null as string | null,
   allStarboxPicked: false,
   userPickedAbilityName: null as string | null,
+  starboxProgress: 0,
   activeBuffs: [] as ActiveBuff[],
   attackBuffRounds: 0,
   shieldBuffRounds: 0,
@@ -738,5 +741,9 @@ export const useDemoStore = create<DemoStore>((set, get) => ({
       return;
     }
     set({ timeLeft: state.timeLeft - 1 });
+  },
+
+  setStarboxProgress: (progress: number) => {
+    set({ starboxProgress: progress });
   },
 }));

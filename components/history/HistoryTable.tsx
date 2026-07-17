@@ -29,7 +29,7 @@ export function HistoryTable({
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-[#D9D9D9]/20 shadow-lg backdrop-blur-md">
+            <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-[#172844] shadow-lg">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-center">
                         <thead>
@@ -74,32 +74,32 @@ export function HistoryTable({
                                     >
                                         <td className="px-4 py-3 md:px-3 md:py-4">
                                             <div className="flex justify-end">
-                                                <div className="h-10 w-10 rounded-full bg-[#D9D9D9]/20 md:h-12 md:w-12"></div>
+                                                <div className="h-10 w-10 rounded-full bg-white/10 md:h-12 md:w-12"></div>
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
+                                            <div className="mx-auto h-4 w-12 rounded bg-white/10 md:h-5 md:w-16"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-4 w-16 rounded bg-[#D9D9D9]/20 md:h-5 md:w-20"></div>
+                                            <div className="mx-auto h-4 w-16 rounded bg-white/10 md:h-5 md:w-20"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="h-4 w-28 rounded bg-[#D9D9D9]/20 md:h-5 md:w-36"></div>
+                                            <div className="h-4 w-28 rounded bg-white/10 md:h-5 md:w-36"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-4 w-20 rounded bg-[#D9D9D9]/20 md:h-5 md:w-24"></div>
+                                            <div className="mx-auto h-4 w-20 rounded bg-white/10 md:h-5 md:w-24"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-5 w-6 rounded bg-[#D9D9D9]/20 md:h-6 md:w-8"></div>
+                                            <div className="mx-auto h-5 w-6 rounded bg-white/10 md:h-6 md:w-8"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-5 w-6 rounded bg-[#D9D9D9]/20 md:h-6 md:w-8"></div>
+                                            <div className="mx-auto h-5 w-6 rounded bg-white/10 md:h-6 md:w-8"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
+                                            <div className="mx-auto h-4 w-12 rounded bg-white/10 md:h-5 md:w-16"></div>
                                         </td>
                                         <td className="px-4 py-3 md:px-3 md:py-4">
-                                            <div className="mx-auto h-4 w-12 rounded bg-[#D9D9D9]/20 md:h-5 md:w-16"></div>
+                                            <div className="mx-auto h-4 w-12 rounded bg-white/10 md:h-5 md:w-16"></div>
                                         </td>
                                     </tr>
                                 ))
@@ -107,7 +107,7 @@ export function HistoryTable({
                                 <tr>
                                     <td
                                         colSpan={10}
-                                        className="py-20 text-center text-white/60"
+                                        className="py-20 text-center text-white/70"
                                     >
                                         Belum ada riwayat pertandingan.
                                     </td>
@@ -116,7 +116,7 @@ export function HistoryTable({
                                 historyData.map((item) => (
                                     <tr
                                         key={item.id}
-                                        className="transition-colors hover:bg-[#D9D9D9]/30"
+                                        className="transition-colors hover:bg-white/10"
                                     >
                                         {/* Avatar */}
                                         <td className="px-4 py-2 md:px-3 md:py-3">

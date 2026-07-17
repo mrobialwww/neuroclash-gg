@@ -47,7 +47,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
         <>
             <div
                 className={cn(
-                    "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 pb-6 shadow-lg backdrop-blur-md transition-all hover:bg-[#D9D9D9]/30",
+                    "group flex w-full cursor-pointer flex-col items-center rounded-2xl border border-white/30 bg-[#172844] p-5 pb-6 shadow-lg transition-all hover:bg-[#1c3255]",
                     className,
                 )}
                 onClick={handleClick}
@@ -66,7 +66,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
                 </div>
 
                 {/* Title */}
-                <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-white group-hover:text-blue-400">
+                <h3 className="min-h-10 mb-2 flex items-center justify-center px-1 text-center text-xl font-extrabold leading-tight text-white capitalize">
                     {displayTitle}
                 </h3>
 
@@ -97,7 +97,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
                         <div className="flex flex-col items-center">
                             <Users
                                 size={22}
-                                className="mb-0.5 text-[#3B82F6]"
+                                className="mb-0.5 text-white"
                             />
                             <span className="text-sm font-bold text-white/80">
                                 {room.player_count}/{room.max_player}
@@ -106,7 +106,7 @@ export function GameRoomCard({ room, onClick, className }: GameRoomCardProps) {
                         <div className="flex flex-col items-center">
                             <Flag
                                 size={22}
-                                className="mb-0.5 text-[#3B82F6]"
+                                className="mb-0.5 text-white"
                             />
                             <span className="text-sm font-bold text-white/80">
                                 {room.total_round}

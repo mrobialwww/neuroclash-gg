@@ -153,7 +153,7 @@ export default function SignInPage() {
                         Daftar
                     </Link>
                 </p>
-                <p className="mt-5 text-[12px] leading-relaxed text-white/50">
+                <p className="mt-5 text-[12px] leading-relaxed text-white/60">
                     Dengan masuk, kamu menyetujui{" "}
                     <Link
                         href="/terms"

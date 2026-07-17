@@ -155,7 +155,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                     <h1 className="mb-1 text-2xl font-bold tracking-tight text-white md:mb-2 md:text-3xl">
                         {profile.username}
                     </h1>
-                    <p className="text-sm font-medium text-white/60 md:text-base">
+                    <p className="text-sm font-medium text-white/70 md:text-base">
                         {profile.email}
                     </p>
                 </div>
@@ -168,7 +168,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                 </div>
 
                 {/* Username Row */}
-                <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#D9D9D9]/20 shadow-lg backdrop-blur-md">
+                <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#172844] shadow-lg">
                     {isEditing ? (
                         <div className="flex items-center gap-2 p-2 md:p-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white md:h-10 md:w-10">
@@ -219,7 +219,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                     ) : (
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="group/row flex w-full cursor-pointer items-center justify-between p-4 transition-colors hover:bg-[#D9D9D9]/30 md:p-5"
+                            className="group/row flex w-full cursor-pointer items-center justify-between p-4 transition-colors hover:bg-[#1c3255] md:p-5"
                         >
                             <div className="flex items-center gap-3 md:gap-4">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white md:h-11 md:w-11">
@@ -229,7 +229,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                                     />
                                 </div>
                                 <div className="text-left">
-                                    <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                                    <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                         Username
                                     </div>
                                     <div className="text-base font-bold leading-tight text-white md:text-lg">
@@ -237,7 +237,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex shrink-0 cursor-pointer items-center gap-1.5 text-white/70 transition-colors group-hover/row:text-white md:gap-2">
+                            <div className="flex shrink-0 cursor-pointer items-center gap-1.5 text-white/80 transition-colors group-hover/row:text-white md:gap-2">
                                 <span className="text-md font-semibold md:text-lg">
                                     Ganti
                                 </span>
@@ -251,7 +251,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                 </div>
 
                 {/* Email Row (Read Only) */}
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-4 shadow-lg backdrop-blur-md md:p-5">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#172844] p-4 shadow-lg md:p-5">
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white md:h-11 md:w-11">
                             <Mail
@@ -260,7 +260,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 Email
                             </div>
                             <div className="break-all text-base font-bold leading-tight text-white md:break-normal md:text-lg">
@@ -271,7 +271,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                 </div>
 
                 {/* User ID Row */}
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-4 shadow-lg backdrop-blur-md md:p-5">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#172844] p-4 shadow-lg md:p-5">
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white md:h-11 md:w-11">
                             <Hash
@@ -280,7 +280,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 ID Pengguna
                             </div>
                             <div className="max-w-[140px] truncate text-sm font-bold leading-tight text-white sm:max-w-none md:text-lg">
@@ -291,7 +291,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                 </div>
 
                 {/* Join Date Row */}
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-4 shadow-lg backdrop-blur-md md:p-5">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#172844] p-4 shadow-lg md:p-5">
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white md:h-11 md:w-11">
                             <Calendar
@@ -300,7 +300,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 Bergabung Sejak
                             </div>
                             <div className="text-base font-bold leading-tight text-white md:text-lg">

@@ -113,11 +113,11 @@ export function LeaderboardClient() {
                                     )}
                                 </div>
                             ) : error ? (
-                                <div className="py-16 text-center text-sm text-white/60">
+                                <div className="py-16 text-center text-sm text-white/70">
                                     {error}
                                 </div>
                             ) : entries.length === 0 ? (
-                                <div className="py-16 text-center text-sm text-white/60">
+                                <div className="py-16 text-center text-sm text-white/70">
                                     Belum ada data pemain.
                                 </div>
                             ) : (

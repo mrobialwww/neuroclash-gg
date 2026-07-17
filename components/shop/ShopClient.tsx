@@ -269,7 +269,7 @@ export default function ShopClient({ userId }: Props) {
                         />
                         <span>{item.cost?.toLocaleString("id-ID")}</span>
                     </div>
-                    <span className="mt-1 text-sm text-white/60">
+                    <span className="mt-1 text-sm text-white/70">
                         Koinmu akan tersisa{" "}
                         <strong className="font-bold text-[#FFC300]">
                             {(coin - item.cost).toLocaleString("id-ID")}
