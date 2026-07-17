@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 import { MatchProgressBar } from "@/components/match/MatchProgressBar";
 import { QuestionCard } from "@/components/match/QuestionCard";
 import { PlayerList } from "@/components/match/PlayerList";
@@ -55,6 +56,9 @@ export default function GamePage() {
     const [hasShownOverlay, setHasShownOverlay] = useState(false);
     const [isLoadingEliminationData, setIsLoadingEliminationData] =
         useState(false);
+
+    // Exit confirmation modal
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
 
     // Round result overlay state
     const [showRoundResult, setShowRoundResult] = useState(false);
@@ -286,7 +290,11 @@ export default function GamePage() {
                     coinsEarned: myResult.coinsEarned,
                     coinBoost: myResult.coinBoost || 0,
                     trophyBoost: myResult.trophyBoost || 0,
-                    survivalTime: myResult.survivalTime || survivalTime,
+                    survivalTime:
+                        myResult.survivalTime &&
+                        myResult.survivalTime !== "00:00"
+                            ? myResult.survivalTime
+                            : survivalTime,
                     isWinner: myResult.placement === 1,
                     deathRound: myResult.deathRound,
                 });
@@ -471,7 +479,12 @@ export default function GamePage() {
     };
 
     // Exit handler
-    const handleExit = async () => {
+    const handleExit = () => {
+        setShowExitConfirm(true);
+    };
+
+    const confirmExit = async () => {
+        setShowExitConfirm(false);
         if (userGameId) {
             await fetch(`/api/user-game/leave/${userGameId}`, {
                 method: "DELETE",
@@ -519,7 +532,7 @@ export default function GamePage() {
                         <h2 className="text-xl font-extrabold uppercase tracking-wider text-white">
                             Terjadi Kesalahan
                         </h2>
-                        <p className="text-sm font-medium text-white/60">
+                        <p className="text-sm font-medium text-white/70">
                             {error}
                         </p>
                     </div>
@@ -572,7 +585,7 @@ export default function GamePage() {
                         <p className="text-xl font-extrabold uppercase tracking-tighter text-white md:text-2xl ">
                             Memuat Arena...
                         </p>
-                        <p className="text-sm font-medium text-white/60 md:text-base">
+                        <p className="text-sm font-medium text-white/70 md:text-base">
                             Mempersiapkan Ronde {currentOrder}...
                         </p>
                     </div>
@@ -620,7 +633,7 @@ export default function GamePage() {
                                 ? "Kamu memenangkan pertandingan!"
                                 : `Pertandingan telah berakhir!`}
                         </p>
-                        <p className="text-sm font-medium text-white/70 md:text-base">
+                        <p className="text-sm font-medium text-white/80 md:text-base">
                             Kamu telah menyelesaikan{" "}
                             {eliminationData?.deathRound ??
                                 currentOrder ??
@@ -637,7 +650,7 @@ export default function GamePage() {
                                     <span className="text-lg font-bold text-[#4ade80] md:text-xl">
                                         {eliminationData.win}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Menang
                                     </span>
                                 </div>
@@ -645,7 +658,7 @@ export default function GamePage() {
                                     <span className="text-lg font-bold text-[#f87171] md:text-xl">
                                         {eliminationData.lose}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Kalah
                                     </span>
                                 </div>
@@ -662,7 +675,7 @@ export default function GamePage() {
                                             : ""}
                                         {eliminationData.trophyWon}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Trofi
                                     </span>
                                 </div>
@@ -679,7 +692,7 @@ export default function GamePage() {
                                             : ""}
                                         {eliminationData.coinsEarned}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Koin
                                     </span>
                                 </div>
@@ -696,24 +709,23 @@ export default function GamePage() {
                                 </span>
                             </div>
                             <div className="flex flex-col items-center gap-1">
-                                <span className="text-sm font-semibold text-white/70">
+                                <span className="text-sm font-semibold text-white/80">
                                     Waktu Bertahan
                                 </span>
                                 <span className="text-xl font-bold text-white">
-                                    {Math.floor(
-                                        parseInt(
-                                            eliminationData.survivalTime.split(
-                                                ":",
-                                            )[0],
-                                        ),
-                                    )}{" "}
-                                    Menit{" "}
-                                    {parseInt(
-                                        eliminationData.survivalTime.split(
-                                            ":",
-                                        )[1],
-                                    )}{" "}
-                                    Detik
+                                    {eliminationData.survivalTime === "00:00"
+                                        ? "Bertahan"
+                                        : `${Math.floor(
+                                              parseInt(
+                                                  eliminationData.survivalTime.split(
+                                                      ":",
+                                                  )[0],
+                                              ),
+                                          )} Menit ${parseInt(
+                                              eliminationData.survivalTime.split(
+                                                  ":",
+                                              )[1],
+                                          )} Detik`}
                                 </span>
                             </div>
                         </div>
@@ -771,7 +783,7 @@ export default function GamePage() {
             </header>
 
             {/* Round indicator */}
-            <p className="text-sm font-medium text-white/50">
+            <p className="text-sm font-medium text-white/60">
                 Soal {currentOrder}
                 {totalQuestions ? ` / ${totalQuestions}` : ""}
             </p>
@@ -900,12 +912,6 @@ export default function GamePage() {
                     isOpen={showEliminationOverlay || isLoadingEliminationData}
                     onClose={() => setShowEliminationOverlay(false)}
                     placement={eliminationData?.placement || 0}
-                    win={eliminationData?.win || 0}
-                    lose={eliminationData?.lose || 0}
-                    trophyWon={eliminationData?.trophyWon || 0}
-                    coinsEarned={eliminationData?.coinsEarned || 0}
-                    coinBoost={eliminationData?.coinBoost || 0}
-                    trophyBoost={eliminationData?.trophyBoost || 0}
                     survivalTime={eliminationData?.survivalTime || "00:00"}
                     isWinner={eliminationData?.isWinner || false}
                     isLoading={isLoadingEliminationData}
@@ -927,6 +933,28 @@ export default function GamePage() {
             <BuffEffectOverlay
                 type={buffEffect}
                 onComplete={() => setBuffEffect(null)}
+            />
+
+            {/* Exit Confirmation */}
+            <ToastOverlay
+                isOpen={showExitConfirm}
+                onClose={() => setShowExitConfirm(false)}
+                title="Konfirmasi Keluar"
+                isFailed={false}
+                message={
+                    <div className="flex flex-col items-center gap-2">
+                        <span>
+                            Kamu yakin ingin keluar dari pertandingan?
+                        </span>
+                        <span className="text-sm text-white/70">
+                            Kamu akan kehilangan trophy dari pertandingan ini.
+                        </span>
+                    </div>
+                }
+                primaryButtonText="Keluar"
+                onPrimaryClick={confirmExit}
+                secondaryButtonText="Batal"
+                onSecondaryClick={() => setShowExitConfirm(false)}
             />
         </main>
     );

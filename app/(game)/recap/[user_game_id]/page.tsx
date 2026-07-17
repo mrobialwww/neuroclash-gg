@@ -19,7 +19,7 @@ const RecapExplanation = dynamic(
                 {Array.from({ length: 3 }).map((_, i) => (
                     <div
                         key={i}
-                        className="rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
+                        className="rounded-2xl border border-white/30 bg-[#172844] p-5 shadow-lg md:p-6"
                     >
                         <div className="mb-3 h-5 w-24 animate-pulse rounded bg-white/10" />
                         <div className="mb-4 h-4 w-full animate-pulse rounded bg-white/10" />
@@ -65,7 +65,7 @@ export default function RecapPage() {
 
     if (loading) {
         return (
-            <div className="mx-auto max-w-4xl animate-pulse px-4 py-8 md:px-6 md:py-12">
+            <div className="mx-auto max-w-5xl animate-pulse px-4 py-8 md:px-6 md:py-12">
                 {/* Back button */}
                 <div className="mb-6 h-9 w-24 rounded-lg bg-white/10" />
 
@@ -85,7 +85,7 @@ export default function RecapPage() {
                     {Array.from({ length: 4 }).map((_, i) => (
                         <div
                             key={i}
-                            className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 shadow-lg backdrop-blur-md"
+                            className="rounded-xl border border-white/30 bg-[#172844] p-4 shadow-lg"
                         >
                             <div className="mx-auto h-3 w-16 rounded bg-white/5" />
                             <div className="mx-auto mt-3 h-8 w-10 rounded bg-white/5" />
@@ -101,7 +101,7 @@ export default function RecapPage() {
                     {Array.from({ length: 3 }).map((_, i) => (
                         <div
                             key={i}
-                            className="animate-pulse rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
+                            className="animate-pulse rounded-2xl border border-white/30 bg-[#172844] p-5 shadow-lg md:p-6"
                         >
                             <div className="mb-3 h-5 w-24 rounded bg-white/10" />
                             <div className="mb-4 h-4 w-full rounded bg-white/10" />
@@ -122,8 +122,8 @@ export default function RecapPage() {
 
     if (!data) {
         return (
-            <div className="mx-auto max-w-4xl px-4 py-20 text-center md:px-6">
-                <p className="text-white/70">Data tidak ditemukan</p>
+            <div className="mx-auto max-w-5xl px-4 py-20 text-center md:px-6">
+                <p className="text-white/80">Data tidak ditemukan</p>
                 <button
                     onClick={() => router.back()}
                     className="mt-4 cursor-pointer text-sm text-white underline underline-offset-2"
@@ -135,7 +135,7 @@ export default function RecapPage() {
     }
 
     return (
-        <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:px-6 md:py-12">
             {/* Back button */}
             <button
                 onClick={() => router.back()}
@@ -196,25 +196,25 @@ export default function RecapPage() {
 
             {/* Stats row — cards have white bg */}
             <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                <div className="rounded-xl border border-white/30 bg-[#172844] p-4 text-center shadow-lg">
                     <p className="text-xs md:text-sm text-white/80 font-semibold">Total Soal</p>
                     <p className="mt-1 text-xl md:text-2xl font-bold text-white">
                         {data.total_soal}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                <div className="rounded-xl border border-white/30 bg-[#172844] p-4 text-center shadow-lg">
                     <p className="text-xs md:text-sm text-white/80 font-semibold">Total Benar</p>
                     <p className="mt-1 text-xl md:text-2xl font-bold text-[#4ade80]">
                         {data.total_benar}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                <div className="rounded-xl border border-white/30 bg-[#172844] p-4 text-center shadow-lg">
                     <p className="text-xs md:text-sm text-white/80 font-semibold">Total Salah</p>
                     <p className="mt-1 text-xl md:text-2xl font-bold text-[#f87171]">
                         {data.total_salah}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-4 text-center shadow-lg backdrop-blur-md">
+                <div className="rounded-xl border border-white/30 bg-[#172844] p-4 text-center shadow-lg">
                     <p className="text-xs md:text-sm text-white/80 font-semibold">Tidak Terjawab</p>
                     <p className="mt-1 text-xl md:text-2xl font-bold text-white">
                         {data.tidak_terjawab}

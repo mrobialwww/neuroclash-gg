@@ -429,12 +429,25 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
 
         try {
-            const battleRes = await fetch(
-                `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
-            );
-            const battleRoom: BattleRoom | null = battleRes.ok
-                ? await battleRes.json()
-                : null;
+            let battleRoom: BattleRoom | null = null;
+            let retryCount = 0;
+            const maxRetries = 5;
+
+            while (!battleRoom && retryCount < maxRetries) {
+                const battleRes = await fetch(
+                    `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
+                );
+                
+                battleRoom = battleRes.ok ? await battleRes.json() : null;
+
+                if (!battleRoom) {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        console.log(`[MatchStore] Battle room not found, retrying... (${retryCount}/${maxRetries})`);
+                        await new Promise((resolve) => setTimeout(resolve, 500 * retryCount));
+                    }
+                }
+            }
 
             if (battleRoom) {
                 // Get opponent IDs from battle room
@@ -522,13 +535,42 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         const { new: newRound, old: oldRound } = payload;
                         const state = get();
 
-                        // Perbaikan: Kita tidak bisa selalu mengandalkan oldRound.status karena
-                        // Supabase Realtime mungkin tidak mengirimkan data 'old' jika REPLICA IDENTITY FULL tidak aktif.
-                        // Jadi kita cukup mengecek apakah status barunya "ongoing" dan round_number-nya lebih besar dari yang sedang aktif di state.
+                        // Hanya advance jika:
+                        // 1. Status "ongoing" (ronde sudah aktif)
+                        // 2. Tepat 1 round lebih maju (currentOrder + 1 === round_number)
+                        //    — mencegah cascade skip multiple round
+                        //
+                        // STARBOX CHECK: Jika round SEBELUMNYA adalah Starbox round
+                        // (currentOrder % STARBOX_INTERVAL === 0), maka player harus
+                        // melewati Starbox DULU sebelum melanjutkan ke round berikutnya.
+                        // Tanpa ini, player akan langsung sync ke round baru tanpa
+                        // pernah masuk Starbox — terutama jika Realtime fires sebelum
+                        // waitForAllBattlesAndAdvance sempat memproses Starbox redirect.
                         if (
                             newRound.status === "ongoing" &&
-                            state.currentOrder < newRound.round_number
+                            state.currentOrder + 1 === newRound.round_number
                         ) {
+                            // Cek apakah kita skip Starbox
+                            if (
+                                state.currentOrder %
+                                    STARBOX_INTERVAL ===
+                                0
+                            ) {
+                                console.log(
+                                    `[MatchStore] Starbox round! (Realtime handler, round ${state.currentOrder})`,
+                                );
+                                set({
+                                    nextRoundUrl: `/starbox?roomId=${roomId}&code=${
+                                        state.roomCode
+                                    }&nextRound=${
+                                        newRound.round_number
+                                    }`,
+                                    isWaitingForAllBattles: false,
+                                    isAdvancingRound: false,
+                                });
+                                return;
+                            }
+
                             console.log(
                                 `[MatchStore] Realtime update: Round advanced to ${newRound.round_number}!`,
                             );
@@ -536,20 +578,33 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             // Penting: Update currentOrder SEBELUM memanggil syncBattleRoomFromDB
                             // Jika tidak di-update, syncBattleRoomFromDB akan menarik data dari ronde SEBELUMNYA!
                             // Juga set isWaitingForAllBattles = true agar pemain ini melihat layar "Mempersiapkan Ronde..."
+                            //
+                            // ✨ FIX BUG #1: Reset currentBattleRoom & firstAnswer dari ronde SEBELUMNYA.
+                            // Tanpa ini, selama syncBattleRoomFromDB melakukan retry (hingga ~7.5 detik),
+                            // currentBattleRoom masih menyimpan data lama yang punya first_answer_user_id terisi.
+                            // Akibatnya hasFirstAnswer = true → canAnswer() = false → semua tombol terdisable
+                            // seakan lawan sudah menjawab, padahal ronde baru saja dimulai.
                             set({
                                 currentOrder: newRound.round_number,
                                 isWaitingForAllBattles: true,
+                                currentBattleRoom: null,
+                                firstAnswerPlayerId: null,
+                                firstAnswerId: null,
+                                selectedAnswerId: null,
+                                correctAnswerId: null,
                             });
 
-                            await get().syncBattleRoomFromDB();
-                            await get().syncPlayersFromDB(roomId, true);
-                            await get().loadQuestion(
-                                roomId,
-                                newRound.round_number,
-                            );
-
-                            // Matikan layar "Mempersiapkan Ronde" setelah semuanya termuat
-                            set({ isWaitingForAllBattles: false });
+                            try {
+                                await get().syncBattleRoomFromDB();
+                                await get().syncPlayersFromDB(roomId, true);
+                                await get().loadQuestion(
+                                    roomId,
+                                    newRound.round_number,
+                                );
+                            } finally {
+                                // Selalu matikan loading screen, bahkan jika terjadi error jaringan
+                                set({ isWaitingForAllBattles: false });
+                            }
                         }
                     }
                 },
@@ -832,15 +887,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     },
 
     waitForAllBattlesAndAdvance: async () => {
-        const state = get();
-
-        // Prevent multiple concurrent calls
-        if (state.isAdvancingRound) {
+        // Atomic check-and-set to prevent multiple concurrent calls
+        if (get().isAdvancingRound) {
             console.log(
                 `[MatchStore] ⚠️ Already advancing round, skipping duplicate call`,
             );
             return;
         }
+        set({ isAdvancingRound: true });
+
+        const state = get();
 
         console.log(
             `[MatchStore] waitForAllBattlesAndAdvance called - current round: ${state.currentOrder}`,
@@ -852,28 +908,16 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             state.currentOrder >= state.totalQuestions
         ) {
             console.log(`[MatchStore] Game finished!`);
-            set({ isFinished: true });
+            set({ isFinished: true, isAdvancingRound: false });
             return;
         }
 
-        // Check if this is a Starbox round (multiplayer only)
-        const isSolo = state.roomInfo?.max_player === 1;
-        if (!isSolo && state.currentOrder % STARBOX_INTERVAL === 0) {
-            console.log(`[MatchStore] Starbox round!`);
-            set({
-                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
-                    state.roomCode
-                }&nextRound=${state.currentOrder + 1}`,
-            });
-            return;
-        }
-
-        // Set flag to prevent multiple concurrent calls
-        set({ isAdvancingRound: true });
+        // ✨ FIX: Simpan target round di awal — jangan pakai live state.
+        // Agar polling loop tidak berubah arah kalau Realtime handler mengubah currentOrder
+        // (misalnya karena event match_rounds "ongoing" tiba di tengah-tengah polling).
+        const targetRound = state.currentOrder;
 
         // Wait for all battles to finish with polling
-        // NOTE: read currentOrder from LIVE store on each iteration, not stale snapshot,
-        // so that if a Realtime event already advanced the round we don't poll the old one.
         let allFinished = false;
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds before force-recovery
@@ -881,13 +925,9 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         while (!allFinished && attempts < maxAttempts) {
             attempts++;
 
-            // Always read the current round from the live store — the round may have
-            // already been advanced by a Realtime event on a concurrent client.
-            const liveOrder = get().currentOrder;
-
             try {
                 const res = await fetch(
-                    `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${liveOrder}`,
+                    `/api/match/check-round-status?game_room_id=${state.gameRoomId}&round_number=${targetRound}`,
                     {
                         credentials: "include",
                     },
@@ -898,7 +938,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     allFinished = data.all_finished;
 
                     console.log(
-                        `[MatchStore] Polling round ${liveOrder}: all_finished=${allFinished}, attempt=${attempts}`,
+                        `[MatchStore] Polling round ${targetRound}: all_finished=${allFinished}, attempt=${attempts}`,
                     );
 
                     // Check if game should end (only 1 player alive)
@@ -938,9 +978,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             // ── RECOVERY: force-finish any stuck battle rooms server-side ──
             // This prevents both clients from freezing when a battle room was
             // never properly closed (e.g. due to a race condition or failed API call).
-            const liveOrder = get().currentOrder;
             console.warn(
-                `[MatchStore] Polling timed out for round ${liveOrder}. Attempting force-advance-round...`,
+                `[MatchStore] Polling timed out for round ${targetRound}. Attempting force-advance-round...`,
             );
 
             try {
@@ -951,7 +990,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             game_room_id: state.gameRoomId,
-                            round_number: liveOrder,
+                            round_number: targetRound,
                         }),
                         credentials: "include",
                     },
@@ -994,23 +1033,62 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             }
         }
 
+        // ✨ FIX: Cek apakah Realtime sudah advance currentOrder selama polling.
+        // Kalau iya, skip advanceRound() agar tidak terjadi double-advance.
+        const currentOrderAfterPoll = get().currentOrder;
+        if (currentOrderAfterPoll !== targetRound) {
+            console.log(
+                `[MatchStore] Realtime already advanced from ${targetRound} to ${currentOrderAfterPoll}, skipping advanceRound`,
+            );
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+            return;
+        }
+
+        // Check if this is a Starbox round (multiplayer only) — AFTER polling
+        const isSolo = state.roomInfo?.max_player === 1;
+        if (!isSolo && targetRound % STARBOX_INTERVAL === 0) {
+            console.log(`[MatchStore] Starbox round!`);
+            set({
+                nextRoundUrl: `/starbox?roomId=${state.gameRoomId}&code=${
+                    state.roomCode
+                }&nextRound=${targetRound + 1}`,
+                isWaitingForAllBattles: false,
+                isAdvancingRound: false,
+            });
+            return;
+        }
+
         console.log(
             `[MatchStore] All battles finished, preparing to advance to round ${
-                get().currentOrder + 1
+                targetRound + 1
             }`,
         );
 
         // Wait 2 seconds for players to see results
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
+        // ✨ FIX: Final check before actually advancing, in case Realtime fired during the 2s wait
+        if (get().currentOrder !== targetRound) {
+            console.log(`[MatchStore] Realtime advanced round during 2s delay, cancelling advanceRound.`);
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+            return;
+        }
+
         // Show loading screen BEFORE generating next round
         set({ isWaitingForAllBattles: true });
 
-        // Now advance the round (this will generate new battle rooms and start next round)
-        await get().advanceRound();
-
-        // Hide loading state and reset flag
-        set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+        // ✨ FIX BUG #2: Bungkus advanceRound() dalam try-finally.
+        // advanceRound() memanggil loadQuestion() yang TIDAK punya try-catch.
+        // Jika terjadi network error saat fetch soal ronde berikutnya, exception
+        // dilempar ke sini dan set() reset flags tidak pernah dieksekusi.
+        // Akibatnya: isWaitingForAllBattles & isAdvancingRound stuck = true selamanya
+        // → UI menampilkan loading overlay abadi, timer berhenti, game freeze total.
+        try {
+            await get().advanceRound();
+        } finally {
+            // Selalu reset flags, bahkan jika advanceRound() melempar exception
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+        }
     },
 
     handleSelectAnswer: async (userId, answerId) => {
@@ -1162,13 +1240,33 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         if (isLoadingQuestion || isFinished) return;
 
-        // Prevent calling waitForAllBattlesAndAdvance multiple times
-        // Jika sudah submit (atau tidak bisa menjawab lagi karena musuh submit duluan), timer stop
-        const cannotAnswer = !get().canAnswer() || !!get().selectedAnswerId;
-
-        if (isAdvancingRound || timeLeft === 0 || cannotAnswer) {
+        // ── OPPONENT ANSWERED FIRST: jangan diam — harus tetap polling untuk Starbox ──
+        // Ketika opponent menjawab duluan, canAnswer() return false (hasFirstAnswer).
+        // Tanpa ini, decrementTimer return early dan waitForAllBattlesAndAdvance tidak pernah
+        // dipanggil → player kehilangan Starbox redirect dan cuma bisa menunggu Realtime.
+        const stateForCheck = get();
+        if (
+            !isSolo &&
+            !stateForCheck.selectedAnswerId &&
+            stateForCheck.currentBattleRoom?.first_answer_user_id &&
+            stateForCheck.currentBattleRoom.first_answer_user_id !==
+                stateForCheck.currentUser?.id
+        ) {
             console.log(
-                `[MatchStore] Timer check: already advancing, timer at 0, or cannot answer, skipping`,
+                `[MatchStore] Opponent answered first, starting waitForAllBattlesAndAdvance...`,
+            );
+            get().waitForAllBattlesAndAdvance();
+            return;
+        }
+
+        // ✨ FIX BUG #1 (B): Jangan hentikan countdown karena canAnswer() = false.
+        // canAnswer() = false terjadi saat currentBattleRoom null (belum ditemukan/retry).
+        // Jika timer dihentikan di sini, timeout tidak pernah terjadi → game freeze permanen.
+        // Satu-satunya alasan VALID untuk skip decrement adalah jika player SUDAH menjawab
+        // (waitForAllBattlesAndAdvance sudah dipanggil dari handleSelectAnswer.finally).
+        if (isAdvancingRound || timeLeft === 0 || !!get().selectedAnswerId) {
+            console.log(
+                `[MatchStore] Timer check: already advancing, timer at 0, or player already answered, skipping`,
             );
             return;
         }

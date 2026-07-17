@@ -42,7 +42,7 @@ export const PlayerList = ({ players, className }: PlayerListProps) => {
             {/* Players List Container */}
             <div className="scrollbar-hide flex w-full flex-1 flex-col overflow-y-auto pb-2">
                 {players.length === 0 ? (
-                    <div className="flex flex-1 items-center justify-center p-4 text-center text-sm font-medium text-white/50">
+                    <div className="flex flex-1 items-center justify-center p-4 text-center text-sm font-medium text-white/60">
                         Tidak ada pemain lain di room ini
                     </div>
                 ) : (

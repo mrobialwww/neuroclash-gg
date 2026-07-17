@@ -267,7 +267,7 @@ export default function StarboxPage() {
                         ? "Tidak ada pemain yang tersedia untuk Starbox"
                         : "Item Starbox tidak tersedia"}
                 </p>
-                <p className="text-sm text-white/50">
+                <p className="text-sm text-white/60">
                     Mengarahkan ke ronde berikutnya...
                 </p>
                 <MainButton variant="white" onClick={handleNextRound}>
@@ -353,7 +353,7 @@ export default function StarboxPage() {
                                             ? "Kamu"
                                             : players[currentTurnIndex]?.name}
                                     </span>
-                                    <span className="ml-2 text-sm text-white/60">
+                                    <span className="ml-2 text-sm text-white/70">
                                         (HP terendah memilih lebih awal)
                                     </span>
                                 </p>
@@ -365,14 +365,14 @@ export default function StarboxPage() {
                             )}
 
                             {iHavePicked && !allTurnsDone && (
-                                <p className="text-sm font-medium text-white/50">
+                                <p className="text-sm font-medium text-white/60">
                                     Kamu sudah memilih. Menunggu pemain lain...
                                 </p>
                             )}
                         </div>
                     )}
 
-                    <p className="mt-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/60">
+                    <p className="mt-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
                         Sisa Item Keseluruhan:{" "}
                         <span className="text-white">
                             {remainingItems} Terakhir
