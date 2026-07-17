@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import CreateArenaModal from "@/components/dashboard/CreateArenaOverlay";
 import { ToastOverlay } from "@/components/common/ToastOverlay";
+import { FloatingSpinner } from "@/components/common/FloatingSpinner";
 import { createClient } from "@/lib/supabase/client";
 import { Difficulty } from "@/types/enums";
 
@@ -51,7 +52,7 @@ export function CreateArenaCard() {
     };
 
     const handleCloseModal = () => {
-        if (!isLoading) setModalOpen(false);
+        setModalOpen(false);
     };
 
     /**
@@ -72,6 +73,8 @@ export function CreateArenaCard() {
         room_visibility: "public" | "private";
         title: string;
     }) => {
+        // Close modal immediately — process in background
+        setModalOpen(false);
         setIsLoading(true);
         setLoadingText("Memvalidasi sesi user...");
         setErrorMsg(null);
@@ -84,7 +87,7 @@ export function CreateArenaCard() {
             "Menyiapkan tantangan kuis untukmu...",
         ];
 
-        let aiStatusInterval: any = null;
+        let aiStatusInterval: ReturnType<typeof setInterval> | null = null;
 
         try {
             // ── Step 1: Ambil user yang sedang login ──────────────────────────
@@ -165,14 +168,8 @@ export function CreateArenaCard() {
                     result?.message ??
                     "Gagal meng-generate soal menggunakan AI.";
 
-                // For retriable errors keep the modal open, only show toast
-                const isRetriable = statusCode === 503 || statusCode === 429;
-                if (isRetriable) {
-                    setIsLoading(false);
-                    setLoadingText("Memproses...");
-                } else {
-                    setModalOpen(false);
-                }
+                setIsLoading(false);
+                setLoadingText("Memproses...");
 
                 setToastData({
                     isOpen: true,
@@ -182,17 +179,20 @@ export function CreateArenaCard() {
                     primaryButtonText: "Tutup",
                     onPrimaryClick: () =>
                         setToastData((prev) => ({ ...prev, isOpen: false })),
-                    secondaryButtonText: isRetriable ? "Coba Lagi" : undefined,
-                    onSecondaryClick: isRetriable
-                        ? () => {
-                              setToastData((prev) => ({
-                                  ...prev,
-                                  isOpen: false,
-                              }));
-                              // re-submit with same data automatically
-                              handleSubmitArena(data);
-                          }
-                        : undefined,
+                    secondaryButtonText:
+                        statusCode === 503 || statusCode === 429
+                            ? "Coba Lagi"
+                            : undefined,
+                    onSecondaryClick:
+                        statusCode === 503 || statusCode === 429
+                            ? () => {
+                                  setToastData((prev) => ({
+                                      ...prev,
+                                      isOpen: false,
+                                  }));
+                                  handleSubmitArena(data);
+                              }
+                            : undefined,
                 });
                 return;
             }
@@ -226,7 +226,7 @@ export function CreateArenaCard() {
             const gameRoom = createRoomResult.data[0];
 
             // ── Step 4: Tampilkan Toast Sukses ───────────────────────────────────
-            setModalOpen(false);
+            setIsLoading(false);
             setToastData({
                 isOpen: true,
                 title: "Arena Siap!",
@@ -284,7 +284,7 @@ export function CreateArenaCard() {
             });
         } catch (err: unknown) {
             console.error("[CreateArenaCard] handleSubmitArena error:", err);
-            setModalOpen(false);
+            setIsLoading(false);
             setToastData({
                 isOpen: true,
                 title: "Pembuatan Gagal",
@@ -299,7 +299,7 @@ export function CreateArenaCard() {
                 secondaryButtonText: "Coba Lagi",
                 onSecondaryClick: () => {
                     setToastData((prev) => ({ ...prev, isOpen: false }));
-                    setModalOpen(true);
+                    handleSubmitArena(data);
                 },
             });
         } finally {
@@ -394,6 +394,9 @@ export function CreateArenaCard() {
                 secondaryButtonText={toastData.secondaryButtonText}
                 onSecondaryClick={toastData.onSecondaryClick}
             />
+
+            {/* Floating Spinner */}
+            <FloatingSpinner isOpen={isLoading} message={loadingText} />
         </>
     );
 }
