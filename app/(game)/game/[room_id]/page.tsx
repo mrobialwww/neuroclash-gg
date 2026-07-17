@@ -135,6 +135,14 @@ export default function GamePage() {
         }
     }, [selectedAnswerId]);
 
+    // Dismiss overlay when currentOrder berubah (terutama untuk case opponent-answered-first
+    // dimana selectedAnswerId tetap null dan effect di atas tidak fire)
+    useEffect(() => {
+        if (showRoundResult) {
+            setShowRoundResult(false);
+        }
+    }, [currentOrder]);
+
     // Show round result overlay when answer is submitted
     useEffect(() => {
         if (selectedAnswerId && !isSubmitting && lastAnswerCorrect !== null) {
@@ -562,25 +570,6 @@ export default function GamePage() {
         );
     }
 
-    // Tampilan ketika Menunggu Semua Battle Room Selesai
-    if (isWaitingForAllBattles && !error) {
-        return (
-            <div className="z-100 fixed inset-0 flex items-center justify-center bg-black/40 px-6 backdrop-blur-md">
-                <div className="animate-in fade-in zoom-in-95 relative flex w-full max-w-[400px] flex-col items-center gap-6 rounded-2xl border-2 border-[#383347] bg-[#040619]/60 p-10 text-center shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl duration-200">
-                    <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#3D79F3] border-t-transparent shadow-[0_0_20px_rgba(61,121,243,0.3)]" />
-                    <div className="space-y-3">
-                        <p className="text-xl font-extrabold uppercase tracking-tighter text-white md:text-2xl ">
-                            Memuat Arena...
-                        </p>
-                        <p className="text-sm font-medium text-white/60 md:text-base">
-                            Mempersiapkan Ronde {currentOrder}...
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     // Tampilan Layar Kemenangan / Selesai
     if (isFinished) {
         const isWinner = eliminationData?.isWinner;
@@ -750,7 +739,7 @@ export default function GamePage() {
                     {roomCode}
                 </div>
 
-                <div className="block flex-1 px-2 md:px-4 lg:px-10">
+                <div className="flex flex-1 flex-col items-center gap-0.5 px-2 md:px-4 lg:px-10">
                     <MatchProgressBar
                         key={`round-${currentOrder}`}
                         duration={SECONDS_PER_ROUND}
@@ -759,6 +748,11 @@ export default function GamePage() {
                         isSolo={isSolo}
                         isFinished={!canAnswer() || !!selectedAnswerId}
                     />
+                    {isWaitingForAllBattles && (
+                        <p className="animate-pulse text-[10px] font-bold uppercase tracking-widest text-[#FFCB66]">
+                            ⏳ Menunggu Pemain Lain...
+                        </p>
+                    )}
                 </div>
 
                 <MainButton

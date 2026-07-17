@@ -151,7 +151,7 @@ export const ProfBubuPhase = ({
                                 <div className="absolute inset-0 rounded-full border border-white/10" />
                                 <div className="relative h-5 w-5 animate-spin rounded-full border-[3px] border-[#FFCB66]/20 border-t-[#FFCB66] drop-shadow-[0_0_8px_rgba(255,203,102,1)]" />
                                 <p className="relative animate-pulse text-sm font-black uppercase tracking-widest text-[#FFCB66] drop-shadow-[0_2px_8px_rgba(255,203,102,0.6)] md:text-base">
-                                    Menunggu Pemain Lain...{" "}
+                                    Bonus Berakhir{" "}
                                     <span className="ml-1 text-white">
                                         {timeLeft}S
                                     </span>
