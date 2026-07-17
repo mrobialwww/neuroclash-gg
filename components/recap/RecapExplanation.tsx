@@ -22,7 +22,7 @@ export function RecapExplanation({ questions }: RecapExplanationProps) {
             {questions.map((q, i) => (
                 <div
                     key={q.question_id}
-                    className="rounded-2xl border border-white/10 bg-[#D9D9D9]/20 p-5 shadow-lg backdrop-blur-md md:p-6"
+                    className="rounded-2xl border border-white/30 bg-[#172844] p-5 shadow-lg md:p-6"
                 >
                     <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-bold text-white/80 md:text-base">
