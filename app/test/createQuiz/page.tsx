@@ -188,6 +188,8 @@ export default function CreateQuizDummy() {
                                 <SelectValue placeholder="Pilih jumlah ronde..." />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="6">6 Ronde</SelectItem>
+                                <SelectItem value="10">10 Ronde</SelectItem>
                                 <SelectItem value="15">15 Ronde</SelectItem>
                                 <SelectItem value="20">20 Ronde</SelectItem>
                                 <SelectItem value="25">25 Ronde</SelectItem>

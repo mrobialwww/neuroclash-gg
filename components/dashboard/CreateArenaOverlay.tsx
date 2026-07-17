@@ -32,7 +32,7 @@ const CATEGORIES: { id: CategoryType; title: string }[] = [
 ];
 
 const PLAYER_OPTIONS = [15, 20, 25, 30, 35, 40];
-const SOAL_OPTIONS = [15, 20, 25, 30, 35, 40];
+const SOAL_OPTIONS = [6, 10, 15, 20, 25, 30, 35, 40];
 const DIFFICULTIES: { label: string; value: Difficulty }[] = [
     { label: "Mudah", value: "mudah" },
     { label: "Sedang", value: "sedang" },
@@ -224,7 +224,7 @@ export default function CreateArenaModal({
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             {/* ── Card ── */}
-            <div className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#383347] bg-[#040619] shadow-2xl">
+            <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#383347] bg-[#040619] shadow-2xl">
                 {/* Close Button */}
                 <button
                     onClick={onClose}
@@ -384,7 +384,7 @@ export default function CreateArenaModal({
                         <p className="mb-3 text-sm font-semibold text-white">
                             Jumlah Soal
                         </p>
-                        <div className="grid grid-cols-6 gap-2.5">
+                        <div className="grid grid-cols-4 gap-2.5">
                             {SOAL_OPTIONS.map((n) => {
                                 const isActive = jumlahSoal === n;
                                 return (
