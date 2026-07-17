@@ -429,12 +429,25 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
 
         try {
-            const battleRes = await fetch(
-                `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
-            );
-            const battleRoom: BattleRoom | null = battleRes.ok
-                ? await battleRes.json()
-                : null;
+            let battleRoom: BattleRoom | null = null;
+            let retryCount = 0;
+            const maxRetries = 5;
+
+            while (!battleRoom && retryCount < maxRetries) {
+                const battleRes = await fetch(
+                    `/api/battle/my-room?game_room_id=${gameRoomId}&user_id=${currentUser.id}&round_number=${currentOrder}`,
+                );
+                
+                battleRoom = battleRes.ok ? await battleRes.json() : null;
+
+                if (!battleRoom) {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        console.log(`[MatchStore] Battle room not found, retrying... (${retryCount}/${maxRetries})`);
+                        await new Promise((resolve) => setTimeout(resolve, 500 * retryCount));
+                    }
+                }
+            }
 
             if (battleRoom) {
                 // Get opponent IDs from battle room
@@ -536,9 +549,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                             // Penting: Update currentOrder SEBELUM memanggil syncBattleRoomFromDB
                             // Jika tidak di-update, syncBattleRoomFromDB akan menarik data dari ronde SEBELUMNYA!
                             // Juga set isWaitingForAllBattles = true agar pemain ini melihat layar "Mempersiapkan Ronde..."
+                            // Dan isAdvancingRound: false untuk membatalkan client-side polling jika ada
                             set({
                                 currentOrder: newRound.round_number,
                                 isWaitingForAllBattles: true,
+                                isAdvancingRound: false,
                             });
 
                             await get().syncBattleRoomFromDB();
@@ -877,6 +892,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         let allFinished = false;
         let attempts = 0;
         const maxAttempts = 30; // 30 seconds before force-recovery
+        const startOrder = state.currentOrder; // Capture starting order
 
         while (!allFinished && attempts < maxAttempts) {
             attempts++;
@@ -884,6 +900,15 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             // Always read the current round from the live store — the round may have
             // already been advanced by a Realtime event on a concurrent client.
             const liveOrder = get().currentOrder;
+            
+            // Check if realtime advanced the round
+            if (liveOrder > startOrder) {
+                console.log(
+                    `[MatchStore] Realtime already advanced round (${startOrder} -> ${liveOrder}), cancelling polling.`,
+                );
+                set({ isAdvancingRound: false });
+                return;
+            }
 
             try {
                 const res = await fetch(
@@ -1002,6 +1027,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
         // Wait 2 seconds for players to see results
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Final check before actually advancing, in case Realtime fired during the 2s wait
+        if (get().currentOrder > startOrder) {
+            console.log(`[MatchStore] Realtime advanced round during delay, cancelling advanceRound.`);
+            set({ isWaitingForAllBattles: false, isAdvancingRound: false });
+            return;
+        }
 
         // Show loading screen BEFORE generating next round
         set({ isWaitingForAllBattles: true });
