@@ -192,7 +192,7 @@ export default function SignUpPage() {
                         </Link>
                     </p>
 
-                    <p className="text-[12px] leading-relaxed text-white/50">
+                    <p className="text-[12px] leading-relaxed text-white/60">
                         Dengan mendaftar, kamu menyetujui{" "}
                         <Link
                             href="/terms"
@@ -203,7 +203,7 @@ export default function SignUpPage() {
                         dan{" "}
                         <Link
                             href="/privacy"
-                            className="underline hover:text-white/50"
+                            className="underline hover:text-white/60"
                         >
                             Kebijakan Privasi
                         </Link>

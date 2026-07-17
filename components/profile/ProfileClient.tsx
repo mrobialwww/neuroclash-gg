@@ -155,7 +155,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                     <h1 className="mb-1 text-2xl font-bold tracking-tight text-white md:mb-2 md:text-3xl">
                         {profile.username}
                     </h1>
-                    <p className="text-sm font-medium text-white/60 md:text-base">
+                    <p className="text-sm font-medium text-white/70 md:text-base">
                         {profile.email}
                     </p>
                 </div>
@@ -229,7 +229,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                                     />
                                 </div>
                                 <div className="text-left">
-                                    <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                                    <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                         Username
                                     </div>
                                     <div className="text-base font-bold leading-tight text-white md:text-lg">
@@ -260,7 +260,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 Email
                             </div>
                             <div className="break-all text-base font-bold leading-tight text-white md:break-normal md:text-lg">
@@ -280,7 +280,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 ID Pengguna
                             </div>
                             <div className="max-w-[140px] truncate text-sm font-bold leading-tight text-white sm:max-w-none md:text-lg">
@@ -300,7 +300,7 @@ export default function ProfileClient({ userId }: { userId: string }) {
                             />
                         </div>
                         <div className="text-left">
-                            <div className="mb-0.5 text-[10px] font-semibold text-white/60 md:text-xs">
+                            <div className="mb-0.5 text-[10px] font-semibold text-white/70 md:text-xs">
                                 Bergabung Sejak
                             </div>
                             <div className="text-base font-bold leading-tight text-white md:text-lg">

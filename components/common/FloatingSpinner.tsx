@@ -14,7 +14,7 @@ export function FloatingSpinner({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed left-1/2 top-6 z-[200] -translate-x-1/2 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="fixed left-1/2 top-20 z-[200] -translate-x-1/2 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-4 rounded-full border border-white/10 bg-[#0B0D14]/90 px-8 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md">
                 <svg
                     className="h-6 w-6 animate-spin text-white"

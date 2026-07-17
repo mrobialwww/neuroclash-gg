@@ -174,7 +174,7 @@ export function LandingPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                    className="relative z-10 mb-12 max-w-2xl text-lg leading-relaxed text-white/60 md:text-2xl"
+                    className="relative z-10 mb-12 max-w-2xl text-lg leading-relaxed text-white/70 md:text-2xl"
                 >
                     Arena pertempuran pengetahuan. Jawab soal, gunakan kekuatan,
                     kalahkan lawan, dan jadilah juara!
@@ -238,7 +238,7 @@ export function LandingPage() {
                             </div>
                             <div className="flex flex-1 justify-center">
                                 <div className="flex h-6 max-w-[300px] flex-1 items-center justify-center rounded-md bg-white/5">
-                                    <span className="text-[11px] text-white/60">
+                                    <span className="text-xs text-white/70">
                                         neuroclash.app/arena
                                     </span>
                                 </div>
@@ -321,7 +321,7 @@ export function LandingPage() {
                             <h3 className="mb-2 text-base font-extrabold">
                                 {card.title}
                             </h3>
-                            <p className="text-sm leading-relaxed text-white/60">
+                            <p className="text-sm leading-relaxed text-white/70">
                                 {card.desc}
                             </p>
                         </motion.div>
@@ -339,13 +339,13 @@ export function LandingPage() {
                 className="scroll-mt-16 relative mx-auto max-w-[1040px] px-6 py-20"
             >
                 <div className="pointer-events-none absolute left-1/2 top-1/3 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(ellipse,rgba(90,50,180,0.13)_0%,transparent_68%)]" />
-                <p className="mb-5 text-center text-[11px] font-bold uppercase tracking-[0.25em] text-white/60">
+                <p className="mb-5 text-center text-xs font-bold uppercase tracking-[0.25em] text-white/70">
                     Cara Main
                 </p>
                 <h2 className="mb-6 text-center text-3xl font-extrabold leading-tight text-white md:text-6xl">
                     Sistem Loop Pertandingan
                 </h2>
-                <p className="mx-auto mb-14 max-w-[560px] text-center text-base leading-relaxed text-white/60">
+                <p className="mx-auto mb-14 max-w-[560px] text-center text-base leading-relaxed text-white/70">
                     Setiap pertandingan berjalan dalam siklus — Prof Bubu kasih
                     bocoran, kamu battle, StarBox kasih reward, terus berulang
                     sampai soal habis.
@@ -359,7 +359,7 @@ export function LandingPage() {
                     transition={{ duration: 0.4, delay: 0.15 }}
                     className="mb-5 flex justify-center"
                 >
-                    <span className="bg-purple-500/18 border-purple-500/45 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-purple-300">
+                    <span className="bg-purple-500/18 border-purple-500/45 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-purple-300">
                         <svg
                             width="13"
                             height="13"
@@ -402,7 +402,7 @@ export function LandingPage() {
                             <span className="block text-xs font-bold uppercase tracking-[0.12em] text-purple-300">
                                 Arena
                             </span>
-                            <span className="mt-0.5 block text-[10px] uppercase tracking-widest text-white/40">
+                            <span className="mt-0.5 block text-xs uppercase tracking-widest text-white/40">
                                 Phase
                             </span>
                         </div>
@@ -427,7 +427,7 @@ export function LandingPage() {
                             <span className="block text-xs font-bold uppercase tracking-[0.12em] text-green-400">
                                 Prof Bubu
                             </span>
-                            <span className="mt-0.5 block text-[10px] uppercase tracking-widest text-white/40">
+                            <span className="mt-0.5 block text-xs uppercase tracking-widest text-white/40">
                                 Phase
                             </span>
                         </div>
@@ -437,7 +437,7 @@ export function LandingPage() {
                     <div className="relative mx-0 flex flex-1 items-center justify-center">
                         <div className="border-red-500/55 h-0 w-full border-t-2 border-dashed" />
                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <span className="inline-flex items-center rounded-full border border-pink-500 bg-[#0d0e28]/90 px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-pink-300 shadow-[0_0_12px_rgba(233,30,140,0.35)]">
+                            <span className="inline-flex items-center rounded-full border border-pink-500 bg-[#0d0e28]/90 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-pink-300 shadow-[0_0_12px_rgba(233,30,140,0.35)]">
                                 5x Battle
                             </span>
                         </div>
@@ -459,7 +459,7 @@ export function LandingPage() {
                             <span className="block text-xs font-bold uppercase tracking-[0.12em] text-red-400">
                                 Battle
                             </span>
-                            <span className="mt-0.5 block text-[10px] uppercase tracking-widest text-white/40">
+                            <span className="mt-0.5 block text-xs uppercase tracking-widest text-white/40">
                                 Phase
                             </span>
                         </div>
@@ -469,7 +469,7 @@ export function LandingPage() {
                     <div className="relative mx-0 flex flex-1 items-center justify-center">
                         <div className="bg-linear-to-r h-0.5 w-full from-amber-400/30 to-amber-400/60" />
                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <span className="inline-flex items-center rounded-full border border-amber-500 bg-[#0d0e28]/90 px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300 shadow-[0_0_12px_rgba(255,193,7,0.35)]">
+                            <span className="inline-flex items-center rounded-full border border-amber-500 bg-[#0d0e28]/90 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-amber-300 shadow-[0_0_12px_rgba(255,193,7,0.35)]">
                                 5x Battle
                             </span>
                         </div>
@@ -491,7 +491,7 @@ export function LandingPage() {
                             <span className="block text-xs font-bold uppercase tracking-[0.12em] text-amber-400">
                                 StarBox
                             </span>
-                            <span className="mt-0.5 block text-[10px] uppercase tracking-widest text-white/40">
+                            <span className="mt-0.5 block text-xs uppercase tracking-widest text-white/40">
                                 Phase
                             </span>
                         </div>
@@ -507,7 +507,7 @@ export function LandingPage() {
                     className="mt-14 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
                 >
                     <div className="rounded-xl border border-white/5 bg-[#0d1028] p-5">
-                        <p className="text-sm leading-relaxed text-white/60">
+                        <p className="text-sm leading-relaxed text-white/70">
                             Minimal{" "}
                             <strong className="font-bold text-white">
                                 4 pemain
@@ -520,7 +520,7 @@ export function LandingPage() {
                         </p>
                     </div>
                     <div className="rounded-xl border border-white/5 bg-[#0d1028] p-5">
-                        <p className="text-sm leading-relaxed text-white/60">
+                        <p className="text-sm leading-relaxed text-white/70">
                             Dalam{" "}
                             <strong className="font-bold text-white">
                                 15 detik
@@ -534,7 +534,7 @@ export function LandingPage() {
                         </p>
                     </div>
                     <div className="rounded-xl border border-white/5 bg-[#0d1028] p-5">
-                        <p className="text-sm leading-relaxed text-white/60">
+                        <p className="text-sm leading-relaxed text-white/70">
                             <strong className="font-bold text-white">
                                 20 detik per soal.
                             </strong>{" "}
@@ -547,7 +547,7 @@ export function LandingPage() {
                         </p>
                     </div>
                     <div className="rounded-xl border border-white/5 bg-[#0d1028] p-5">
-                        <p className="text-sm leading-relaxed text-white/60">
+                        <p className="text-sm leading-relaxed text-white/70">
                             Muncul tiap kelipatan 10 ronde. Sistem{" "}
                             <strong className="font-bold text-white">
                                 Algorithmic Fairness
@@ -564,7 +564,7 @@ export function LandingPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: 0.35 }}
-                    className="bg-white/3 mt-4 rounded-xl border border-white/5 p-4 text-center text-sm leading-relaxed text-white/60"
+                    className="bg-white/3 mt-4 rounded-xl border border-white/5 p-4 text-center text-sm leading-relaxed text-white/70"
                 >
                     Permainan berakhir saat{" "}
                     <strong className="font-bold text-white">
@@ -644,10 +644,10 @@ export function LandingPage() {
                                         className="object-contain drop-shadow-lg"
                                     />
                                 </div>
-                                <span className="text-[11px] font-bold uppercase tracking-[0.13em] text-white">
+                                <span className="text-xs font-bold uppercase tracking-[0.13em] text-white">
                                     {card.name}
                                 </span>
-                                <span className="text-xs leading-relaxed text-white/60">
+                                <span className="text-xs leading-relaxed text-white/70">
                                     {card.desc}
                                 </span>
                             </motion.div>
@@ -663,7 +663,7 @@ export function LandingPage() {
                         className="flex flex-col"
                     >
                         <div className="mb-5 flex items-center gap-3.5">
-                            <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-400">
+                            <span className="whitespace-nowrap text-xs font-bold uppercase tracking-[0.22em] text-cyan-400">
                                 Sistem Kekuatan
                             </span>
                             <div className="bg-linear-to-r h-0.5 flex-1 rounded from-cyan-400 to-cyan-400/10" />
@@ -677,21 +677,21 @@ export function LandingPage() {
                             Siapa yang Menang
                         </h2>
 
-                        <p className="mb-7 text-base leading-relaxed text-white/60">
+                        <p className="mb-7 text-base leading-relaxed text-white/70">
                             Neuroclash bukan cuma soal siapa yang paling pintar
                             tapi siapa yang paling cerdas dalam memanfaatkan
                             kekuatannya.
                         </p>
 
                         <ul className="flex flex-col gap-3.5">
-                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/60">
+                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/70">
                                 <span className="mt-0.5 shrink-0 text-xs text-amber-500">
                                     {String.fromCodePoint(0x2726)}
                                 </span>
                                 Prof Bubu Phase: Jawab benar di awal untuk dapat
                                 hint sebagai modal tempur.
                             </li>
-                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/60">
+                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/70">
                                 <span className="mt-0.5 shrink-0 text-xs text-amber-500">
                                     {String.fromCodePoint(0x2726)}
                                 </span>
@@ -699,7 +699,7 @@ export function LandingPage() {
                                 item prioritas bagi pemain dengan HP kritis
                                 untuk comeback taktis.
                             </li>
-                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/60">
+                            <li className="flex items-start gap-3 text-sm leading-relaxed text-white/70">
                                 <span className="mt-0.5 shrink-0 text-xs text-amber-500">
                                     {String.fromCodePoint(0x2726)}
                                 </span>
@@ -753,7 +753,7 @@ export function LandingPage() {
                             <br />
                             Galaksi Ini?
                         </h2>
-                        <p className="text-base leading-relaxed text-white/60">
+                        <p className="text-base leading-relaxed text-white/70">
                             Puncak trophy menanti, naik dari Bronze hingga
                             Stellar, dan buktikan kamu yang terbaik di antara
                             semua pemain.
@@ -790,7 +790,7 @@ export function LandingPage() {
                     Takdir Ada di{" "}
                     <span className="text-amber-500">Tanganmu!</span>
                 </h2>
-                <p className="relative z-10 mx-auto mb-10 max-w-md text-base leading-relaxed text-white/60">
+                <p className="relative z-10 mx-auto mb-10 max-w-md text-base leading-relaxed text-white/70">
                     Ribuan arena menunggumu. Pilih pengetahuan, kuasai musuhmu,
                     dan jadilah legenda di Neuroclash.
                 </p>
@@ -831,19 +831,19 @@ export function LandingPage() {
                 <div className="flex gap-6">
                     <a
                         href="#"
-                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/60"
+                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/70"
                     >
                         Tentang
                     </a>
                     <a
                         href="#"
-                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/60"
+                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/70"
                     >
                         Kebijakan Privasi
                     </a>
                     <a
                         href="#"
-                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/60"
+                        className="text-xs text-white/30 no-underline transition-colors hover:text-white/70"
                     >
                         Kontak
                     </a>

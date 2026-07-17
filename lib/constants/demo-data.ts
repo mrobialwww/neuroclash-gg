@@ -194,9 +194,9 @@ export const TUTORIAL_MESSAGES = {
     title: "Selamat Datang di Mode Tutorial!",
     subtitle: "Pelajari cara bermain Neuroclash dalam 5 ronde",
     items: [
-      "Lobby - Tempat menunggu pemain lain bergabung (4-40 orang)",
-      "Quiz Battle - Jawab soal dengan cepat dan akurat. Lawan berganti setiap ronde",
-      "StarBox - Mekanisme comeback: HP terendah pilih power-up duluan",
+      "Lobby: Tempat menunggu pemain lain bergabung (4-40 orang)",
+      "Quiz Battle: Jawab soal dengan cepat dan akurat. Lawan berganti setiap ronde",
+      "StarBox: Mekanisme comeback: HP terendah pilih power-up duluan",
       "Hanya Host yang bisa memulai pertandingan",
     ],
     buttonLabel: "Mulai Tutorial",

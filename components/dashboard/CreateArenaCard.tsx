@@ -186,7 +186,7 @@ export function CreateArenaCard() {
                         </p>
                         <div className="space-y-2 rounded-xl border border-blue-500/20 bg-[#0b0d1e] p-4">
                             <div className="flex items-center justify-between text-xs md:text-sm">
-                                <span className="text-white/50">Materi</span>
+                                <span className="text-white/60">Materi</span>
                                 <span className="ml-2 truncate font-mono text-xs font-semibold capitalize text-white md:text-sm">
                                     {gameRoom.category === "bahasaindonesia"
                                         ? "Bahasa Indonesia"
@@ -196,7 +196,7 @@ export function CreateArenaCard() {
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-xs md:text-sm">
-                                <span className="text-white/50">
+                                <span className="text-white/60">
                                     Total Soal
                                 </span>
                                 <span className="font-semibold text-white">
@@ -204,7 +204,7 @@ export function CreateArenaCard() {
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-xs md:text-sm">
-                                <span className="text-white/50">
+                                <span className="text-white/60">
                                     Pemain Max
                                 </span>
                                 <span className="font-semibold text-white">
@@ -212,7 +212,7 @@ export function CreateArenaCard() {
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-xs md:text-sm">
-                                <span className="text-white/50">Kesulitan</span>
+                                <span className="text-white/60">Kesulitan</span>
                                 <span className="rounded bg-blue-600/30 px-2 py-0.5 text-[10px] font-bold capitalize text-blue-300 md:text-xs">
                                     {gameRoom.difficulty}
                                 </span>

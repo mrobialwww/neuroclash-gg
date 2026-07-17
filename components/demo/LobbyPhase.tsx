@@ -22,12 +22,12 @@ export function LobbyPhase() {
                 />
             )}
             <div className="flex w-full max-w-2xl flex-col items-center space-y-8">
-                <div className="space-y-2 text-center">
-                    <h1 className="text-2xl font-extrabold text-white">
+                <div className="space-y-3 text-center">
+                    <h1 className="text-3xl font-extrabold text-white md:text-4xl">
                         Room Tutorial
                     </h1>
-                    <p className="inline-block rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/60">
-                        Kode: NEURO-DEMO
+                    <p className="inline-block rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-base font-medium text-white/70">
+                        Kode: NEURO123
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
@@ -48,12 +48,12 @@ export function LobbyPhase() {
                         />
                     ))}
                 </div>
-                <div className="space-y-1 text-center">
-                    <p className="text-sm text-white/60">
+                <div className="space-y-2 text-center">
+                    <p className="text-base text-white/70">
                         4 pemain siap &bull; Maks. 40 pemain di mode
                         sungguhan
                     </p>
-                    <p className="text-xs text-white/60">
+                    <p className="text-base text-white/70">
                         Hanya Host yang bisa memulai pertandingan
                     </p>
                 </div>

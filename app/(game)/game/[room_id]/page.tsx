@@ -532,7 +532,7 @@ export default function GamePage() {
                         <h2 className="text-xl font-extrabold uppercase tracking-wider text-white">
                             Terjadi Kesalahan
                         </h2>
-                        <p className="text-sm font-medium text-white/60">
+                        <p className="text-sm font-medium text-white/70">
                             {error}
                         </p>
                     </div>
@@ -585,7 +585,7 @@ export default function GamePage() {
                         <p className="text-xl font-extrabold uppercase tracking-tighter text-white md:text-2xl ">
                             Memuat Arena...
                         </p>
-                        <p className="text-sm font-medium text-white/60 md:text-base">
+                        <p className="text-sm font-medium text-white/70 md:text-base">
                             Mempersiapkan Ronde {currentOrder}...
                         </p>
                     </div>
@@ -783,7 +783,7 @@ export default function GamePage() {
             </header>
 
             {/* Round indicator */}
-            <p className="text-sm font-medium text-white/50">
+            <p className="text-sm font-medium text-white/60">
                 Soal {currentOrder}
                 {totalQuestions ? ` / ${totalQuestions}` : ""}
             </p>
@@ -946,7 +946,7 @@ export default function GamePage() {
                         <span>
                             Kamu yakin ingin keluar dari pertandingan?
                         </span>
-                        <span className="text-sm text-white/60">
+                        <span className="text-sm text-white/70">
                             Kamu akan kehilangan trophy dari pertandingan ini.
                         </span>
                     </div>

@@ -107,7 +107,7 @@ export function HistoryTable({
                                 <tr>
                                     <td
                                         colSpan={10}
-                                        className="py-20 text-center text-white/60"
+                                        className="py-20 text-center text-white/70"
                                     >
                                         Belum ada riwayat pertandingan.
                                     </td>

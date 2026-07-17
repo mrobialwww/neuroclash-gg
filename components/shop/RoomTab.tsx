@@ -17,7 +17,7 @@ export const RoomTab = ({ activeTab, onChange }: Props) => {
                         "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-md transition-all duration-300",
                         activeTab === "character"
                             ? "bg-[#6AA2FF] text-white shadow-md"
-                            : "text-white/60 hover:text-white",
+                            : "text-white/70 hover:text-white",
                     )}
                 >
                     <div className="relative h-6 w-6 md:h-7 md:w-7">
@@ -40,7 +40,7 @@ export const RoomTab = ({ activeTab, onChange }: Props) => {
                         "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-md transition-all duration-300",
                         activeTab === "skin"
                             ? "bg-[#6AA2FF] text-white shadow-md"
-                            : "text-white/60 hover:text-white",
+                            : "text-white/70 hover:text-white",
                     )}
                 >
                     <div className="relative h-6 w-6 md:h-7 md:w-7">

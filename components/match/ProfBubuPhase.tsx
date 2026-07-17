@@ -172,7 +172,7 @@ export const ProfBubuPhase = ({
             </header>
 
             {/* Round indicator */}
-            <p className="text-sm font-medium text-white/50">
+            <p className="text-sm font-medium text-white/60">
                 Bonus Soal Prof. Bubu
             </p>
 
@@ -241,7 +241,7 @@ export const ProfBubuPhase = ({
                                 className="h-auto w-full"
                             />
                         ) : (
-                            <div className="flex h-full w-full items-center justify-center text-white/50">
+                            <div className="flex h-full w-full items-center justify-center text-white/60">
                                 Memuat Pertanyaan Prof. Bubu...
                             </div>
                         )}

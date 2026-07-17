@@ -121,13 +121,13 @@ export function StarboxPhase() {
                                 >
                                     {isUserTurn ? "Kamu" : cp.name}
                                 </span>
-                                <span className="ml-2 text-sm text-white/60">
+                                <span className="ml-2 text-sm text-white/70">
                                     (HP terendah memilih lebih awal)
                                 </span>
                             </p>
                         </div>
                     )}
-                    <p className="mt-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/60">
+                    <p className="mt-2 rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
                         Sisa Item Keseluruhan:{" "}
                         <span className="text-white">
                             {remainingItems} Terakhir

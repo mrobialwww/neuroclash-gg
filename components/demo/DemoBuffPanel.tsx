@@ -38,9 +38,9 @@ function DemoBuffItem({
                 {buff.label}
             </span>
             {buff.used ? (
-                <span className="text-[10px] text-green-400">Terpakai</span>
+                <span className="text-[11px] text-green-400 md:text-xs">Terpakai</span>
             ) : (
-                <span className="text-[10px] text-white/60">
+                <span className="text-[11px] text-white/70 md:text-xs">
                     Klik untuk pakai
                 </span>
             )}
@@ -73,7 +73,7 @@ export function DemoBuffPanel({
                     className="object-contain"
                     priority
                 />
-                <h2 className="xs:text-xs relative z-10 mt-0.5 text-[10px] font-semibold tracking-tight text-white md:text-base">
+                <h2 className="relative z-10 mt-0.5 text-xs font-semibold tracking-tight text-white md:text-sm">
                     Materi & Kekuatan
                 </h2>
             </div>
@@ -96,10 +96,10 @@ export function DemoBuffPanel({
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-6 text-center">
-                        <p className="text-xs text-white/60">
+                        <p className="text-xs text-white/70 md:text-sm">
                             Belum ada item
                         </p>
-                        <p className="mt-1 text-[10px] text-white/20">
+                        <p className="mt-1 text-[11px] text-white/20 md:text-xs">
                             Item StarBox akan muncul di sini
                         </p>
                     </div>

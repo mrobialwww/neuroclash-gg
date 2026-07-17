@@ -140,78 +140,82 @@ export function BattlePhase() {
                 </MainButton>
             </header>
 
-            <p className="text-sm font-medium text-white/60">
+            <p className="text-sm font-medium text-white/70 md:text-base">
                 Soal {currentRound} / {DEMO_TOTAL_ROUNDS}
             </p>
 
             <div className="flex w-full flex-1 items-start justify-center">
-                <div className="grid w-full max-w-[1400px] grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
-                    {/* LEFT: User + Buff panel */}
-                    <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
-                        <div className="hidden h-[320px] lg:block">
-                            <DemoBuffPanel
-                                buffs={activeBuffs}
-                                onUse={useBuff}
-                                className="h-full"
-                            />
+                <div className="w-full max-w-[1400px]">
+                    {/* Result Message - above the grid */}
+                    {roundResultMessage && botSimState === "resolved" && (
+                        <div
+                            className={cn(
+                                "mx-auto mb-4 w-full max-w-xl rounded-xl px-4 py-3 text-center text-sm font-bold transition-all md:text-base",
+                                isCorrectAnswer
+                                    ? "border border-green-500/40 bg-green-500/20 text-green-300"
+                                    : selectedAnswerId
+                                    ? "border border-red-500/40 bg-red-500/20 text-red-300"
+                                    : "border border-yellow-500/40 bg-yellow-500/20 text-yellow-300",
+                            )}
+                        >
+                            {roundResultMessage}
                         </div>
-                        <div className="w-full max-w-[320px] lg:max-w-none">
-                            <PlayerCard
-                                player={meCard}
-                                isMe
-                                className="w-full"
-                            />
-                        </div>
-                    </div>
+                    )}
 
-                    {/* RIGHT: Opponent + Player list */}
-                    <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
-                        <div className="hidden h-[320px] lg:block">
-                            <PlayerList
-                                players={playerListData}
-                                className="h-full"
-                            />
-                        </div>
-                        <div className="w-full max-w-[320px] lg:max-w-none">
-                            {oppCard && (
+                    <div className="grid w-full grid-cols-2 items-stretch gap-x-4 gap-y-6 md:gap-6 lg:grid-cols-[210px_minmax(600px,1fr)_210px]">
+                        {/* LEFT: User + Buff panel */}
+                        <div className="order-1 flex flex-col justify-start self-stretch lg:order-1 lg:justify-between">
+                            <div className="hidden h-[320px] lg:block">
+                                <DemoBuffPanel
+                                    buffs={activeBuffs}
+                                    onUse={useBuff}
+                                    className="h-full"
+                                />
+                            </div>
+                            <div className="w-full max-w-[320px] lg:max-w-none">
                                 <PlayerCard
-                                    player={oppCard}
-                                    isMe={false}
-                                    hideHealthBar={isProfBubuRound}
+                                    player={meCard}
+                                    isMe
                                     className="w-full"
                                 />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* CENTER: Question */}
-                    <div className="isolate order-3 col-span-2 mt-2 flex flex-col items-center lg:order-2 lg:col-span-1 lg:mt-0">
-                        {roundResultMessage && botSimState === "resolved" && (
-                            <div
-                                className={cn(
-                                    "mb-4 w-full max-w-3xl rounded-xl px-4 py-3 text-center text-sm font-bold transition-all md:text-base",
-                                    isCorrectAnswer
-                                        ? "border border-green-500/40 bg-green-500/20 text-green-300"
-                                        : selectedAnswerId
-                                        ? "border border-red-500/40 bg-red-500/20 text-red-300"
-                                        : "border border-yellow-500/40 bg-yellow-500/20 text-yellow-300",
-                                )}
-                            >
-                                {roundResultMessage}
                             </div>
-                        )}
-                        <QuestionCard
-                            question={currentQuestionText}
-                            options={currentOptions.map((o) => ({
-                                id: o.id,
-                                label: o.key,
-                                text: o.text,
-                                isCorrect: o.isCorrect,
-                            }))}
-                            onSelect={selectAnswer}
-                            selectedId={selectedAnswerId}
-                            className="h-auto w-full"
-                        />
+                        </div>
+
+                        {/* RIGHT: Opponent + Player list */}
+                        <div className="order-2 flex flex-col items-end justify-start self-stretch lg:order-3 lg:items-stretch lg:justify-between">
+                            <div className="hidden h-[320px] lg:block">
+                                <PlayerList
+                                    players={playerListData}
+                                    className="h-full"
+                                />
+                            </div>
+                            <div className="w-full max-w-[320px] lg:max-w-none">
+                                {oppCard && (
+                                    <PlayerCard
+                                        player={oppCard}
+                                        isMe={false}
+                                        hideHealthBar={isProfBubuRound}
+                                        className="w-full"
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* CENTER: Question */}
+                        <div className="isolate order-3 col-span-2 mt-2 flex flex-col items-center lg:order-2 lg:col-span-1 lg:mt-0">
+                            <QuestionCard
+                                question={currentQuestionText}
+                                options={currentOptions.map((o) => ({
+                                    id: o.id,
+                                    label: o.key,
+                                    text: o.text,
+                                    isCorrect: o.isCorrect,
+                                }))}
+                                onSelect={selectAnswer}
+                                selectedId={selectedAnswerId}
+                                className="h-auto w-full"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -235,7 +235,7 @@ export default function CreateArenaModal({
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute right-5 top-5 z-10 cursor-pointer text-white/60 transition-colors hover:text-white"
+                    className="absolute right-5 top-5 z-10 cursor-pointer text-white/70 transition-colors hover:text-white"
                 >
                     <XIcon />
                 </button>
@@ -287,7 +287,7 @@ export default function CreateArenaModal({
                     <div className="mb-4 overflow-hidden rounded-lg border border-[#383347]">
                         <div className="scrollbar-minimal grid max-h-[200px] grid-cols-2 gap-2 overflow-y-auto bg-[#0d0f2b] p-3">
                             {filtered.length === 0 ? (
-                                <div className="col-span-full py-10 text-center text-sm font-medium text-white/60">
+                                <div className="col-span-full py-10 text-center text-sm font-medium text-white/70">
                                     Oops! Tidak ada materi ditemukan
                                 </div>
                             ) : (
@@ -346,7 +346,7 @@ export default function CreateArenaModal({
                                 )}
                             </p>
                             {!uploadedFile && (
-                                <p className="mt-1 text-[11px] tracking-wide  text-white/60">
+                                <p className="mt-1 text-[11px] tracking-wide  text-white/70">
                                     Atau klik untuk memilih file dari perangkat
                                 </p>
                             )}
@@ -428,7 +428,7 @@ export default function CreateArenaModal({
                                             "cursor-pointer rounded-lg border py-1 text-sm font-bold transition-all md:py-1.5",
                                             isActive
                                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg"
-                                                : "border-[#383347] bg-transparent text-white/60 hover:border-gray-500 hover:text-white",
+                                                : "border-[#383347] bg-transparent text-white/70 hover:border-gray-500 hover:text-white",
                                         )}
                                     >
                                         {d.label}
@@ -456,7 +456,7 @@ export default function CreateArenaModal({
                                             "cursor-pointer rounded-lg border py-1 text-sm font-bold transition-all md:py-1.5",
                                             isActive
                                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg"
-                                                : "border-[#383347] bg-transparent text-white/60 hover:border-gray-500 hover:text-white",
+                                                : "border-[#383347] bg-transparent text-white/70 hover:border-gray-500 hover:text-white",
                                         )}
                                     >
                                         {v.label}

@@ -58,7 +58,7 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
                                     className={`font-medium ${
                                         isActive
                                             ? "text-white"
-                                            : "text-white/60"
+                                            : "text-white/70"
                                     }`}
                                 >
                                     {item.name}
@@ -90,7 +90,7 @@ export function Sidebar({ active = "karakter", onChange }: SidebarProps) {
                             />
                             <span
                                 className={`text-[10px] font-medium leading-none ${
-                                    isActive ? "text-white" : "text-white/60"
+                                    isActive ? "text-white" : "text-white/70"
                                 }`}
                             >
                                 {item.name}

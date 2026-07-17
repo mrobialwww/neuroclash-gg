@@ -15,9 +15,9 @@ export function TutorialOverlay({
 }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-            <div className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-white/20 bg-[#1A1B23] p-6 text-center shadow-2xl md:p-8">
+            <div className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl border border-white/20 bg-[#172844] p-6 text-center shadow-2xl md:p-8">
                 {title && (
-                    <h2 className="text-xl font-extrabold text-white">
+                    <h2 className="text-xl font-extrabold text-white md:text-2xl">
                         {title}
                     </h2>
                 )}
@@ -46,19 +46,19 @@ export function KitabOverlay({
 }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg space-y-4 rounded-2xl border border-[#FFCC00]/40 bg-[#1A1B23] p-6 text-center shadow-2xl md:p-8">
+            <div className="w-full max-w-lg space-y-4 rounded-2xl border border-[#FFCC00]/40 bg-[#172844] p-6 text-center shadow-2xl md:p-8">
                 <p className="text-5xl">
                     <BookIcon />
                 </p>
-                <h2 className="text-xl font-extrabold text-white">
+                <h2 className="text-xl font-extrabold text-white md:text-2xl">
                     Kitab Pengetahuan
                 </h2>
                 <div className="rounded-xl border border-[#FFCC00]/20 bg-[#0B0D14] p-4">
-                    <p className="text-sm leading-relaxed text-white/80">
+                    <p className="text-sm leading-relaxed text-white/80 md:text-base">
                         {hint}
                     </p>
                 </div>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-white/70 md:text-sm">
                     Gunakan petunjuk ini untuk menjawab soal!
                 </p>
                 <MainButton
@@ -87,7 +87,7 @@ export function PlayerResultLine({
 }) {
     if (!revealed) {
         return (
-            <div className="flex animate-pulse items-center gap-2 text-xs text-white/60 md:text-sm">
+            <div className="flex animate-pulse items-center gap-2 text-xs text-white/70 md:text-sm">
                 <span className="h-3 w-3 rounded-full border border-white/30" />
                 <span>{playerName}: berpikir...</span>
             </div>

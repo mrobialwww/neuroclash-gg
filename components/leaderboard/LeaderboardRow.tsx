@@ -93,7 +93,7 @@ export function LeaderboardRow({ entry, isMe = false }: LeaderboardRowProps) {
                         </span>
                     </>
                 ) : (
-                    <span className="text-xs text-white/50 sm:text-sm">-</span>
+                    <span className="text-xs text-white/60 sm:text-sm">-</span>
                 )}
             </div>
 
