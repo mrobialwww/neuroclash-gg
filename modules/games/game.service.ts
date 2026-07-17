@@ -595,21 +595,19 @@ export const gameRoomService = {
             };
         });
 
-        // Safety net: if winner (alive player) has 0 survival time,
-        // recalculate using the latest matchEnd across all players
-        const alivePlayers = playersStats.filter((p) => p.status === "alive");
-        if (alivePlayers.length === 1) {
-            const winner = alivePlayers[0];
-            if (winner.survivalTime === "00:00") {
-                const maxMatchEndMs = Math.max(
-                    ...playersStats.map((p) => p.matchEndMs),
-                );
-                winner.survivalTime = calculateDuration(
-                    winner.matchStartMs,
+        // Safety net: recalculate survival time for any player with "00:00"
+        // Use the latest matchEnd across all players as reference
+        const maxMatchEndMs = Math.max(
+            ...playersStats.map((p) => p.matchEndMs),
+        );
+        for (const p of playersStats) {
+            if (p.survivalTime === "00:00") {
+                p.survivalTime = calculateDuration(
+                    p.matchStartMs,
                     maxMatchEndMs,
                 );
                 console.log(
-                    `[EndgameService] Corrected winner's survivalTime from 00:00 to ${winner.survivalTime}`,
+                    `[EndgameService] Corrected ${p.username}'s survivalTime from 00:00 to ${p.survivalTime}`,
                 );
             }
         }

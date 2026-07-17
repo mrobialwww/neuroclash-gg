@@ -65,7 +65,7 @@ export default function RecapPage() {
 
     if (loading) {
         return (
-            <div className="mx-auto max-w-4xl animate-pulse px-4 py-8 md:px-6 md:py-12">
+            <div className="mx-auto max-w-5xl animate-pulse px-4 py-8 md:px-6 md:py-12">
                 {/* Back button */}
                 <div className="mb-6 h-9 w-24 rounded-lg bg-white/10" />
 
@@ -122,7 +122,7 @@ export default function RecapPage() {
 
     if (!data) {
         return (
-            <div className="mx-auto max-w-4xl px-4 py-20 text-center md:px-6">
+            <div className="mx-auto max-w-5xl px-4 py-20 text-center md:px-6">
                 <p className="text-white/80">Data tidak ditemukan</p>
                 <button
                     onClick={() => router.back()}
@@ -135,7 +135,7 @@ export default function RecapPage() {
     }
 
     return (
-        <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:px-6 md:py-12">
             {/* Back button */}
             <button
                 onClick={() => router.back()}

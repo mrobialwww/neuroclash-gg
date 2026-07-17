@@ -290,7 +290,11 @@ export default function GamePage() {
                     coinsEarned: myResult.coinsEarned,
                     coinBoost: myResult.coinBoost || 0,
                     trophyBoost: myResult.trophyBoost || 0,
-                    survivalTime: myResult.survivalTime || survivalTime,
+                    survivalTime:
+                        myResult.survivalTime &&
+                        myResult.survivalTime !== "00:00"
+                            ? myResult.survivalTime
+                            : survivalTime,
                     isWinner: myResult.placement === 1,
                     deathRound: myResult.deathRound,
                 });
@@ -709,20 +713,19 @@ export default function GamePage() {
                                     Waktu Bertahan
                                 </span>
                                 <span className="text-xl font-bold text-white">
-                                    {Math.floor(
-                                        parseInt(
-                                            eliminationData.survivalTime.split(
-                                                ":",
-                                            )[0],
-                                        ),
-                                    )}{" "}
-                                    Menit{" "}
-                                    {parseInt(
-                                        eliminationData.survivalTime.split(
-                                            ":",
-                                        )[1],
-                                    )}{" "}
-                                    Detik
+                                    {eliminationData.survivalTime === "00:00"
+                                        ? "Bertahan"
+                                        : `${Math.floor(
+                                              parseInt(
+                                                  eliminationData.survivalTime.split(
+                                                      ":",
+                                                  )[0],
+                                              ),
+                                          )} Menit ${parseInt(
+                                              eliminationData.survivalTime.split(
+                                                  ":",
+                                              )[1],
+                                          )} Detik`}
                                 </span>
                             </div>
                         </div>

@@ -5,26 +5,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
 import CreateArenaModal from "@/components/dashboard/CreateArenaOverlay";
-import { ToastOverlay } from "@/components/common/ToastOverlay";
-import { FloatingSpinner } from "@/components/common/FloatingSpinner";
 import { createClient } from "@/lib/supabase/client";
+import { useQuizCreationStore } from "@/store/useQuizCreationStore";
 import { Difficulty } from "@/types/enums";
-
-// ── Mapping category → kategori gambar room ──────────────────────────────
-const CATEGORY_IMAGE_MAP: Record<string, string> = {
-    bahasaindonesia:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasaindonesia2.webp",
-    bahasainggris:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/bahasainggris2.webp",
-    biologi:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/biologi2.webp",
-    pancasila:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pancasila2.webp",
-    pemrograman:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/pemrograman2.webp",
-    sejarah:
-        "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/sejarah2.webp",
-};
 
 const DEFAULT_IMAGE_URL =
     "https://cmgkgwzhiloxdttftmwf.supabase.co/storage/v1/object/public/room-categories/default2.webp";
@@ -32,19 +15,9 @@ const DEFAULT_IMAGE_URL =
 export function CreateArenaCard() {
     const router = useRouter();
     const [modalOpen, setModalOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadingText, setLoadingText] = useState("Memproses...");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [toastData, setToastData] = useState<{
-        isOpen: boolean;
-        title?: string;
-        message?: React.ReactNode;
-        isFailed?: boolean;
-        primaryButtonText?: string;
-        onPrimaryClick?: () => void;
-        secondaryButtonText?: string;
-        onSecondaryClick?: () => void;
-    }>({ isOpen: false });
+
+    const { setCreating, setLoadingText, showToast } = useQuizCreationStore();
 
     const handleCreateArena = () => {
         setErrorMsg(null);
@@ -55,15 +28,6 @@ export function CreateArenaCard() {
         setModalOpen(false);
     };
 
-    /**
-     * handleSubmitArena
-     *
-     * Alur:
-     *  1. Dapatkan user_id dari Supabase Auth
-     *  2. Bangun FormData (upload PDF) atau JSON (materi default)
-     *  3. POST ke /api/quiz → Gemini generate + simpan langsung ke DB
-     *  4. Redirect ke lobby room dengan game_room_id yang dikembalikan
-     */
     const handleSubmitArena = async (data: {
         materiId: string | null;
         file: File | null;
@@ -73,11 +37,8 @@ export function CreateArenaCard() {
         room_visibility: "public" | "private";
         title: string;
     }) => {
-        // Close modal immediately — process in background
         setModalOpen(false);
-        setIsLoading(true);
-        setLoadingText("Memvalidasi sesi user...");
-        setErrorMsg(null);
+        setCreating(true, "Memvalidasi sesi user...");
 
         const AI_MESSAGES = [
             "AI sedang membaca materi...",
@@ -90,15 +51,18 @@ export function CreateArenaCard() {
         let aiStatusInterval: ReturnType<typeof setInterval> | null = null;
 
         try {
-            // ── Step 1: Ambil user yang sedang login ──────────────────────────
             const supabase = createClient();
             const {
                 data: { user },
             } = await supabase.auth.getUser();
 
             if (!user) {
-                setErrorMsg("Kamu harus login sebelum membuat arena.");
-                setIsLoading(false);
+                showToast({
+                    title: "Gagal",
+                    message: "Kamu harus login sebelum membuat arena.",
+                    isFailed: true,
+                    primaryButtonText: "Tutup",
+                });
                 return;
             }
 
@@ -110,11 +74,9 @@ export function CreateArenaCard() {
                 messageIndex = (messageIndex + 1) % AI_MESSAGES.length;
             }, 2500);
 
-            // ── Step 2: Request ke Gemini (/api/quiz) ────────────────────────
             let response: Response;
 
             if (data.file) {
-                // Upload PDF fisik → multipart/form-data
                 const formData = new FormData();
                 formData.append("pdf", data.file);
                 formData.append("round", String(data.jumlahSoal));
@@ -129,7 +91,6 @@ export function CreateArenaCard() {
                     credentials: "include",
                 });
             } else if (data.materiId) {
-                // Materi default → application/json
                 response = await fetch("/api/quiz", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -144,10 +105,13 @@ export function CreateArenaCard() {
                     credentials: "include",
                 });
             } else {
-                setErrorMsg(
-                    "Pilih salah satu materi atau upload file PDF terlebih dahulu.",
-                );
-                setIsLoading(false);
+                showToast({
+                    title: "Pilih Materi",
+                    message:
+                        "Pilih salah satu materi atau upload file PDF terlebih dahulu.",
+                    isFailed: true,
+                    primaryButtonText: "Tutup",
+                });
                 return;
             }
 
@@ -156,7 +120,6 @@ export function CreateArenaCard() {
             if (aiStatusInterval) clearInterval(aiStatusInterval);
 
             if (!response.ok) {
-                // Build a specific title based on HTTP status
                 const statusCode = response.status;
                 let toastTitle = "Pembuatan Gagal";
                 if (statusCode === 503) toastTitle = "AI Kelebihan Beban";
@@ -168,36 +131,21 @@ export function CreateArenaCard() {
                     result?.message ??
                     "Gagal meng-generate soal menggunakan AI.";
 
-                setIsLoading(false);
-                setLoadingText("Memproses...");
+                const isRetriable = statusCode === 503 || statusCode === 429;
 
-                setToastData({
-                    isOpen: true,
+                showToast({
                     title: toastTitle,
                     message: errMsg,
                     isFailed: true,
                     primaryButtonText: "Tutup",
-                    onPrimaryClick: () =>
-                        setToastData((prev) => ({ ...prev, isOpen: false })),
-                    secondaryButtonText:
-                        statusCode === 503 || statusCode === 429
-                            ? "Coba Lagi"
-                            : undefined,
-                    onSecondaryClick:
-                        statusCode === 503 || statusCode === 429
-                            ? () => {
-                                  setToastData((prev) => ({
-                                      ...prev,
-                                      isOpen: false,
-                                  }));
-                                  handleSubmitArena(data);
-                              }
-                            : undefined,
+                    secondaryButtonText: isRetriable ? "Coba Lagi" : undefined,
+                    secondaryButtonAction: isRetriable
+                        ? () => handleSubmitArena(data)
+                        : undefined,
                 });
                 return;
             }
 
-            // ── Step 3: Simpan ke DB (/api/game-rooms) ───────────────────────
             setLoadingText("Menyimpan Arena ke database...");
             const createRoomRes = await fetch("/api/game-rooms", {
                 method: "POST",
@@ -225,17 +173,14 @@ export function CreateArenaCard() {
 
             const gameRoom = createRoomResult.data[0];
 
-            // ── Step 4: Tampilkan Toast Sukses ───────────────────────────────────
-            setIsLoading(false);
-            setToastData({
-                isOpen: true,
+            showToast({
                 title: "Arena Siap!",
                 message: (
                     <div className="mt-2 flex w-full flex-col gap-3 text-left">
                         <p className="text-sm leading-snug text-white/80 md:text-base">
                             Quiz{" "}
                             <span className="font-bold text-blue-400">
-                                "{gameRoom.title}"
+                                &quot;{gameRoom.title}&quot;
                             </span>{" "}
                             berhasil diracik oleh AI.
                         </p>
@@ -246,8 +191,8 @@ export function CreateArenaCard() {
                                     {gameRoom.category === "bahasaindonesia"
                                         ? "Bahasa Indonesia"
                                         : gameRoom.category === "bahasainggris"
-                                        ? "Bahasa Inggris"
-                                        : gameRoom.category}
+                                          ? "Bahasa Inggris"
+                                          : gameRoom.category}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-xs md:text-sm">
@@ -277,16 +222,13 @@ export function CreateArenaCard() {
                 ),
                 isFailed: false,
                 primaryButtonText: "Masuk ke Lobby",
-                onPrimaryClick: () => {
-                    setToastData((prev) => ({ ...prev, isOpen: false }));
+                primaryButtonAction: () => {
                     router.push(`/quiz-lobby/${gameRoom.game_room_id}`);
                 },
             });
         } catch (err: unknown) {
             console.error("[CreateArenaCard] handleSubmitArena error:", err);
-            setIsLoading(false);
-            setToastData({
-                isOpen: true,
+            showToast({
                 title: "Pembuatan Gagal",
                 message:
                     err instanceof Error
@@ -294,17 +236,10 @@ export function CreateArenaCard() {
                         : "Terjadi kesalahan sistem.",
                 isFailed: true,
                 primaryButtonText: "Tutup",
-                onPrimaryClick: () =>
-                    setToastData((prev) => ({ ...prev, isOpen: false })),
                 secondaryButtonText: "Coba Lagi",
-                onSecondaryClick: () => {
-                    setToastData((prev) => ({ ...prev, isOpen: false }));
-                    handleSubmitArena(data);
-                },
+                secondaryButtonAction: () => handleSubmitArena(data),
             });
         } finally {
-            setIsLoading(false);
-            setLoadingText("Memproses...");
             if (aiStatusInterval) clearInterval(aiStatusInterval);
         }
     };
@@ -375,28 +310,10 @@ export function CreateArenaCard() {
                 open={modalOpen}
                 onClose={handleCloseModal}
                 onSubmit={handleSubmitArena}
-                isLoading={isLoading}
-                loadingText={loadingText}
+                isLoading={false}
+                loadingText=""
                 errorMsg={errorMsg}
             />
-
-            {/* Toast Overlay */}
-            <ToastOverlay
-                isOpen={toastData.isOpen}
-                onClose={() =>
-                    setToastData((prev) => ({ ...prev, isOpen: false }))
-                }
-                title={toastData.title}
-                message={toastData.message}
-                isFailed={toastData.isFailed}
-                primaryButtonText={toastData.primaryButtonText}
-                onPrimaryClick={toastData.onPrimaryClick}
-                secondaryButtonText={toastData.secondaryButtonText}
-                onSecondaryClick={toastData.onSecondaryClick}
-            />
-
-            {/* Floating Spinner */}
-            <FloatingSpinner isOpen={isLoading} message={loadingText} />
         </>
     );
 }

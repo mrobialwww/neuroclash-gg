@@ -1077,7 +1077,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         // ── MULTIPLAYER MODE ──
         if (!state.currentBattleRoom) {
             console.error("[MatchStore] User not in any battle room");
-            set({ isSubmitting: false });
+            set({ isSubmitting: false, selectedAnswerId: null });
             return;
         }
 
