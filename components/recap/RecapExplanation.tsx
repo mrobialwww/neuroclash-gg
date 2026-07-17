@@ -11,7 +11,7 @@ interface RecapExplanationProps {
 export function RecapExplanation({ questions }: RecapExplanationProps) {
     if (questions.length === 0) {
         return (
-            <p className="text-center text-sm md:text-base font-medium text-white/70">
+            <p className="text-center text-sm md:text-base font-medium text-white/80">
                 Tidak ada soal yang tersedia.
             </p>
         );

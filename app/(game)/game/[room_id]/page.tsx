@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { MainButton } from "@/components/common/MainButton";
+import { ToastOverlay } from "@/components/common/ToastOverlay";
 import { MatchProgressBar } from "@/components/match/MatchProgressBar";
 import { QuestionCard } from "@/components/match/QuestionCard";
 import { PlayerList } from "@/components/match/PlayerList";
@@ -55,6 +56,9 @@ export default function GamePage() {
     const [hasShownOverlay, setHasShownOverlay] = useState(false);
     const [isLoadingEliminationData, setIsLoadingEliminationData] =
         useState(false);
+
+    // Exit confirmation modal
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
 
     // Round result overlay state
     const [showRoundResult, setShowRoundResult] = useState(false);
@@ -471,7 +475,12 @@ export default function GamePage() {
     };
 
     // Exit handler
-    const handleExit = async () => {
+    const handleExit = () => {
+        setShowExitConfirm(true);
+    };
+
+    const confirmExit = async () => {
+        setShowExitConfirm(false);
         if (userGameId) {
             await fetch(`/api/user-game/leave/${userGameId}`, {
                 method: "DELETE",
@@ -620,7 +629,7 @@ export default function GamePage() {
                                 ? "Kamu memenangkan pertandingan!"
                                 : `Pertandingan telah berakhir!`}
                         </p>
-                        <p className="text-sm font-medium text-white/70 md:text-base">
+                        <p className="text-sm font-medium text-white/80 md:text-base">
                             Kamu telah menyelesaikan{" "}
                             {eliminationData?.deathRound ??
                                 currentOrder ??
@@ -637,7 +646,7 @@ export default function GamePage() {
                                     <span className="text-lg font-bold text-[#4ade80] md:text-xl">
                                         {eliminationData.win}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Menang
                                     </span>
                                 </div>
@@ -645,7 +654,7 @@ export default function GamePage() {
                                     <span className="text-lg font-bold text-[#f87171] md:text-xl">
                                         {eliminationData.lose}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Kalah
                                     </span>
                                 </div>
@@ -662,7 +671,7 @@ export default function GamePage() {
                                             : ""}
                                         {eliminationData.trophyWon}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Trofi
                                     </span>
                                 </div>
@@ -679,7 +688,7 @@ export default function GamePage() {
                                             : ""}
                                         {eliminationData.coinsEarned}
                                     </span>
-                                    <span className="text-xs font-semibold tracking-wide text-white/70">
+                                    <span className="text-xs font-semibold tracking-wide text-white/80">
                                         Koin
                                     </span>
                                 </div>
@@ -696,7 +705,7 @@ export default function GamePage() {
                                 </span>
                             </div>
                             <div className="flex flex-col items-center gap-1">
-                                <span className="text-sm font-semibold text-white/70">
+                                <span className="text-sm font-semibold text-white/80">
                                     Waktu Bertahan
                                 </span>
                                 <span className="text-xl font-bold text-white">
@@ -927,6 +936,28 @@ export default function GamePage() {
             <BuffEffectOverlay
                 type={buffEffect}
                 onComplete={() => setBuffEffect(null)}
+            />
+
+            {/* Exit Confirmation */}
+            <ToastOverlay
+                isOpen={showExitConfirm}
+                onClose={() => setShowExitConfirm(false)}
+                title="Konfirmasi Keluar"
+                isFailed={false}
+                message={
+                    <div className="flex flex-col items-center gap-2">
+                        <span>
+                            Kamu yakin ingin keluar dari pertandingan?
+                        </span>
+                        <span className="text-sm text-white/60">
+                            Kamu akan kehilangan trophy dari pertandingan ini.
+                        </span>
+                    </div>
+                }
+                primaryButtonText="Keluar"
+                onPrimaryClick={confirmExit}
+                secondaryButtonText="Batal"
+                onSecondaryClick={() => setShowExitConfirm(false)}
             />
         </main>
     );

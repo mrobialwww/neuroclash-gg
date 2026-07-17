@@ -123,7 +123,7 @@ export default function RecapPage() {
     if (!data) {
         return (
             <div className="mx-auto max-w-4xl px-4 py-20 text-center md:px-6">
-                <p className="text-white/70">Data tidak ditemukan</p>
+                <p className="text-white/80">Data tidak ditemukan</p>
                 <button
                     onClick={() => router.back()}
                     className="mt-4 cursor-pointer text-sm text-white underline underline-offset-2"

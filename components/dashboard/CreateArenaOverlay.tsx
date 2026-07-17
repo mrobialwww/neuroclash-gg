@@ -2,6 +2,13 @@ import React, { useState, useRef, useCallback } from "react";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils/utils";
 import { CategoryType, Difficulty } from "@/types/enums";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CreateArenaModalProps = {
@@ -31,7 +38,7 @@ const CATEGORIES: { id: CategoryType; title: string }[] = [
     { id: "sejarah", title: "Sejarah" },
 ];
 
-const PLAYER_OPTIONS = [15, 20, 25, 30, 35, 40];
+const PLAYER_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40];
 const SOAL_OPTIONS = [6, 10, 15, 20, 25, 30, 35, 40];
 const DIFFICULTIES: { label: string; value: Difficulty }[] = [
     { label: "Mudah", value: "mudah" },
@@ -358,25 +365,25 @@ export default function CreateArenaModal({
                         <p className="mb-3 text-sm font-semibold text-white">
                             Jumlah Pemain Maksimal
                         </p>
-                        <div className="grid grid-cols-6 gap-2.5">
-                            {PLAYER_OPTIONS.map((n) => {
-                                const isActive = maxPlayers === n;
-                                return (
-                                    <button
+                        <Select
+                            value={maxPlayers?.toString() ?? ""}
+                            onValueChange={(val) => setMaxPlayers(Number(val))}
+                        >
+                            <SelectTrigger className="w-full border-[#383347] bg-[#0d0f2b] text-white">
+                                <SelectValue placeholder="Pilih jumlah pemain..." />
+                            </SelectTrigger>
+                            <SelectContent className="border-[#383347] bg-[#0d0f2b]">
+                                {PLAYER_OPTIONS.map((n) => (
+                                    <SelectItem
                                         key={n}
-                                        onClick={() => setMaxPlayers(n)}
-                                        className={cn(
-                                            "aspect-[2.2/1] cursor-pointer rounded-md border text-sm font-bold transition-all",
-                                            isActive
-                                                ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                                                : "border-[#383347] bg-transparent text-white/60 hover:border-gray-500 hover:text-white",
-                                        )}
+                                        value={n.toString()}
+                                        className="text-white focus:bg-blue-600 focus:text-white"
                                     >
-                                        {n}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        {n} pemain
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Questions Count Configuration */}
@@ -384,25 +391,25 @@ export default function CreateArenaModal({
                         <p className="mb-3 text-sm font-semibold text-white">
                             Jumlah Soal
                         </p>
-                        <div className="grid grid-cols-4 gap-2.5">
-                            {SOAL_OPTIONS.map((n) => {
-                                const isActive = jumlahSoal === n;
-                                return (
-                                    <button
+                        <Select
+                            value={jumlahSoal?.toString() ?? ""}
+                            onValueChange={(val) => setJumlahSoal(Number(val))}
+                        >
+                            <SelectTrigger className="w-full border-[#383347] bg-[#0d0f2b] text-white">
+                                <SelectValue placeholder="Pilih jumlah soal..." />
+                            </SelectTrigger>
+                            <SelectContent className="border-[#383347] bg-[#0d0f2b]">
+                                {SOAL_OPTIONS.map((n) => (
+                                    <SelectItem
                                         key={n}
-                                        onClick={() => setJumlahSoal(n)}
-                                        className={cn(
-                                            "aspect-[2.2/1] cursor-pointer rounded-md border text-sm font-bold transition-all",
-                                            isActive
-                                                ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                                                : "border-[#383347] bg-transparent text-white/60 hover:border-gray-500 hover:text-white",
-                                        )}
+                                        value={n.toString()}
+                                        className="text-white focus:bg-blue-600 focus:text-white"
                                     >
-                                        {n}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        {n} soal
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Difficulty Selection */}

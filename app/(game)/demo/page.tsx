@@ -697,7 +697,7 @@ export default function DemoPage() {
                         {TUTORIAL_MESSAGES.intro.items.map((item, i) => (
                             <p
                                 key={i}
-                                className="flex gap-2 text-sm text-white/70"
+                                className="flex gap-2 text-sm text-white/80"
                             >
                                 <span className="shrink-0 text-[#3D79F3]">
                                     {i + 1}.

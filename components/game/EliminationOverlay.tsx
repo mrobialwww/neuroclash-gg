@@ -106,7 +106,7 @@ export function EliminationOverlay({
                             <span className="text-lg font-bold text-[#4ade80] md:text-xl">
                                 {win}
                             </span>
-                            <span className="text-xs font-semibold text-white/70">
+                            <span className="text-xs font-semibold text-white/80">
                                 Menang
                             </span>
                         </div>
@@ -116,7 +116,7 @@ export function EliminationOverlay({
                             <span className="text-lg font-bold text-[#f87171] md:text-xl">
                                 {lose}
                             </span>
-                            <span className="text-xs font-semibold text-white/70">
+                            <span className="text-xs font-semibold text-white/80">
                                 Kalah
                             </span>
                         </div>
@@ -133,7 +133,7 @@ export function EliminationOverlay({
                                 {trophyWon >= 0 ? "+" : ""}
                                 {trophyWon}
                             </span>
-                            <span className="text-xs font-semibold text-white/70">
+                            <span className="text-xs font-semibold text-white/80">
                                 Trofi
                             </span>
                             {trophyBoost > 0 && (
@@ -155,7 +155,7 @@ export function EliminationOverlay({
                                 {coinsEarned >= 0 ? "+" : ""}
                                 {coinsEarned}
                             </span>
-                            <span className="text-xs font-semibold text-white/70">
+                            <span className="text-xs font-semibold text-white/80">
                                 Koin
                             </span>
                             {coinBoost > 0 && (

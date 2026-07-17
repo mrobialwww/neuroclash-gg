@@ -19,7 +19,7 @@ export function StatisticCard({
     return (
         <div
             className={cn(
-                "group relative flex min-h-[90px] flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-[#D9D9D9]/20 p-3 shadow-lg backdrop-blur-md transition-all hover:bg-[#D9D9D9]/30 md:min-h-[120px] md:p-5",
+                "group relative flex min-h-[90px] flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-[#172844] p-3 shadow-lg transition-all hover:bg-[#1c3255] md:min-h-[120px] md:p-5",
                 className,
             )}
         >
